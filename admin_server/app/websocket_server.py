@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from typing import Dict, Set, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import WebSocket, WebSocketDisconnect
 import sys
 from pathlib import Path
@@ -198,7 +198,7 @@ class ConnectionManager:
                 await asyncio.sleep(self.ping_interval)
                 await self.send_to_pi(pi_id, {
                     "type": "ping",
-                    "data": {"timestamp": datetime.utcnow().isoformat()}
+                    "data": {"timestamp": datetime.now(timezone.utc).isoformat()}
                 })
             except Exception as e:
                 logger.error(f"Ping failed for Pi {pi_id}: {e}")

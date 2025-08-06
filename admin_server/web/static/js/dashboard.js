@@ -417,11 +417,25 @@ function showAlert(message, type = 'info') {
     }, 4000);
 }
 
-// Format date time
+// Format date time to Europe/Amsterdam timezone
 function formatDateTime(dateString) {
     if (!dateString) return 'Never';
+    
     const date = new Date(dateString);
-    return date.toLocaleString();
+    
+    // Format to Europe/Amsterdam timezone
+    const options = {
+        timeZone: 'Europe/Amsterdam',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    };
+    
+    return date.toLocaleString('nl-NL', options);
 }
 
 // Refresh dashboard

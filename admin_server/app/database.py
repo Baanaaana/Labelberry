@@ -3,7 +3,7 @@ import json
 import logging
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import contextmanager
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -124,7 +124,7 @@ class Database:
                     device.location,
                     device.printer_model,
                     device.status,
-                    datetime.utcnow()
+                    datetime.now(timezone.utc)
                 ))
                 
                 if device.config:
@@ -211,9 +211,10 @@ class Database:
                 cursor = conn.cursor()
                 # Convert enum to string value if needed
                 status_value = status.value if hasattr(status, 'value') else status
+                # Use UTC with timezone awareness
                 cursor.execute("""
                     UPDATE pis SET status = ?, last_seen = ? WHERE id = ?
-                """, (status_value, datetime.utcnow(), pi_id))
+                """, (status_value, datetime.now(timezone.utc), pi_id))
                 logger.info(f"Updated Pi {pi_id} status to {status_value}")
         except Exception as e:
             logger.error(f"Failed to update Pi status: {e}")
@@ -223,9 +224,10 @@ class Database:
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
+                # Use UTC with timezone awareness
                 cursor.execute("""
                     UPDATE pis SET last_seen = ? WHERE id = ?
-                """, (datetime.utcnow(), pi_id))
+                """, (datetime.now(timezone.utc), pi_id))
                 logger.debug(f"Updated last_seen for Pi {pi_id}")
         except Exception as e:
             logger.error(f"Failed to update last_seen for Pi {pi_id}: {e}")
