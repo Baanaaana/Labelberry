@@ -152,7 +152,6 @@ sudo journalctl -u labelberry-admin -f
 ### Admin Server (`/etc/labelberry/server.conf`)
 - port: Web interface port (default 8080)
 - database_path: SQLite database location
-- ssl_enabled: HTTPS configuration
 
 ## Troubleshooting
 

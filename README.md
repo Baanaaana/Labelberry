@@ -141,7 +141,6 @@ host: 0.0.0.0
 port: 8080
 database_path: /var/lib/labelberry/db.sqlite
 log_level: INFO
-ssl_enabled: false
 cors_origins: ["*"]
 rate_limit: 100
 ```
@@ -218,7 +217,7 @@ Once running, access the interactive API documentation:
 ## Security Considerations
 
 - Always use API key authentication
-- Enable SSL/TLS in production
+- Use Nginx Proxy Manager or reverse proxy for SSL/TLS
 - Restrict CORS origins in production
 - Use firewall rules to limit access
 - Regularly update dependencies

@@ -49,8 +49,6 @@ apt-get install -y \
     git \
     sqlite3 \
     nginx \
-    certbot \
-    python3-certbot-nginx \
     build-essential \
     python3-dev \
     uuid-runtime
@@ -108,9 +106,6 @@ port: $PORT
 database_path: /var/lib/labelberry/db.sqlite
 log_level: INFO
 log_file: /var/log/labelberry/server.log
-ssl_enabled: false
-ssl_cert_path: ""
-ssl_key_path: ""
 cors_origins: ["*"]
 rate_limit: 100
 session_timeout: 3600
@@ -145,7 +140,7 @@ EOF
 systemctl daemon-reload
 systemctl enable labelberry-admin.service
 
-echo -e "${YELLOW}[11/12] Configuring nginx...${NC}"
+echo -e "${YELLOW}[11/11] Configuring nginx...${NC}"
 SERVER_NAME=$(hostname -I | awk '{print $1}')
 read -p "Enter your domain name (or press Enter to use IP: $SERVER_NAME): " DOMAIN </dev/tty
 DOMAIN=${DOMAIN:-$SERVER_NAME}
@@ -185,17 +180,6 @@ ln -sf /etc/nginx/sites-available/labelberry /etc/nginx/sites-enabled/
 nginx -t
 systemctl reload nginx
 
-echo -e "${YELLOW}[12/12] Setting up SSL (optional)...${NC}"
-read -p "Do you want to set up SSL with Let's Encrypt? (y/N): " -n 1 -r </dev/tty
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -p "Enter your email for Let's Encrypt: " EMAIL </dev/tty
-    certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
-    
-    sed -i 's/ssl_enabled: false/ssl_enabled: true/' /etc/labelberry/server.conf
-    echo -e "${GREEN}SSL configured successfully${NC}"
-fi
-
 echo ""
 echo -e "${GREEN}===============================================${NC}"
 echo -e "${GREEN}    Installation Complete!                     ${NC}"
@@ -203,9 +187,6 @@ echo -e "${GREEN}===============================================${NC}"
 echo ""
 echo -e "${YELLOW}Access the admin server at:${NC}"
 echo "   http://$DOMAIN"
-if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
-    echo "   https://$DOMAIN (SSL enabled)"
-fi
 echo ""
 echo -e "${YELLOW}Next steps:${NC}"
 echo "1. Start the service: sudo systemctl start labelberry-admin"

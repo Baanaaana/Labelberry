@@ -120,13 +120,11 @@ fi
 echo -e "${YELLOW}[9/9] Optional: Uninstall system packages...${NC}"
 echo "The following packages were installed for Labelberry:"
 echo "  - nginx"
-echo "  - certbot"
-echo "  - python3-certbot-nginx"
 echo "  - sqlite3"
 read -p "Do you want to remove these packages? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    apt-get remove -y nginx certbot python3-certbot-nginx sqlite3
+    apt-get remove -y nginx sqlite3
     apt-get autoremove -y
     echo "System packages removed"
 else
@@ -143,5 +141,3 @@ echo -e "${YELLOW}Backups saved in: /tmp/labelberry-backup/${NC}"
 echo ""
 echo "To reinstall, run:"
 echo "curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-server.sh | sudo bash"
-echo ""
-echo -e "${YELLOW}Note: If you had SSL certificates, they may still be in /etc/letsencrypt/${NC}"
