@@ -61,33 +61,16 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 
 @app.get("/", response_class=HTMLResponse)
-async def root():
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Labelberry Admin</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            h1 { color: #333; }
-            .info { background: #f0f0f0; padding: 20px; border-radius: 5px; }
-        </style>
-    </head>
-    <body>
-        <h1>Labelberry Admin Server</h1>
-        <div class="info">
-            <p>The admin server is running successfully!</p>
-            <p>API Documentation: <a href="/docs">/docs</a></p>
-            <p>Dashboard: <a href="/dashboard">/dashboard</a></p>
-        </div>
-    </body>
-    </html>
-    """
+async def root(request: Request):
+    """Main page - serves the dashboard"""
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    """Legacy dashboard URL - redirects to root"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/", status_code=301)
 
 
 @app.get("/api/pis", response_model=ApiResponse)

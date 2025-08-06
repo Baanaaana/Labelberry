@@ -79,7 +79,7 @@ curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-se
 
 After installation, access the dashboard at:
 ```
-http://YOUR_SERVER_IP:8080/dashboard
+http://YOUR_SERVER_IP:8080
 ```
 
 ### Uninstall
@@ -134,7 +134,7 @@ Send test prints to any connected printer using:
 
 1. **Access the Dashboard**
    ```
-   http://YOUR_SERVER_IP:8080/dashboard
+   http://YOUR_SERVER_IP:8080
    ```
 
 2. **Register a Printer**
@@ -451,7 +451,7 @@ sudo journalctl -u labelberry-admin -f
 ### Default Ports
 - Pi Client API: `8000`
 - Admin Server: `8080`
-- Dashboard: `http://SERVER_IP:8080/dashboard`
+- Dashboard: `http://SERVER_IP:8080`
 - API Docs: `http://SERVER_IP:8080/docs`
 
 ## Contributing

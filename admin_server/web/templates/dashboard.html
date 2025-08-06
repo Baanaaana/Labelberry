@@ -34,6 +34,9 @@
             <button class="btn btn-secondary" onclick="refreshDashboard()">
                 <i class="ri-refresh-line"></i> Refresh
             </button>
+            <button class="btn btn-secondary" onclick="showSettingsModal()">
+                <i class="ri-settings-3-line"></i> Settings
+            </button>
         </div>
 
         <div class="printers-grid" id="printers-grid">
@@ -167,6 +170,82 @@
                 <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
                 <button class="btn btn-danger" onclick="confirmDelete()">Delete Printer</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSettingsModal()">&times;</span>
+            <h2><i class="ri-settings-3-line"></i> Dashboard Settings</h2>
+            <form id="settings-form" onsubmit="saveSettings(event)">
+                <div class="form-group">
+                    <label for="timezone-select">Timezone:</label>
+                    <select id="timezone-select" class="form-control">
+                        <optgroup label="Europe">
+                            <option value="Europe/Amsterdam">Amsterdam (CET/CEST)</option>
+                            <option value="Europe/London">London (GMT/BST)</option>
+                            <option value="Europe/Paris">Paris (CET/CEST)</option>
+                            <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                            <option value="Europe/Brussels">Brussels (CET/CEST)</option>
+                            <option value="Europe/Madrid">Madrid (CET/CEST)</option>
+                            <option value="Europe/Rome">Rome (CET/CEST)</option>
+                            <option value="Europe/Stockholm">Stockholm (CET/CEST)</option>
+                            <option value="Europe/Moscow">Moscow (MSK)</option>
+                        </optgroup>
+                        <optgroup label="Americas">
+                            <option value="America/New_York">New York (EST/EDT)</option>
+                            <option value="America/Chicago">Chicago (CST/CDT)</option>
+                            <option value="America/Denver">Denver (MST/MDT)</option>
+                            <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                            <option value="America/Toronto">Toronto (EST/EDT)</option>
+                            <option value="America/Mexico_City">Mexico City (CST)</option>
+                            <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                        </optgroup>
+                        <optgroup label="Asia Pacific">
+                            <option value="Asia/Tokyo">Tokyo (JST)</option>
+                            <option value="Asia/Shanghai">Shanghai (CST)</option>
+                            <option value="Asia/Hong_Kong">Hong Kong (HKT)</option>
+                            <option value="Asia/Singapore">Singapore (SGT)</option>
+                            <option value="Asia/Seoul">Seoul (KST)</option>
+                            <option value="Asia/Kolkata">Mumbai (IST)</option>
+                            <option value="Asia/Dubai">Dubai (GST)</option>
+                            <option value="Australia/Sydney">Sydney (AEDT/AEST)</option>
+                            <option value="Australia/Melbourne">Melbourne (AEDT/AEST)</option>
+                            <option value="Pacific/Auckland">Auckland (NZDT/NZST)</option>
+                        </optgroup>
+                        <optgroup label="Other">
+                            <option value="UTC">UTC</option>
+                            <option value="GMT">GMT</option>
+                        </optgroup>
+                    </select>
+                    <small class="form-text">Select your local timezone for displaying timestamps</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="refresh-interval">Auto-refresh interval:</label>
+                    <select id="refresh-interval" class="form-control">
+                        <option value="5000">5 seconds</option>
+                        <option value="10000" selected>10 seconds</option>
+                        <option value="30000">30 seconds</option>
+                        <option value="60000">1 minute</option>
+                        <option value="0">Disabled</option>
+                    </select>
+                    <small class="form-text">How often to refresh the dashboard data</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="date-format">Date format:</label>
+                    <select id="date-format" class="form-control">
+                        <option value="DD-MM-YYYY">DD-MM-YYYY (European)</option>
+                        <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
+                    </select>
+                    <small class="form-text">Format for displaying dates</small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </form>
         </div>
     </div>
 

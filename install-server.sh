@@ -48,7 +48,6 @@ apt-get install -y \
     python3-venv \
     git \
     sqlite3 \
-    nginx \
     build-essential \
     python3-dev \
     uuid-runtime
@@ -140,59 +139,27 @@ EOF
 systemctl daemon-reload
 systemctl enable labelberry-admin.service
 
-echo -e "${YELLOW}[11/11] Configuring nginx...${NC}"
-SERVER_NAME=$(hostname -I | awk '{print $1}')
-read -p "Enter your domain name (or press Enter to use IP: $SERVER_NAME): " DOMAIN </dev/tty
-DOMAIN=${DOMAIN:-$SERVER_NAME}
-
-cat > /etc/nginx/sites-available/labelberry <<EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
-
-    location / {
-        proxy_pass http://127.0.0.1:$PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 86400;
-    }
-
-    location /ws {
-        proxy_pass http://127.0.0.1:$PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 86400;
-    }
-}
-EOF
-
-ln -sf /etc/nginx/sites-available/labelberry /etc/nginx/sites-enabled/
-nginx -t
-systemctl reload nginx
+echo -e "${YELLOW}[11/11] Starting service...${NC}"
+systemctl start labelberry-admin.service
 
 echo ""
 echo -e "${GREEN}===============================================${NC}"
 echo -e "${GREEN}    Installation Complete!                     ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
-echo -e "${YELLOW}Access the admin server at:${NC}"
-echo "   http://$DOMAIN"
+echo -e "${YELLOW}Access the dashboard at:${NC}"
+SERVER_IP=$(hostname -I | awk '{print $1}')
+echo "   http://$SERVER_IP:$PORT"
 echo ""
-echo -e "${YELLOW}Next steps:${NC}"
-echo "1. Start the service: sudo systemctl start labelberry-admin"
-echo "2. Check status: sudo systemctl status labelberry-admin"
-echo "3. View logs: sudo journalctl -u labelberry-admin -f"
-echo "4. Access API docs: http://$DOMAIN/docs"
+echo -e "${YELLOW}Service Status:${NC}"
+echo "   sudo systemctl status labelberry-admin"
+echo ""
+echo -e "${YELLOW}View Logs:${NC}"
+echo "   sudo journalctl -u labelberry-admin -f"
+echo ""
+echo -e "${YELLOW}Note:${NC}"
+echo "   For domain/SSL setup, use Nginx Proxy Manager or similar"
+echo "   The service is running directly on port $PORT"
 echo ""
 
 read -p "Do you want to start the service now? (Y/n): " -n 1 -r </dev/tty

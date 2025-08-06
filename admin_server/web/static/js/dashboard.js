@@ -3,12 +3,51 @@ let currentPis = [];
 let selectedPiId = null;
 let refreshInterval = null;
 
+// Settings with defaults
+let dashboardSettings = {
+    timezone: 'Europe/Amsterdam',
+    refreshInterval: 10000,
+    dateFormat: 'DD-MM-YYYY'
+};
+
+// Load settings from localStorage
+function loadSettings() {
+    const saved = localStorage.getItem('labelberrySettings');
+    if (saved) {
+        try {
+            dashboardSettings = JSON.parse(saved);
+        } catch (e) {
+            console.error('Failed to load settings:', e);
+        }
+    }
+    return dashboardSettings;
+}
+
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
+    // Load saved settings
+    loadSettings();
+    
+    // Load dashboard
     loadDashboard();
-    // Refresh every 10 seconds
-    refreshInterval = setInterval(loadDashboard, 10000);
+    
+    // Set up auto-refresh based on settings
+    setupAutoRefresh();
 });
+
+// Setup auto-refresh based on settings
+function setupAutoRefresh() {
+    // Clear existing interval
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+    
+    // Set new interval if not disabled
+    if (dashboardSettings.refreshInterval > 0) {
+        refreshInterval = setInterval(loadDashboard, dashboardSettings.refreshInterval);
+    }
+}
 
 // Load dashboard data
 async function loadDashboard() {
@@ -417,15 +456,15 @@ function showAlert(message, type = 'info') {
     }, 4000);
 }
 
-// Format date time to Europe/Amsterdam timezone
+// Format date time based on user settings
 function formatDateTime(dateString) {
     if (!dateString) return 'Never';
     
     const date = new Date(dateString);
     
-    // Format to Europe/Amsterdam timezone
+    // Use timezone from settings
     const options = {
-        timeZone: 'Europe/Amsterdam',
+        timeZone: dashboardSettings.timezone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -435,7 +474,15 @@ function formatDateTime(dateString) {
         hour12: false
     };
     
-    return date.toLocaleString('nl-NL', options);
+    // Choose locale based on date format preference
+    let locale = 'en-US';
+    if (dashboardSettings.dateFormat === 'DD-MM-YYYY') {
+        locale = 'nl-NL';  // European format
+    } else if (dashboardSettings.dateFormat === 'YYYY-MM-DD') {
+        locale = 'en-CA';  // ISO format (Canadian English uses ISO)
+    }
+    
+    return date.toLocaleString(locale, options);
 }
 
 // Refresh dashboard
@@ -533,6 +580,44 @@ async function confirmDelete() {
         console.error('Error deleting printer:', error);
         showAlert('Failed to delete printer', 'error');
     }
+}
+
+// Show settings modal
+function showSettingsModal() {
+    // Load current settings into form
+    document.getElementById('timezone-select').value = dashboardSettings.timezone;
+    document.getElementById('refresh-interval').value = dashboardSettings.refreshInterval;
+    document.getElementById('date-format').value = dashboardSettings.dateFormat;
+    
+    document.getElementById('settings-modal').style.display = 'block';
+}
+
+// Close settings modal
+function closeSettingsModal() {
+    document.getElementById('settings-modal').style.display = 'none';
+}
+
+// Save settings
+function saveSettings(event) {
+    event.preventDefault();
+    
+    // Get values from form
+    dashboardSettings.timezone = document.getElementById('timezone-select').value;
+    dashboardSettings.refreshInterval = parseInt(document.getElementById('refresh-interval').value);
+    dashboardSettings.dateFormat = document.getElementById('date-format').value;
+    
+    // Save to localStorage
+    localStorage.setItem('labelberrySettings', JSON.stringify(dashboardSettings));
+    
+    // Apply new settings
+    setupAutoRefresh();
+    
+    // Reload dashboard to apply timezone changes
+    loadDashboard();
+    
+    // Close modal and show success message
+    closeSettingsModal();
+    showAlert('Settings saved successfully!', 'success');
 }
 
 // Close modals when clicking outside
