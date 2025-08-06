@@ -11,33 +11,36 @@ function scrollToSection(sectionId, navItem) {
     });
     navItem.classList.add('active');
     
-    // Scroll to section with offset
+    // Scroll to section
     const section = document.getElementById(sectionId);
     if (section) {
-        // Calculate the section's position from the top of the document
-        let element = section;
-        let offsetTop = 0;
+        console.log('Section found:', sectionId);
         
-        while (element) {
-            offsetTop += element.offsetTop;
-            element = element.offsetParent;
-        }
+        // Get current scroll position
+        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+        console.log('Current scroll position:', currentScroll);
         
-        // The header is fixed, get its height
-        const header = document.querySelector('.docs-header');
-        const headerHeight = header ? header.offsetHeight : 0;
+        // Get section position
+        const rect = section.getBoundingClientRect();
+        console.log('Section rect:', rect);
         
-        // Additional offset to align with sidebar (sidebar is sticky at 24px)
-        // Total offset = header height + extra padding
-        const totalOffset = headerHeight + 24;
+        const absoluteTop = currentScroll + rect.top;
+        console.log('Section absolute top:', absoluteTop);
         
-        // Scroll to position
-        const scrollTarget = offsetTop - totalOffset;
+        // Calculate target with offset
+        const targetPosition = absoluteTop - 100; // Increased offset
+        console.log('Target scroll position:', targetPosition);
         
-        window.scrollTo({
-            top: scrollTarget,
-            behavior: 'smooth'
-        });
+        // Force scroll
+        window.scrollTo(0, targetPosition);
+        
+        // Also try with smooth scroll after a delay
+        setTimeout(() => {
+            window.scrollTo({
+                top: targetPosition,
+                behavior: 'smooth'
+            });
+        }, 100);
     }
     return false;
 }
