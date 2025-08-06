@@ -5,18 +5,17 @@ let userApiKeys = [];
 
 // Scroll to section
 function scrollToSection(sectionId, navItem) {
+    // Update active nav item
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    navItem.classList.add('active');
+    
     // Scroll to section
     const section = document.getElementById(sectionId);
     if (section) {
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        
-        // Update active state after a short delay to let scroll finish
-        setTimeout(() => {
-            updateActiveSection();
-        }, 100);
     }
-    
-    // Prevent default link behavior
     return false;
 }
 
@@ -357,58 +356,6 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
-// Scroll spy functionality
-function updateActiveSection() {
-    const sections = document.querySelectorAll('.doc-section');
-    const navItems = document.querySelectorAll('.nav-item');
-    
-    if (!sections.length || !navItems.length) return;
-    
-    // Get current scroll position
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const windowHeight = window.innerHeight;
-    const documentHeight = document.documentElement.scrollHeight;
-    
-    let currentSection = null;
-    
-    // Check if we're at the bottom of the page
-    if (scrollTop + windowHeight >= documentHeight - 50) {
-        // Highlight the last section (examples)
-        currentSection = 'examples';
-    } else {
-        // Find which section is currently in view
-        for (let i = sections.length - 1; i >= 0; i--) {
-            const section = sections[i];
-            const rect = section.getBoundingClientRect();
-            const sectionTop = rect.top + scrollTop;
-            
-            // If the section top is above the current scroll position (with offset for header)
-            if (sectionTop <= scrollTop + 80) {
-                currentSection = section.getAttribute('id');
-                break;
-            }
-        }
-        
-        // Default to first section if none found
-        if (!currentSection) {
-            currentSection = 'overview';
-        }
-    }
-    
-    // Update nav items - remove all active classes first
-    navItems.forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    // Then add active class to the current section
-    navItems.forEach(item => {
-        const href = item.getAttribute('href');
-        if (href === '#' + currentSection) {
-            item.classList.add('active');
-        }
-    });
-}
-
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize base URL immediately
@@ -437,26 +384,6 @@ document.addEventListener('DOMContentLoaded', () => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
         });
-    });
-    
-    // Set up scroll spy
-    updateActiveSection();
-    
-    // Add scroll event listener with throttling
-    let isScrolling = false;
-    window.addEventListener('scroll', () => {
-        if (!isScrolling) {
-            window.requestAnimationFrame(() => {
-                updateActiveSection();
-                isScrolling = false;
-            });
-            isScrolling = true;
-        }
-    });
-    
-    // Also update on resize
-    window.addEventListener('resize', () => {
-        updateActiveSection();
     });
     
     // Load printers and API keys
