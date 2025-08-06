@@ -5,13 +5,39 @@ A Raspberry Pi-based label printing system for Zebra printers with centralized m
 ## Features
 
 - **Print ZPL labels** via REST API from URL or raw ZPL content
-- **Centralized management** of multiple Raspberry Pi devices
+- **Web Dashboard** for managing all printers from a single interface
 - **Real-time monitoring** via WebSocket connections
-- **Print queue management** with automatic retry
-- **Web-based admin interface** for configuration and monitoring
+- **Print queue management** with automatic retry on failure
+- **Remote printing** from admin dashboard to any connected Pi
 - **CLI tool** for local Pi management
-- **Performance metrics** tracking and visualization
+- **Performance metrics** tracking (CPU, memory, queue status)
 - **API key authentication** for secure printing
+- **Auto-discovery** of USB printers on multiple device paths
+- **Responsive design** works on desktop and mobile devices
+
+## System Requirements
+
+### Raspberry Pi Client
+- Raspberry Pi 3/4/5 or Zero 2 W
+- Raspberry Pi OS (32-bit or 64-bit)
+- Python 3.9 or higher
+- 512MB RAM minimum
+- USB port for printer connection
+
+### Admin Server
+- Ubuntu 20.04/22.04/24.04 or Debian 11/12
+- Python 3.9 or higher
+- 1GB RAM minimum
+- Port 8080 available (configurable)
+
+### Supported Printers
+- All Zebra ZPL-compatible printers
+- Tested models:
+  - Zebra ZD220
+  - Zebra ZD420
+  - Zebra GK420d
+  - Zebra ZT230
+- Connection: USB (detected on `/dev/usblp0` or similar)
 
 ## Architecture
 
@@ -37,10 +63,23 @@ Labelberry consists of two main components:
 curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-pi.sh | sudo bash
 ```
 
+During installation, you'll be prompted for:
+- Friendly name for the Pi
+- Admin server URL
+
+After installation, note your:
+- **Device ID**: Unique identifier for this Pi
+- **API Key**: Authentication key for API access
+
 ### Install Admin Server on Ubuntu
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-server.sh | sudo bash
+```
+
+After installation, access the dashboard at:
+```
+http://YOUR_SERVER_IP:8080/dashboard
 ```
 
 ### Uninstall
@@ -62,6 +101,58 @@ Both uninstall scripts will:
 - Remove all Labelberry files and services
 - Optionally remove data directories (with confirmation)
 - Display saved credentials for future reinstallation
+
+## Web Dashboard
+
+The admin server includes a full-featured web dashboard for managing all your printers.
+
+### Dashboard Features
+
+#### 📊 Overview
+- Real-time printer status monitoring
+- Total printers, online count, and job statistics
+- Auto-refresh every 10 seconds
+
+#### 🖨️ Printer Management
+- **Register New Printers**: Add Raspberry Pis using their Device ID and API Key
+- **View Details**: See configuration, metrics, and current status
+- **Remote Control**: Send commands and configuration updates
+
+#### 🎯 Test Printing
+Send test prints to any connected printer using:
+- **Raw ZPL**: Type or paste ZPL code directly
+- **File Upload**: Upload .zpl files from your computer
+- **URL**: Provide a URL to a ZPL file
+
+#### 📈 Metrics & Monitoring
+- CPU and memory usage graphs
+- Print queue status
+- Job success/failure rates
+- Network connectivity status
+
+### Using the Dashboard
+
+1. **Access the Dashboard**
+   ```
+   http://YOUR_SERVER_IP:8080/dashboard
+   ```
+
+2. **Register a Printer**
+   - Click "Register New Pi"
+   - Enter Device ID and API Key from Pi installation
+   - Add friendly name and optional location/model
+   - Click Register
+
+3. **Send Test Print**
+   - Click "Test Print" on any printer card
+   - Choose input method (Raw/File/URL)
+   - Enter or upload ZPL content
+   - Click "Send Print Job"
+
+4. **View Printer Details**
+   - Click "Details" on any printer card
+   - See configuration, metrics, and logs
+   - Monitor real-time performance
 
 ## API Usage
 
@@ -95,26 +186,59 @@ curl http://raspberry-pi:8000/status
 
 ## CLI Usage
 
-On the Raspberry Pi:
+The Raspberry Pi includes a comprehensive CLI tool for local management.
 
+### Available Commands
+
+#### Status & Configuration
 ```bash
-# Check status
+# Check printer and service status
 labelberry status
 
-# View configuration
+# View all configuration
 labelberry config get
+
+# View specific config value
+labelberry config get api_key
 
 # Update configuration
 labelberry config set friendly_name "Warehouse Pi 1"
+labelberry config set printer_device /dev/usblp0
+labelberry config set admin_server http://192.168.1.100:8080
+```
 
-# Send test print
+#### Print Operations
+```bash
+# Send test print to verify printer connection
 labelberry test-print
 
-# View queue
+# View print queue
 labelberry queue list
 
-# Clear queue
+# Clear all queued jobs
 labelberry queue clear
+```
+
+### CLI Output Examples
+
+**Status Command:**
+```
+=== Labelberry Status ===
+Device ID: a0973a9f-5d0c-4e6f-81fa-831f851d7b07
+Friendly Name: Warehouse Pi 1
+WebSocket Connected: True
+
+--- Printer Status ---
+Connected: True
+Device: /dev/usblp0
+Type: USB
+
+--- Queue Status ---
+Queue Size: 2/100
+Processing: True
+Current Job: abc123
+Pending Jobs: 1
+Failed Jobs: 0
 ```
 
 ## Configuration
@@ -196,23 +320,91 @@ Once running, access the interactive API documentation:
 
 ### Printer Not Detected
 
-1. Check USB connection
-2. Verify device permissions: `ls -l /dev/usb/`
-3. Check service logs: `sudo journalctl -u labelberry-client -f`
+1. **Check USB connection**
+   ```bash
+   lsusb | grep -i zebra
+   ls -la /dev/usblp*
+   ```
+
+2. **Verify device permissions**
+   ```bash
+   sudo usermod -a -G lp $USER
+   ls -l /dev/usblp0
+   ```
+
+3. **Check service logs**
+   ```bash
+   sudo journalctl -u labelberry-client -f
+   ```
+
+4. **Common device paths**
+   - Primary: `/dev/usblp0`
+   - Alternatives: `/dev/usb/lp0`, `/dev/lp0`
+
+5. **If USB controller crashes**
+   ```bash
+   sudo reboot  # Resets USB controller
+   ```
 
 ### WebSocket Connection Issues
 
-1. Verify network connectivity
-2. Check admin server URL in configuration
-3. Ensure API key is correct
-4. Check firewall settings
+1. **Verify network connectivity**
+   ```bash
+   ping YOUR_ADMIN_SERVER_IP
+   curl http://YOUR_ADMIN_SERVER_IP:8080/health
+   ```
+
+2. **Check configuration**
+   ```bash
+   labelberry config get admin_server
+   labelberry config get api_key
+   ```
+
+3. **Firewall settings**
+   ```bash
+   # On admin server
+   sudo ufw allow 8080/tcp
+   ```
 
 ### Print Jobs Stuck in Queue
 
-1. Check printer status: `labelberry status`
-2. Verify printer is online and ready
-3. Clear queue if needed: `labelberry queue clear`
-4. Check logs for errors
+1. **Check printer status**
+   ```bash
+   labelberry status
+   ```
+
+2. **View queue details**
+   ```bash
+   labelberry queue list
+   ```
+
+3. **Clear stuck jobs**
+   ```bash
+   labelberry queue clear
+   ```
+
+4. **Restart service**
+   ```bash
+   sudo systemctl restart labelberry-client
+   ```
+
+### Dashboard Not Loading
+
+1. **Check admin service**
+   ```bash
+   sudo systemctl status labelberry-admin
+   sudo journalctl -u labelberry-admin -f
+   ```
+
+2. **Verify nginx is running**
+   ```bash
+   sudo systemctl status nginx
+   ```
+
+3. **Check port availability**
+   ```bash
+   sudo netstat -tlnp | grep 8080
+   ```
 
 ## Security Considerations
 
@@ -221,6 +413,46 @@ Once running, access the interactive API documentation:
 - Restrict CORS origins in production
 - Use firewall rules to limit access
 - Regularly update dependencies
+
+## Quick Reference
+
+### Service Management
+```bash
+# Raspberry Pi
+sudo systemctl start labelberry-client
+sudo systemctl stop labelberry-client
+sudo systemctl restart labelberry-client
+sudo systemctl status labelberry-client
+sudo journalctl -u labelberry-client -f
+
+# Admin Server
+sudo systemctl start labelberry-admin
+sudo systemctl stop labelberry-admin
+sudo systemctl restart labelberry-admin
+sudo systemctl status labelberry-admin
+sudo journalctl -u labelberry-admin -f
+```
+
+### File Locations
+```
+# Raspberry Pi
+/opt/labelberry/                 # Application files
+/etc/labelberry/client.conf      # Configuration
+/var/lib/labelberry/queue.json   # Queue persistence
+/var/log/labelberry/client.log   # Logs
+
+# Admin Server
+/opt/labelberry-admin/           # Application files
+/etc/labelberry/server.conf      # Configuration
+/var/lib/labelberry/db.sqlite    # Database
+/var/log/labelberry/server.log   # Logs
+```
+
+### Default Ports
+- Pi Client API: `8000`
+- Admin Server: `8080`
+- Dashboard: `http://SERVER_IP:8080/dashboard`
+- API Docs: `http://SERVER_IP:8080/docs`
 
 ## Contributing
 
