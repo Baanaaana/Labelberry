@@ -12,34 +12,34 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-    <div class="dashboard-container">
-        <!-- Header -->
-        <header class="dashboard-header">
-            <div class="header-left">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <i data-lucide="receipt-text"></i>
-                    <h1>LabelBerry</h1>
-                </div>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-left">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i data-lucide="receipt-text"></i>
+                <h1>LabelBerry</h1>
             </div>
-            <div class="header-center">
-                <h1>Dashboard</h1>
-            </div>
-            <div class="header-right">
-                <a href="/docs" class="icon-btn" title="API Documentation" style="text-decoration: none;">
-                    <i data-lucide="book-open"></i>
-                </a>
-                <a href="/settings" class="icon-btn" title="Settings" style="text-decoration: none;">
-                    <i data-lucide="settings"></i>
-                </a>
-                <button class="icon-btn" onclick="refreshDashboard()" title="Refresh">
-                    <i data-lucide="refresh-cw"></i>
-                </button>
-                <a href="/logout" class="icon-btn" title="Logout" style="text-decoration: none;">
-                    <i data-lucide="log-out"></i>
-                </a>
-            </div>
-        </header>
+        </div>
+        <div class="header-center">
+            <h1>Dashboard</h1>
+        </div>
+        <div class="header-right">
+            <a href="/docs" class="icon-btn" title="API Documentation" style="text-decoration: none;">
+                <i data-lucide="book-open"></i>
+            </a>
+            <a href="/settings" class="icon-btn" title="Settings" style="text-decoration: none;">
+                <i data-lucide="settings"></i>
+            </a>
+            <button class="icon-btn" onclick="refreshDashboard()" title="Refresh">
+                <i data-lucide="refresh-cw"></i>
+            </button>
+            <a href="/logout" class="icon-btn" title="Logout" style="text-decoration: none;">
+                <i data-lucide="log-out"></i>
+            </a>
+        </div>
+    </header>
 
+    <div class="dashboard-container">
         <!-- Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card">

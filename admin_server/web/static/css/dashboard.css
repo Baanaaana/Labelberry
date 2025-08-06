@@ -33,19 +33,18 @@ body {
 .dashboard-container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 24px 20px;
 }
 
 /* Header */
 .dashboard-header {
     background: var(--bg-secondary);
-    border-radius: 12px;
+    border-bottom: 1px solid var(--border-color);
     padding: 20px 24px;
-    margin-bottom: 24px;
-    box-shadow: var(--shadow-sm);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: var(--shadow-sm);
 }
 
 .header-left {
