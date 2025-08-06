@@ -758,6 +758,29 @@ async def swagger_docs(request: Request, current_user: str = Depends(require_log
         """)
 
 
+@app.get("/api/server-info")
+async def get_server_info():
+    """Get server information including local IP address"""
+    import socket
+    
+    # Get local IP address
+    try:
+        # Create a socket to determine the local IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))  # Connect to Google DNS
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        # Fallback to localhost if unable to determine
+        local_ip = "127.0.0.1"
+    
+    return {
+        "local_ip": local_ip,
+        "port": 8080,  # Default port for LabelBerry
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
 @app.get("/health")
 async def health_check():
     return {

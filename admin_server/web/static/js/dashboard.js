@@ -25,19 +25,28 @@ function loadSettings() {
 }
 
 // Display server IP address
-function displayServerIP() {
+async function displayServerIP() {
     const serverIpElement = document.getElementById('server-ip');
     if (serverIpElement) {
-        // Get the current URL's hostname and port
-        const hostname = window.location.hostname;
-        const port = window.location.port || '80';
-        
-        // If accessing via localhost, try to get the actual IP
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            // For local development, show localhost
-            serverIpElement.textContent = `localhost:${port}`;
-        } else {
-            // Show the actual hostname/IP being used
+        try {
+            // Fetch the actual server's local IP
+            const response = await fetch('/api/server-info');
+            const data = await response.json();
+            
+            if (data.local_ip) {
+                // Display the actual local IP and port
+                serverIpElement.textContent = `${data.local_ip}:${data.port}`;
+            } else {
+                // Fallback to current hostname
+                const hostname = window.location.hostname;
+                const port = window.location.port || '80';
+                serverIpElement.textContent = `${hostname}:${port}`;
+            }
+        } catch (error) {
+            console.error('Failed to get server IP:', error);
+            // Fallback to current hostname
+            const hostname = window.location.hostname;
+            const port = window.location.port || '80';
             serverIpElement.textContent = `${hostname}:${port}`;
         }
     }
