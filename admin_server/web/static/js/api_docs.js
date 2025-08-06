@@ -14,14 +14,14 @@ function scrollToSection(sectionId, navItem) {
     // Scroll to section with offset
     const section = document.getElementById(sectionId);
     if (section) {
-        // Get the position of the section and sidebar
-        const sectionTop = section.getBoundingClientRect().top + window.pageYOffset;
-        const headerHeight = document.querySelector('.docs-header').offsetHeight;
-        const sidebarTop = document.querySelector('.docs-sidebar').getBoundingClientRect().top + window.pageYOffset;
+        // The sidebar nav is sticky positioned at top: 24px from viewport
+        // So we need to scroll the section to be 24px from the top of viewport
+        const sectionRect = section.getBoundingClientRect();
+        const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+        const sectionTop = sectionRect.top + currentScrollY;
         
-        // Calculate the offset to align section top with sidebar top
-        // The sidebar starts at headerHeight + 24px (padding)
-        const targetScrollPosition = sectionTop - headerHeight - 24;
+        // Scroll so that section aligns with sticky sidebar (24px from viewport top)
+        const targetScrollPosition = sectionTop - 24;
         
         // Smooth scroll to the calculated position
         window.scrollTo({
