@@ -142,14 +142,17 @@ systemctl enable labelberry-admin.service
 echo -e "${YELLOW}[11/11] Starting service...${NC}"
 systemctl start labelberry-admin.service
 
+# Get the server IP and port for display
+SERVER_IP=$(hostname -I | awk '{print $1}')
+PORT=${PORT:-8080}
+
 echo ""
 echo -e "${GREEN}===============================================${NC}"
 echo -e "${GREEN}    Installation Complete!                     ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
 echo -e "${YELLOW}Access the dashboard at:${NC}"
-SERVER_IP=$(hostname -I | awk '{print $1}')
-echo "   http://$SERVER_IP:$PORT"
+echo "   http://${SERVER_IP}:${PORT}"
 echo ""
 echo -e "${YELLOW}Service Status:${NC}"
 echo "   sudo systemctl status labelberry-admin"
@@ -167,5 +170,6 @@ echo
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     systemctl start labelberry-admin
     echo -e "${GREEN}Service started!${NC}"
-    echo -e "${YELLOW}Access the admin interface at: http://$DOMAIN${NC}"
+    SERVER_IP=$(hostname -I | awk '{print $1}')
+    echo -e "${YELLOW}Access the admin interface at: http://${SERVER_IP}:${PORT}${NC}"
 fi
