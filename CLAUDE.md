@@ -129,6 +129,19 @@ flake8
 black --check .
 ```
 
+### Cache Busting
+**IMPORTANT**: When making any visual changes to the web interface (CSS, JavaScript, or HTML structure), you MUST update the cache version in `/admin_server/app/main.py`:
+
+```python
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "1.X"
+```
+
+Increment the version number (e.g., from "1.5" to "1.6") to force browsers to reload cached static files. This is required for:
+- CSS changes
+- JavaScript changes  
+- Any visual updates that won't appear without clearing browser cache
+- After fixing display issues that seem to persist despite code changes
+
 ### Deployment
 ```bash
 # On Raspberry Pi
