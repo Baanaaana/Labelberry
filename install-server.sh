@@ -139,8 +139,18 @@ EOF
 systemctl daemon-reload
 systemctl enable labelberry-admin.service
 
-echo -e "${YELLOW}[11/11] Starting service...${NC}"
-systemctl start labelberry-admin.service
+echo -e "${YELLOW}[11/11] Checking service status...${NC}"
+
+# Check if service is already running
+if systemctl is-active --quiet labelberry-admin.service; then
+    SERVICE_ACTION="restart"
+    SERVICE_STATUS="already running"
+else
+    SERVICE_ACTION="start"
+    SERVICE_STATUS="not running"
+fi
+
+echo -e "${YELLOW}Service is ${SERVICE_STATUS}${NC}"
 
 # Get the server IP and port for display
 SERVER_IP=$(hostname -I | awk '{print $1}')
@@ -165,11 +175,15 @@ echo "   For domain/SSL setup, use Nginx Proxy Manager or similar"
 echo "   The service is running directly on port $PORT"
 echo ""
 
-read -p "Do you want to start the service now? (Y/n): " -n 1 -r </dev/tty
+if [ "$SERVICE_ACTION" = "restart" ]; then
+    read -p "Do you want to restart the service now? (Y/n): " -n 1 -r </dev/tty
+else
+    read -p "Do you want to start the service now? (Y/n): " -n 1 -r </dev/tty
+fi
 echo
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-    systemctl start labelberry-admin
-    echo -e "${GREEN}Service started!${NC}"
+    systemctl $SERVICE_ACTION labelberry-admin
+    echo -e "${GREEN}Service ${SERVICE_ACTION}ed!${NC}"
     SERVER_IP=$(hostname -I | awk '{print $1}')
     echo -e "${YELLOW}Access the admin interface at: http://${SERVER_IP}:${PORT}${NC}"
 fi
