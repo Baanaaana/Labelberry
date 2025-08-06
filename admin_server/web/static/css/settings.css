@@ -35,28 +35,37 @@
     flex: 1;
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
 }
 
-.back-btn {
-    display: inline-flex;
+.icon-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
     color: var(--text-secondary);
     text-decoration: none;
-    font-size: 14px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    transition: all 0.2s;
 }
 
-.back-btn:hover {
+.icon-btn:hover {
     background: var(--bg-primary);
-    color: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
-.back-btn i {
+.icon-btn i {
     width: 18px;
     height: 18px;
+    color: inherit;
+}
+
+.icon-btn:hover i {
+    color: var(--primary-color);
 }
 
 /* Settings Content Layout */
@@ -239,6 +248,32 @@
 
 .info-value a:hover {
     opacity: 0.8;
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.status-online {
+    background: #d3f9d8;
+    color: #2b8a3e;
+}
+
+.status-badge.status-offline {
+    background: #ffe3e3;
+    color: #c92a2a;
+}
+
+.status-badge.status-warning {
+    background: #fff4e6;
+    color: #e67700;
 }
 
 .info-divider {

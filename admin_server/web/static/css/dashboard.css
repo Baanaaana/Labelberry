@@ -49,9 +49,16 @@ body {
 }
 
 .header-left {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 12px;
+}
+
+.header-left h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
 }
 
 .header-left i {
@@ -60,14 +67,21 @@ body {
     color: var(--primary-color);
 }
 
-.dashboard-header h1 {
+.header-center {
+    flex: 0 0 auto;
+}
+
+.header-center h1 {
     font-size: 24px;
     font-weight: 600;
     color: var(--text-primary);
+    margin: 0;
 }
 
 .header-right {
+    flex: 1;
     display: flex;
+    justify-content: flex-end;
     gap: 8px;
 }
 
