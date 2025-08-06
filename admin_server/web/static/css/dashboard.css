@@ -498,6 +498,7 @@ input[type="checkbox"]:hover {
     display: flex;
     gap: 8px;
     padding: 0 20px;
+    margin-top: 20px;
     margin-bottom: 20px;
 }
 
