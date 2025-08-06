@@ -97,7 +97,7 @@ async def list_pis():
         
         pi_list = []
         for pi in pis:
-            pi_dict = pi.dict()
+            pi_dict = pi.model_dump()
             pi_dict["websocket_connected"] = connection_manager.is_connected(pi.id)
             pi_list.append(pi_dict)
         
@@ -118,7 +118,7 @@ async def get_pi_details(pi_id: str):
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
-        pi_dict = pi.dict()
+        pi_dict = pi.model_dump()
         pi_dict["websocket_connected"] = connection_manager.is_connected(pi_id)
         pi_dict["config"] = database.get_pi_config(pi_id)
         
@@ -226,7 +226,7 @@ async def get_pi_logs(pi_id: str, limit: int = 100):
         return ApiResponse(
             success=True,
             message="Logs retrieved",
-            data={"logs": [log.dict() for log in logs], "total": len(logs)}
+            data={"logs": [log.model_dump() for log in logs], "total": len(logs)}
         )
     except HTTPException:
         raise
@@ -332,7 +332,7 @@ async def get_pi_jobs(pi_id: str, limit: int = 100):
         return ApiResponse(
             success=True,
             message="Jobs retrieved",
-            data={"jobs": [job.dict() for job in jobs], "total": len(jobs)}
+            data={"jobs": [job.model_dump() for job in jobs], "total": len(jobs)}
         )
     except HTTPException:
         raise

@@ -284,7 +284,7 @@ async def get_queue(api_key: str = Depends(verify_api_key)):
             success=True,
             message="Queue retrieved",
             data={
-                "jobs": [job.dict() for job in jobs],
+                "jobs": [job.model_dump() for job in jobs],
                 "total": len(print_queue.queue)
             }
         )

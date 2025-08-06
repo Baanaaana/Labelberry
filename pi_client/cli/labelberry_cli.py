@@ -19,7 +19,7 @@ class LabelberryCLI:
         self.api_url = "http://localhost:8000"
     
     def config_get(self, key: str = None):
-        config_dict = self.config.dict()
+        config_dict = self.config.model_dump()
         
         if key:
             if key in config_dict:

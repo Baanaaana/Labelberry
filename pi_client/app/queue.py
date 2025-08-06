@@ -39,8 +39,8 @@ class PrintQueue:
         try:
             self.persistence_path.parent.mkdir(parents=True, exist_ok=True)
             data = {
-                'queue': [job.dict() for job in self.queue],
-                'current_job': self.current_job.dict() if self.current_job else None
+                'queue': [job.model_dump() for job in self.queue],
+                'current_job': self.current_job.model_dump() if self.current_job else None
             }
             
             with open(self.persistence_path, 'w') as f:

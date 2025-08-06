@@ -27,9 +27,10 @@ class ConnectionManager:
         self.active_connections[pi_id] = websocket
         self.database.update_pi_status(pi_id, PiStatus.ONLINE)
         
-        self.ping_tasks[pi_id] = asyncio.create_task(self.ping_loop(pi_id))
+        # Don't start ping task immediately to avoid interfering with initial messages
+        # self.ping_tasks[pi_id] = asyncio.create_task(self.ping_loop(pi_id))
         
-        logger.info(f"Pi {pi_id} connected via WebSocket")
+        logger.info(f"Pi {pi_id} connected via WebSocket - Total connected: {len(self.active_connections)}")
     
     def disconnect(self, pi_id: str):
         if pi_id in self.active_connections:
@@ -87,7 +88,7 @@ class ConnectionManager:
             msg_type = message.get("type")
             data = message.get("data", {})
             
-            logger.debug(f"Received {msg_type} from Pi {pi_id}")
+            logger.info(f"Received {msg_type} from Pi {pi_id}")
             
             if msg_type == "connect":
                 await self.handle_connect(pi_id, data)
@@ -118,6 +119,11 @@ class ConnectionManager:
     
     async def handle_connect(self, pi_id: str, data: Dict):
         self.database.update_pi_status(pi_id, PiStatus.ONLINE)
+        logger.info(f"Pi {pi_id} sent connect message")
+        
+        # Start ping task after successful connect
+        if pi_id not in self.ping_tasks:
+            self.ping_tasks[pi_id] = asyncio.create_task(self.ping_loop(pi_id))
         
         config = self.database.get_pi_config(pi_id)
         if config:
@@ -158,7 +164,7 @@ class ConnectionManager:
             
             await self.broadcast_admin_update("error_occurred", {
                 "pi_id": pi_id,
-                "error": error.dict()
+                "error": error.model_dump()
             })
         except Exception as e:
             logger.error(f"Failed to handle error from Pi {pi_id}: {e}")

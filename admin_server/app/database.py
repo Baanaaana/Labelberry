@@ -131,7 +131,7 @@ class Database:
                     cursor.execute("""
                         INSERT INTO configurations (pi_id, config_json)
                         VALUES (?, ?)
-                    """, (device.id, json.dumps(device.config.dict())))
+                    """, (device.id, json.dumps(device.config.model_dump())))
                 
                 return True
         except Exception as e:
@@ -209,9 +209,12 @@ class Database:
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
+                # Convert enum to string value if needed
+                status_value = status.value if hasattr(status, 'value') else status
                 cursor.execute("""
                     UPDATE pis SET status = ?, last_seen = ? WHERE id = ?
-                """, (status, datetime.utcnow(), pi_id))
+                """, (status_value, datetime.utcnow(), pi_id))
+                logger.info(f"Updated Pi {pi_id} status to {status_value}")
         except Exception as e:
             logger.error(f"Failed to update Pi status: {e}")
     

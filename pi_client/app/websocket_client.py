@@ -73,14 +73,14 @@ class WebSocketClient:
                 pi_id=self.device_id,
                 data=data
             )
-            await self.ws.send_str(message.json())
+            await self.ws.send_str(message.model_dump_json())
             return True
         except Exception as e:
             logger.error(f"Failed to send message: {e}")
             return False
     
     async def send_metrics(self, metrics: PiMetrics):
-        return await self.send_message("metrics", metrics.dict())
+        return await self.send_message("metrics", metrics.model_dump())
     
     async def send_status(self, status: Dict[str, Any]):
         return await self.send_message("status", status)
