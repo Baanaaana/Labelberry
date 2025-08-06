@@ -452,21 +452,26 @@ a.icon-btn:hover i {
 .form-group input[type="text"],
 .form-group input[type="url"],
 .form-group input[type="file"],
+.form-group input[type="password"],
 .form-group select,
-.form-group textarea {
+.form-group textarea,
+.form-control {
     width: 100%;
     padding: 8px 12px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     font-size: 14px;
     transition: all 0.2s;
+    background: var(--bg-secondary);
 }
 
 .form-group input[type="text"]:focus,
 .form-group input[type="url"]:focus,
 .form-group input[type="file"]:focus,
+.form-group input[type="password"]:focus,
 .form-group select:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-control:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(66, 99, 235, 0.1);

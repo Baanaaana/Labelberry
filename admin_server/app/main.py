@@ -80,7 +80,14 @@ async def login_page(request: Request):
     # If already logged in, redirect to dashboard
     if "user" in request.session:
         return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request})
+    
+    # Check if default credentials are still active
+    show_default_creds = database.has_default_credentials()
+    
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "show_default_credentials": show_default_creds
+    })
 
 
 @app.post("/login")
@@ -135,6 +142,39 @@ async def change_password(request: Request):
     except Exception as e:
         logger.error(f"Password change error: {e}")
         return JSONResponse({"success": False, "message": "Failed to change password"}, status_code=500)
+
+
+@app.post("/api/change-username")
+async def change_username(request: Request):
+    """Change username"""
+    # Check if user is logged in
+    if "user" not in request.session:
+        return JSONResponse({"success": False, "message": "Not authenticated"}, status_code=401)
+    
+    try:
+        data = await request.json()
+        new_username = data.get("new_username")
+        current_password = data.get("current_password")
+        old_username = request.session["user"]
+        
+        # Validate new username
+        if not new_username or len(new_username) < 3:
+            return JSONResponse({"success": False, "message": "Username must be at least 3 characters"}, status_code=400)
+        
+        # Verify current password for security
+        if not database.verify_user(old_username, current_password):
+            return JSONResponse({"success": False, "message": "Current password is incorrect"}, status_code=401)
+        
+        # Update username
+        if database.update_username(old_username, new_username):
+            # Update session with new username
+            request.session["user"] = new_username
+            return JSONResponse({"success": True, "message": "Username changed successfully"})
+        else:
+            return JSONResponse({"success": False, "message": "Username already exists or update failed"}, status_code=400)
+    except Exception as e:
+        logger.error(f"Username change error: {e}")
+        return JSONResponse({"success": False, "message": "Failed to change username"}, status_code=500)
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -558,60 +558,106 @@ async function saveSettings(event) {
     // Apply new settings
     setupAutoRefresh();
     
-    // Check if password change is requested
+    // Check for account changes
     const currentPassword = document.getElementById('current-password').value;
+    const newUsername = document.getElementById('new-username').value.trim();
     const newPassword = document.getElementById('new-password').value;
     const confirmPassword = document.getElementById('confirm-password').value;
     
-    if (currentPassword || newPassword || confirmPassword) {
-        // Validate password fields
+    // Check if any account changes requested
+    if (newUsername || newPassword || confirmPassword) {
+        // Current password is required for any account changes
         if (!currentPassword) {
-            showAlert('Please enter your current password', 'error');
-            return;
-        }
-        if (!newPassword) {
-            showAlert('Please enter a new password', 'error');
-            return;
-        }
-        if (newPassword.length < 6) {
-            showAlert('New password must be at least 6 characters', 'error');
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            showAlert('New passwords do not match', 'error');
+            showAlert('Please enter your current password for account changes', 'error');
             return;
         }
         
-        // Change password
-        try {
-            const response = await fetch('/api/change-password', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    current_password: currentPassword,
-                    new_password: newPassword
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showAlert('Password changed successfully!', 'success');
-                // Clear password fields
-                document.getElementById('current-password').value = '';
-                document.getElementById('new-password').value = '';
-                document.getElementById('confirm-password').value = '';
-            } else {
-                showAlert(data.message || 'Failed to change password', 'error');
+        // Handle username change
+        if (newUsername) {
+            if (newUsername.length < 3) {
+                showAlert('Username must be at least 3 characters', 'error');
                 return;
             }
-        } catch (error) {
-            console.error('Error changing password:', error);
-            showAlert('Failed to change password', 'error');
-            return;
+            
+            try {
+                const response = await fetch('/api/change-username', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        new_username: newUsername,
+                        current_password: currentPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Username changed successfully!', 'success');
+                    // Clear username field
+                    document.getElementById('new-username').value = '';
+                } else {
+                    showAlert(data.message || 'Failed to change username', 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error changing username:', error);
+                showAlert('Failed to change username', 'error');
+                return;
+            }
         }
+        
+        // Handle password change
+        if (newPassword || confirmPassword) {
+            // Validate password fields
+            if (!newPassword) {
+                showAlert('Please enter a new password', 'error');
+                return;
+            }
+            if (newPassword.length < 6) {
+                showAlert('New password must be at least 6 characters', 'error');
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                showAlert('New passwords do not match', 'error');
+                return;
+            }
+            
+            // Change password
+            try {
+                const response = await fetch('/api/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Password changed successfully!', 'success');
+                    // Clear password fields
+                    document.getElementById('current-password').value = '';
+                    document.getElementById('new-password').value = '';
+                    document.getElementById('confirm-password').value = '';
+                } else {
+                    showAlert(data.message || 'Failed to change password', 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                showAlert('Failed to change password', 'error');
+                return;
+            }
+        }
+        
+        // Clear current password field after successful changes
+        document.getElementById('current-password').value = '';
     }
     
     // Reload dashboard to apply timezone changes
