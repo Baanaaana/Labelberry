@@ -82,6 +82,16 @@ body {
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s;
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+a.icon-btn {
+    color: var(--text-secondary);
+}
+
+a.icon-btn:visited {
+    color: var(--text-secondary);
 }
 
 .icon-btn:hover {
@@ -92,10 +102,14 @@ body {
 .icon-btn i {
     width: 18px;
     height: 18px;
-    color: var(--text-secondary);
+    color: inherit;
 }
 
 .icon-btn:hover i {
+    color: var(--primary-color);
+}
+
+a.icon-btn:hover i {
     color: var(--primary-color);
 }
 
