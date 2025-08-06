@@ -178,6 +178,7 @@ function updateStats(stats) {
     document.getElementById('queue-status').textContent = stats.total_queue || 0;
 }
 
+
 // Render printer cards
 function renderPrinters(pis) {
     const list = document.getElementById('printers-list');
