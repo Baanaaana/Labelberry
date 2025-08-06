@@ -241,12 +241,14 @@ function createPrinterItem(pi) {
                 <button class="printer-btn primary" onclick="showPrintModal('${pi.id}', '${pi.friendly_name}')">
                     <i data-lucide="printer"></i> Test
                 </button>
-                <button class="printer-btn" onclick="showEditModal('${pi.id}')">
-                    <i data-lucide="edit-2"></i> Edit
-                </button>
-                <button class="printer-btn" onclick="showDeleteModal('${pi.id}', '${pi.friendly_name}')">
-                    <i data-lucide="trash-2"></i> Delete
-                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="printer-btn" onclick="showEditModal('${pi.id}')">
+                        <i data-lucide="edit-2"></i> Edit
+                    </button>
+                    <button class="printer-btn" onclick="showDeleteModal('${pi.id}', '${pi.friendly_name}')">
+                        <i data-lucide="trash-2"></i> Delete
+                    </button>
+                </div>
             </div>
         </div>
     `;

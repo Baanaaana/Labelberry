@@ -342,10 +342,10 @@ a.icon-btn:hover i {
 .printer-actions {
     display: flex;
     gap: 8px;
+    justify-content: space-between;
 }
 
 .printer-btn {
-    flex: 1;
     padding: 6px 12px;
     border: 1px solid var(--border-color);
     background: var(--bg-secondary);
@@ -357,6 +357,7 @@ a.icon-btn:hover i {
     align-items: center;
     justify-content: center;
     gap: 6px;
+    width: auto;
 }
 
 .printer-btn:hover {
@@ -364,8 +365,8 @@ a.icon-btn:hover i {
 }
 
 .printer-btn i {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
 }
 
 .printer-btn.primary {
