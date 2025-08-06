@@ -163,6 +163,7 @@ a.icon-btn:hover i {
 .stat-icon.blue { color: var(--info-color); }
 .stat-icon.purple { color: #7c3aed; }
 .stat-icon.orange { color: #f97316; }
+.stat-icon.slate { color: #64748b; }
 
 .stat-value {
     font-size: 28px;
