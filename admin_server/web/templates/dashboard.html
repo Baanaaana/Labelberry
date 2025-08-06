@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labelberry Admin Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="ri-printer-line"></i> Labelberry Admin Dashboard</h1>
+            <div class="header-stats">
+                <div class="stat">
+                    <span class="stat-value" id="total-pis">0</span>
+                    <span class="stat-label">Total Printers</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="online-pis">0</span>
+                    <span class="stat-label">Online</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="jobs-today">0</span>
+                    <span class="stat-label">Jobs Today</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="actions-bar">
+            <button class="btn btn-primary" onclick="showRegisterModal()">
+                <i class="ri-add-line"></i> Register New Pi
+            </button>
+            <button class="btn btn-secondary" onclick="refreshDashboard()">
+                <i class="ri-refresh-line"></i> Refresh
+            </button>
+        </div>
+
+        <div class="printers-grid" id="printers-grid">
+            <!-- Printer cards will be dynamically added here -->
+        </div>
+    </div>
+
+    <!-- Register Pi Modal -->
+    <div id="register-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRegisterModal()">&times;</span>
+            <h2>Register New Raspberry Pi</h2>
+            <form id="register-form" onsubmit="registerPi(event)">
+                <div class="form-group">
+                    <label for="device-id">Device ID:</label>
+                    <input type="text" id="device-id" required placeholder="Enter Device ID from Pi">
+                </div>
+                <div class="form-group">
+                    <label for="api-key">API Key:</label>
+                    <input type="text" id="api-key" required placeholder="Enter API Key from Pi">
+                </div>
+                <div class="form-group">
+                    <label for="friendly-name">Friendly Name:</label>
+                    <input type="text" id="friendly-name" required placeholder="e.g., Warehouse Printer 1">
+                </div>
+                <div class="form-group">
+                    <label for="location">Location (optional):</label>
+                    <input type="text" id="location" placeholder="e.g., Building A, Floor 2">
+                </div>
+                <div class="form-group">
+                    <label for="printer-model">Printer Model (optional):</label>
+                    <input type="text" id="printer-model" placeholder="e.g., Zebra ZD220">
+                </div>
+                <button type="submit" class="btn btn-primary">Register Pi</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Test Print Modal -->
+    <div id="print-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closePrintModal()">&times;</span>
+            <h2>Send Test Print to <span id="print-pi-name"></span></h2>
+            <form id="print-form" onsubmit="sendPrint(event)">
+                <div class="form-group">
+                    <label>Print Method:</label>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="print-method" value="raw" checked onchange="togglePrintMethod()">
+                            Raw ZPL Code
+                        </label>
+                        <label>
+                            <input type="radio" name="print-method" value="file" onchange="togglePrintMethod()">
+                            ZPL File
+                        </label>
+                        <label>
+                            <input type="radio" name="print-method" value="url" onchange="togglePrintMethod()">
+                            ZPL URL
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="raw-input" class="form-group">
+                    <label for="zpl-raw">ZPL Code:</label>
+                    <textarea id="zpl-raw" rows="10" placeholder="^XA&#10;^FO50,50^A0N,50,50^FDTest Label^FS&#10;^XZ">^XA
+^FO50,50^A0N,50,50^FDLabelberry Test^FS
+^FO50,120^A0N,30,30^FDAdmin Dashboard Print^FS
+^FO50,170^A0N,25,25^FDTime: ${new Date().toLocaleString()}^FS
+^XZ</textarea>
+                </div>
+                
+                <div id="file-input" class="form-group" style="display:none;">
+                    <label for="zpl-file">Select ZPL File:</label>
+                    <input type="file" id="zpl-file" accept=".zpl,.txt">
+                </div>
+                
+                <div id="url-input" class="form-group" style="display:none;">
+                    <label for="zpl-url">ZPL URL:</label>
+                    <input type="url" id="zpl-url" placeholder="https://example.com/label.zpl">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Send Print Job</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pi Details Modal -->
+    <div id="details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDetailsModal()">&times;</span>
+            <h2>Printer Details: <span id="details-pi-name"></span></h2>
+            <div id="pi-details-content">
+                <!-- Details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

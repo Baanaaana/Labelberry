@@ -5,11 +5,13 @@ from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import requests
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -53,6 +55,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files and templates
+app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "web" / "static"), name="static")
+templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "templates")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -77,6 +83,11 @@ async def root():
     </body>
     </html>
     """
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 @app.get("/api/pis", response_model=ApiResponse)
@@ -273,6 +284,39 @@ async def send_command(pi_id: str, command: Dict[str, Any]):
         raise
     except Exception as e:
         logger.error(f"Failed to send command: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/pis/{pi_id}/print", response_model=ApiResponse)
+async def send_print_to_pi(pi_id: str, print_data: Dict[str, Any]):
+    try:
+        pi = database.get_pi_by_id(pi_id)
+        if not pi:
+            raise HTTPException(status_code=404, detail="Pi not found")
+        
+        # Send print command through WebSocket if connected
+        if connection_manager.is_connected(pi_id):
+            success = await connection_manager.send_command(
+                pi_id,
+                "print",
+                print_data
+            )
+            
+            if success:
+                return ApiResponse(
+                    success=True,
+                    message="Print job sent via WebSocket",
+                    data={"pi_id": pi_id}
+                )
+        
+        # If WebSocket not connected, show error
+        # In production, you might want to queue the job or use HTTP fallback
+        raise HTTPException(status_code=503, detail="Pi is not connected via WebSocket")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to send print job: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

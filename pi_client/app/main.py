@@ -108,14 +108,42 @@ async def handle_config_update(data: Dict[str, Any]):
 
 async def handle_command(data: Dict[str, Any]):
     command = data.get("command")
+    params = data.get("params", {})
     logger.info(f"Received command: {command}")
     
     if command == "clear_queue":
         print_queue.clear_queue()
     elif command == "test_print":
         printer.test_print()
+    elif command == "print":
+        # Handle print job from admin server
+        await handle_remote_print(params)
     elif command == "restart":
         logger.info("Restart requested")
+
+
+async def handle_remote_print(print_data: Dict[str, Any]):
+    """Handle print job sent from admin server"""
+    try:
+        # Create a print job from the data
+        job = PrintJob(
+            pi_id=config.device_id,
+            zpl_source=print_data.get("zpl_url") or print_data.get("zpl_raw", "")
+        )
+        
+        if print_queue.add_job(job):
+            logger.info(f"Remote print job {job.id} added to queue")
+            await ws_client.send_message("job_received", {
+                "job_id": job.id,
+                "status": "queued"
+            })
+        else:
+            logger.error("Failed to add remote print job - queue full")
+            await ws_client.send_error("queue_full", "Print queue is full")
+            
+    except Exception as e:
+        logger.error(f"Error handling remote print: {e}")
+        await ws_client.send_error("print_error", str(e))
 
 
 async def send_metrics_periodically():
