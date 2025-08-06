@@ -366,6 +366,56 @@ header h1 i {
     border: 1px solid #90cdf4;
 }
 
+/* Edit and delete button styles */
+.btn-edit {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    color: white;
+    font-size: 0.9em;
+}
+
+.btn-edit:hover {
+    background: linear-gradient(135deg, #e0a800, #d39e00);
+    transform: translateY(-2px);
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    font-size: 0.9em;
+}
+
+.btn-delete:hover {
+    background: linear-gradient(135deg, #c82333, #bd2130);
+    transform: translateY(-2px);
+}
+
+/* Warning text */
+.warning-text {
+    color: #dc3545;
+    font-size: 0.95em;
+    margin: 15px 0;
+    padding: 10px;
+    background: #f8d7da;
+    border-radius: 6px;
+    border: 1px solid #f5c6cb;
+}
+
+/* Modal actions */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+/* Four button grid layout */
+.printer-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .printers-grid {

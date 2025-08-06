@@ -179,11 +179,25 @@ async def update_pi(pi_id: str, updates: Dict[str, Any]):
 @app.delete("/api/pis/{pi_id}", response_model=ApiResponse)
 async def delete_pi(pi_id: str):
     try:
-        return ApiResponse(
-            success=True,
-            message="Pi deletion not implemented",
-            data={}
-        )
+        pi = database.get_pi_by_id(pi_id)
+        if not pi:
+            raise HTTPException(status_code=404, detail="Pi not found")
+        
+        # Disconnect WebSocket if connected
+        if connection_manager.is_connected(pi_id):
+            connection_manager.disconnect(pi_id)
+        
+        # Delete from database
+        if database.delete_pi(pi_id):
+            return ApiResponse(
+                success=True,
+                message="Pi deleted successfully",
+                data={"pi_id": pi_id}
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Failed to delete Pi")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to delete Pi: {e}")
         raise HTTPException(status_code=500, detail=str(e))

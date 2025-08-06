@@ -218,6 +218,26 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to update Pi status: {e}")
     
+    def delete_pi(self, pi_id: str) -> bool:
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Delete related data first (cascade delete)
+                cursor.execute("DELETE FROM metrics WHERE pi_id = ?", (pi_id,))
+                cursor.execute("DELETE FROM print_jobs WHERE pi_id = ?", (pi_id,))
+                cursor.execute("DELETE FROM error_logs WHERE pi_id = ?", (pi_id,))
+                cursor.execute("DELETE FROM configurations WHERE pi_id = ?", (pi_id,))
+                
+                # Delete the Pi record
+                cursor.execute("DELETE FROM pis WHERE id = ?", (pi_id,))
+                
+                logger.info(f"Deleted Pi {pi_id} and all related data")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete Pi: {e}")
+            return False
+    
     def update_pi_config(self, pi_id: str, config: Dict[str, Any]) -> bool:
         try:
             with self.get_connection() as conn:

@@ -91,12 +91,18 @@ function createPrinterCard(pi) {
                     <span class="info-value">${formatDateTime(pi.last_seen)}</span>
                 </div>
             </div>
-            <div class="printer-actions">
+            <div class="printer-actions-grid">
                 <button class="btn btn-primary" onclick="showPrintModal('${pi.id}', '${pi.friendly_name}')">
                     <i class="ri-printer-line"></i> Test Print
                 </button>
                 <button class="btn btn-secondary" onclick="showDetailsModal('${pi.id}')">
                     <i class="ri-information-line"></i> Details
+                </button>
+                <button class="btn btn-edit" onclick="showEditModal('${pi.id}')">
+                    <i class="ri-edit-line"></i> Edit
+                </button>
+                <button class="btn btn-delete" onclick="showDeleteModal('${pi.id}', '${pi.friendly_name}')">
+                    <i class="ri-delete-bin-line"></i> Delete
                 </button>
             </div>
         </div>
@@ -400,6 +406,97 @@ function formatDateTime(dateString) {
 function refreshDashboard() {
     loadDashboard();
     showAlert('Dashboard refreshed', 'info');
+}
+
+// Show edit modal
+async function showEditModal(piId) {
+    const pi = currentPis.find(p => p.id === piId);
+    if (!pi) return;
+    
+    document.getElementById('edit-pi-id').value = pi.id;
+    document.getElementById('edit-pi-name').textContent = pi.friendly_name;
+    document.getElementById('edit-friendly-name').value = pi.friendly_name;
+    document.getElementById('edit-location').value = pi.location || '';
+    document.getElementById('edit-printer-model').value = pi.printer_model || '';
+    
+    document.getElementById('edit-modal').style.display = 'block';
+}
+
+// Close edit modal
+function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+    document.getElementById('edit-form').reset();
+}
+
+// Update Pi
+async function updatePi(event) {
+    event.preventDefault();
+    
+    const piId = document.getElementById('edit-pi-id').value;
+    const updates = {
+        friendly_name: document.getElementById('edit-friendly-name').value,
+        location: document.getElementById('edit-location').value || null,
+        printer_model: document.getElementById('edit-printer-model').value || null
+    };
+    
+    try {
+        const response = await fetch(`/api/pis/${piId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updates)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Printer updated successfully!', 'success');
+            closeEditModal();
+            loadDashboard();
+        } else {
+            showAlert(data.detail || 'Failed to update printer', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating printer:', error);
+        showAlert('Failed to update printer', 'error');
+    }
+}
+
+// Show delete modal
+function showDeleteModal(piId, piName) {
+    document.getElementById('delete-pi-id').value = piId;
+    document.getElementById('delete-pi-name').textContent = piName;
+    document.getElementById('delete-modal').style.display = 'block';
+}
+
+// Close delete modal
+function closeDeleteModal() {
+    document.getElementById('delete-modal').style.display = 'none';
+}
+
+// Confirm delete
+async function confirmDelete() {
+    const piId = document.getElementById('delete-pi-id').value;
+    
+    try {
+        const response = await fetch(`/api/pis/${piId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Printer deleted successfully!', 'success');
+            closeDeleteModal();
+            loadDashboard();
+        } else {
+            showAlert(data.detail || 'Failed to delete printer', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting printer:', error);
+        showAlert('Failed to delete printer', 'error');
+    }
 }
 
 // Close modals when clicking outside

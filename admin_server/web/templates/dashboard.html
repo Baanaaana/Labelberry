@@ -131,6 +131,45 @@
         </div>
     </div>
 
+    <!-- Edit Pi Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h2>Edit Printer: <span id="edit-pi-name"></span></h2>
+            <form id="edit-form" onsubmit="updatePi(event)">
+                <input type="hidden" id="edit-pi-id">
+                <div class="form-group">
+                    <label for="edit-friendly-name">Friendly Name:</label>
+                    <input type="text" id="edit-friendly-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-location">Location:</label>
+                    <input type="text" id="edit-location" placeholder="e.g., Building A, Floor 2">
+                </div>
+                <div class="form-group">
+                    <label for="edit-printer-model">Printer Model:</label>
+                    <input type="text" id="edit-printer-model" placeholder="e.g., Zebra ZD220">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDeleteModal()">&times;</span>
+            <h2>Delete Printer</h2>
+            <p>Are you sure you want to delete <strong id="delete-pi-name"></strong>?</p>
+            <p class="warning-text">This action cannot be undone. The printer will need to be re-registered to use it again.</p>
+            <input type="hidden" id="delete-pi-id">
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">Delete Printer</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/dashboard.js"></script>
 </body>
 </html>
