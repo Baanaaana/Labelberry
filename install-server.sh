@@ -77,7 +77,7 @@ echo -e "${YELLOW}[5/12] Cloning repository...${NC}"
 cd "$INSTALL_DIR"
 git clone --sparse https://github.com/Baanaaana/Labelberry.git .
 git sparse-checkout init --cone
-git sparse-checkout set admin-server shared
+git sparse-checkout set admin_server shared
 
 echo -e "${YELLOW}[6/12] Creating virtual environment...${NC}"
 python3 -m venv venv
@@ -85,7 +85,7 @@ source venv/bin/activate
 
 echo -e "${YELLOW}[7/12] Installing Python packages...${NC}"
 pip install --upgrade pip
-pip install -r admin-server/requirements.txt
+pip install -r admin_server/requirements.txt
 
 echo -e "${YELLOW}[8/12] Creating directories...${NC}"
 mkdir -p /etc/labelberry

@@ -75,7 +75,7 @@ echo -e "${YELLOW}[5/10] Cloning repository...${NC}"
 cd "$INSTALL_DIR"
 git clone --sparse https://github.com/Baanaaana/Labelberry.git .
 git sparse-checkout init --cone
-git sparse-checkout set pi-client shared
+git sparse-checkout set pi_client shared
 
 echo -e "${YELLOW}[6/10] Creating virtual environment...${NC}"
 python3 -m venv venv
@@ -83,7 +83,7 @@ source venv/bin/activate
 
 echo -e "${YELLOW}[7/10] Installing Python packages...${NC}"
 pip install --upgrade pip
-pip install -r pi-client/requirements.txt
+pip install -r pi_client/requirements.txt
 
 echo -e "${YELLOW}[8/10] Creating configuration...${NC}"
 mkdir -p /etc/labelberry
@@ -154,7 +154,8 @@ echo -e "${YELLOW}[10/10] Creating CLI symlink...${NC}"
 ln -sf "$INSTALL_DIR/venv/bin/python" /usr/local/bin/labelberry-python
 cat > /usr/local/bin/labelberry <<EOF
 #!/bin/bash
-/usr/local/bin/labelberry-python $INSTALL_DIR/pi-client/cli/labelberry_cli.py "\$@"
+export PYTHONPATH=$INSTALL_DIR
+/usr/local/bin/labelberry-python $INSTALL_DIR/pi_client/cli/labelberry_cli.py "\$@"
 EOF
 chmod +x /usr/local/bin/labelberry
 
