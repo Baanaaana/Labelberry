@@ -401,6 +401,7 @@ a.icon-btn:hover i {
 
 .modal-header {
     padding: 20px;
+    margin-bottom: 10px;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
