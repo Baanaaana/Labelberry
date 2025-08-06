@@ -206,6 +206,63 @@ function showPrintModal(piId, piName) {
     selectedPiId = piId;
     document.getElementById('print-pi-name').textContent = piName;
     document.getElementById('print-modal').style.display = 'block';
+    
+    // Set default label size and ZPL
+    document.getElementById('label-size-select').value = 'small';
+    updateTestZPL();
+}
+
+// Update test ZPL based on label size selection
+function updateTestZPL() {
+    const sizeSelect = document.getElementById('label-size-select');
+    const zplTextarea = document.getElementById('zpl-raw');
+    
+    if (sizeSelect.value === 'small') {
+        // 57mm x 32mm label (approximately 448 x 252 dots at 203 DPI)
+        // 57mm = 2.24" = 455 dots, 32mm = 1.26" = 256 dots
+        zplTextarea.value = `^XA
+^PW448
+^LL252
+^FO20,20^A0N,25,25^FDLabelBerry Test - Small Label^FS
+^FO20,50^A0N,20,20^FD57mm x 32mm^FS
+^FO20,80^GB408,1,2^FS
+^FO20,90^A0N,18,18^FDPrinter: ${selectedPiId ? currentPis.find(p => p.id === selectedPiId)?.friendly_name : 'Test'}^FS
+^FO20,115^A0N,18,18^FDDate: ${new Date().toLocaleDateString()}^FS
+^FO20,140^A0N,18,18^FDTime: ${new Date().toLocaleTimeString()}^FS
+^FO20,170^BY2,3,50^BCN,50,Y,N,N^FD123456789^FS
+^XZ`;
+    } else if (sizeSelect.value === 'large') {
+        // 102mm x 150mm label (approximately 812 x 1218 dots at 203 DPI)
+        // 102mm = 4.02" = 816 dots, 150mm = 5.91" = 1200 dots
+        zplTextarea.value = `^XA
+^PW812
+^LL1218
+^FO50,50^A0N,50,50^FDLabelBerry Test - Large Label^FS
+^FO50,120^A0N,35,35^FD102mm x 150mm^FS
+^FO50,180^GB712,3,3^FS
+^FO50,200^A0N,30,30^FDShipping Information^FS
+^FO50,250^A0N,25,25^FDFrom: LabelBerry Warehouse^FS
+^FO50,285^A0N,25,25^FD      123 Test Street^FS
+^FO50,320^A0N,25,25^FD      Amsterdam, 1234 AB^FS
+^FO50,370^GB712,2,2^FS
+^FO50,390^A0N,30,30^FDTo: Customer Name^FS
+^FO50,440^A0N,25,25^FD    456 Delivery Road^FS
+^FO50,475^A0N,25,25^FD    Rotterdam, 5678 CD^FS
+^FO50,530^GB712,2,2^FS
+^FO50,550^A0N,25,25^FDPrinter: ${selectedPiId ? currentPis.find(p => p.id === selectedPiId)?.friendly_name : 'Test'}^FS
+^FO50,585^A0N,25,25^FDDate: ${new Date().toLocaleDateString()}^FS
+^FO50,620^A0N,25,25^FDTime: ${new Date().toLocaleTimeString()}^FS
+^FO50,680^BY3,3,100^BCN,100,Y,N,N^FD987654321^FS
+^FO50,850^A0N,20,20^FDTracking: NL-987654321-LB^FS
+^FO50,900^BQN,2,10^FDHA,https://labelberry.local/track/987654321^FS
+^XZ`;
+    } else {
+        // Custom - leave it empty or with a basic template
+        zplTextarea.value = `^XA
+^FO50,50^A0N,40,40^FDCustom Label^FS
+^FO50,100^A0N,25,25^FDEnter your custom ZPL code^FS
+^XZ`;
+    }
 }
 
 // Close print modal

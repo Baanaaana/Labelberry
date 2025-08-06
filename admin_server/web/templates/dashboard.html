@@ -167,11 +167,16 @@
                 
                 <div id="raw-input" class="tab-content active">
                     <div class="form-group">
+                        <label for="label-size-select">Label Size Template</label>
+                        <select id="label-size-select" onchange="updateTestZPL()" class="form-control">
+                            <option value="small">57mm x 32mm (Small shipping label)</option>
+                            <option value="large">102mm x 150mm (Large shipping label)</option>
+                            <option value="custom">Custom ZPL</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="zpl-raw">ZPL Code</label>
-                        <textarea id="zpl-raw" rows="10" placeholder="Enter ZPL code...">^XA
-^FO50,50^A0N,50,50^FDLabelBerry Test^FS
-^FO50,120^A0N,30,30^FDPrinter: ${new Date().toLocaleString()}^FS
-^XZ</textarea>
+                        <textarea id="zpl-raw" rows="10" placeholder="Enter ZPL code..."></textarea>
                     </div>
                 </div>
                 
