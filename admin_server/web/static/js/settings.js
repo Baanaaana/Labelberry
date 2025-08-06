@@ -167,6 +167,197 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
+// API Key Management Functions
+async function loadApiKeys() {
+    try {
+        const response = await fetch('/api/keys');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayApiKeys(data.data.keys);
+        }
+    } catch (error) {
+        console.error('Error loading API keys:', error);
+    }
+}
+
+function displayApiKeys(keys) {
+    const container = document.getElementById('api-keys-list');
+    
+    if (keys.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <i data-lucide="key" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                <p>No API keys created yet</p>
+                <p style="font-size: 13px;">Create your first API key to enable programmatic access</p>
+            </div>
+        `;
+    } else {
+        container.innerHTML = keys.map(key => `
+            <div class="api-key-item">
+                <div class="api-key-header">
+                    <span class="api-key-name">${key.name}</span>
+                    <span class="api-key-status ${key.is_active ? 'active' : 'revoked'}">
+                        ${key.is_active ? 'Active' : 'Revoked'}
+                    </span>
+                </div>
+                ${key.description ? `<p style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 13px;">${key.description}</p>` : ''}
+                <div class="api-key-details">
+                    <div class="api-key-detail">
+                        <span class="api-key-detail-label">Created:</span>
+                        <span class="api-key-detail-value">${formatDate(key.created_at)}</span>
+                    </div>
+                    <div class="api-key-detail">
+                        <span class="api-key-detail-label">Created by:</span>
+                        <span class="api-key-detail-value">${key.created_by}</span>
+                    </div>
+                    <div class="api-key-detail">
+                        <span class="api-key-detail-label">Last used:</span>
+                        <span class="api-key-detail-value">${key.last_used ? formatDate(key.last_used) : 'Never'}</span>
+                    </div>
+                    <div class="api-key-detail">
+                        <span class="api-key-detail-label">Permissions:</span>
+                        <span class="api-key-detail-value">${key.permissions || 'Print'}</span>
+                    </div>
+                </div>
+                <div class="api-key-actions">
+                    ${key.is_active ? `
+                        <button class="btn btn-secondary" onclick="revokeApiKey(${key.id})">
+                            <i data-lucide="ban"></i> Revoke
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-danger" onclick="deleteApiKey(${key.id})">
+                        <i data-lucide="trash-2"></i> Delete
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Re-initialize Lucide icons
+    lucide.createIcons();
+}
+
+function showCreateKeyModal() {
+    document.getElementById('create-key-modal').style.display = 'block';
+}
+
+function closeCreateKeyModal() {
+    document.getElementById('create-key-modal').style.display = 'none';
+    document.getElementById('create-key-form').reset();
+}
+
+function closeKeyDisplayModal() {
+    document.getElementById('key-display-modal').style.display = 'none';
+}
+
+async function createApiKey(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('key-name').value;
+    const description = document.getElementById('key-description').value;
+    
+    try {
+        const response = await fetch('/api/keys', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, description })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Close create modal
+            closeCreateKeyModal();
+            
+            // Show the key display modal
+            document.getElementById('api-key-display').value = data.data.api_key;
+            document.getElementById('key-example').textContent = data.data.api_key;
+            document.getElementById('key-display-modal').style.display = 'block';
+            
+            // Reload the keys list
+            loadApiKeys();
+        } else {
+            showAlert(data.message || 'Failed to create API key', 'error');
+        }
+    } catch (error) {
+        console.error('Error creating API key:', error);
+        showAlert('Failed to create API key', 'error');
+    }
+}
+
+async function revokeApiKey(keyId) {
+    if (!confirm('Are you sure you want to revoke this API key? Applications using this key will lose access.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/keys/${keyId}/revoke`, {
+            method: 'PUT'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('API key revoked successfully', 'success');
+            loadApiKeys();
+        } else {
+            showAlert(data.message || 'Failed to revoke API key', 'error');
+        }
+    } catch (error) {
+        console.error('Error revoking API key:', error);
+        showAlert('Failed to revoke API key', 'error');
+    }
+}
+
+async function deleteApiKey(keyId) {
+    if (!confirm('Are you sure you want to delete this API key? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/keys/${keyId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('API key deleted successfully', 'success');
+            loadApiKeys();
+        } else {
+            showAlert(data.message || 'Failed to delete API key', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting API key:', error);
+        showAlert('Failed to delete API key', 'error');
+    }
+}
+
+function copyApiKey() {
+    const input = document.getElementById('api-key-display');
+    input.select();
+    document.execCommand('copy');
+    
+    // Show feedback
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i data-lucide="check"></i> Copied!';
+    lucide.createIcons();
+    
+    setTimeout(() => {
+        button.innerHTML = originalHTML;
+        lucide.createIcons();
+    }, 2000);
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Check URL hash for initial section

@@ -5,8 +5,9 @@ from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Request, Form
+from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Request, Form, Header
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,12 +67,21 @@ app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "web" 
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "templates")
 
 
-# Authentication dependency
+# Authentication dependencies
 async def require_login(request: Request):
     """Check if user is logged in"""
     if "user" not in request.session:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return request.session["user"]
+
+security = HTTPBearer()
+
+async def require_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verify API key for API calls"""
+    api_key = credentials.credentials
+    if not database.verify_api_key(api_key):
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return api_key
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -423,7 +433,12 @@ async def send_command(pi_id: str, command: Dict[str, Any]):
 
 
 @app.post("/api/pis/{pi_id}/print", response_model=ApiResponse)
-async def send_print_to_pi(pi_id: str, print_data: Dict[str, Any]):
+async def send_print_to_pi(
+    pi_id: str, 
+    print_data: Dict[str, Any],
+    api_key: str = Depends(require_api_key)
+):
+    """Send print job to Pi - Requires API key"""
     try:
         pi = database.get_pi_by_id(pi_id)
         if not pi:
@@ -521,6 +536,96 @@ async def websocket_endpoint(websocket: WebSocket, pi_id: str):
     except Exception as e:
         logger.error(f"WebSocket error for Pi {pi_id}: {e}")
         connection_manager.disconnect(pi_id)
+
+
+@app.post("/api/keys", response_model=ApiResponse)
+async def create_api_key(
+    request: Request,
+    current_user: str = Depends(require_login)
+):
+    """Create a new API key"""
+    try:
+        data = await request.json()
+        name = data.get("name")
+        description = data.get("description", "")
+        
+        if not name:
+            raise HTTPException(status_code=400, detail="Key name is required")
+        
+        api_key = database.create_api_key(name, description, current_user)
+        
+        if api_key:
+            return ApiResponse(
+                success=True,
+                message="API key created successfully",
+                data={"api_key": api_key, "name": name}
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create API key")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create API key: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/keys", response_model=ApiResponse)
+async def list_api_keys(current_user: str = Depends(require_login)):
+    """List all API keys"""
+    try:
+        keys = database.list_api_keys()
+        return ApiResponse(
+            success=True,
+            message="API keys retrieved",
+            data={"keys": keys}
+        )
+    except Exception as e:
+        logger.error(f"Failed to list API keys: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/keys/{key_id}", response_model=ApiResponse)
+async def delete_api_key(
+    key_id: int,
+    current_user: str = Depends(require_login)
+):
+    """Delete an API key"""
+    try:
+        if database.delete_api_key(key_id):
+            return ApiResponse(
+                success=True,
+                message="API key deleted successfully",
+                data={"key_id": key_id}
+            )
+        else:
+            raise HTTPException(status_code=404, detail="API key not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete API key: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/keys/{key_id}/revoke", response_model=ApiResponse)
+async def revoke_api_key(
+    key_id: int,
+    current_user: str = Depends(require_login)
+):
+    """Revoke an API key"""
+    try:
+        if database.revoke_api_key(key_id):
+            return ApiResponse(
+                success=True,
+                message="API key revoked successfully",
+                data={"key_id": key_id}
+            )
+        else:
+            raise HTTPException(status_code=404, detail="API key not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to revoke API key: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/health")

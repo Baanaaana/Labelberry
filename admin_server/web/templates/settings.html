@@ -48,6 +48,10 @@
                         <i data-lucide="settings"></i>
                         <span>Preferences</span>
                     </a>
+                    <a href="#api-keys" class="nav-item" onclick="switchSection('api-keys', this)">
+                        <i data-lucide="key"></i>
+                        <span>API Keys</span>
+                    </a>
                     <a href="#about" class="nav-item" onclick="switchSection('about', this)">
                         <i data-lucide="info"></i>
                         <span>About</span>
@@ -179,6 +183,28 @@
                     </div>
                 </div>
 
+                <!-- API Keys Section -->
+                <div id="api-keys-section" class="settings-section">
+                    <div class="section-header">
+                        <h2>API Keys</h2>
+                        <p>Manage API keys for programmatic access to the admin server</p>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3>Active API Keys</h3>
+                            <button class="btn btn-primary" onclick="showCreateKeyModal()">
+                                <i data-lucide="plus"></i>
+                                Create New Key
+                            </button>
+                        </div>
+                        
+                        <div id="api-keys-list">
+                            <!-- API keys will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
                 <!-- About Section -->
                 <div id="about-section" class="settings-section">
                     <div class="section-header">
@@ -229,13 +255,80 @@
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
+    <!-- Create API Key Modal -->
+    <div id="create-key-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create API Key</h2>
+                <button class="modal-close" onclick="closeCreateKeyModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="create-key-form" onsubmit="createApiKey(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="key-name">Key Name *</label>
+                        <input type="text" id="key-name" class="form-control" required placeholder="e.g., Production Server">
+                    </div>
+                    <div class="form-group">
+                        <label for="key-description">Description</label>
+                        <textarea id="key-description" class="form-control" rows="3" placeholder="Optional description for this API key"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateKeyModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Key</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- API Key Display Modal -->
+    <div id="key-display-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>API Key Created</h2>
+                <button class="modal-close" onclick="closeKeyDisplayModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i data-lucide="alert-triangle"></i>
+                    <p><strong>Important:</strong> Copy this API key now. You won't be able to see it again!</p>
+                </div>
+                <div class="key-display">
+                    <label>Your API Key:</label>
+                    <div class="key-display-box">
+                        <input type="text" id="api-key-display" readonly class="form-control">
+                        <button class="btn btn-primary" onclick="copyApiKey()">
+                            <i data-lucide="copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="usage-example">
+                    <label>Usage Example:</label>
+                    <pre><code>curl -X POST http://your-server:8080/api/pis/{pi_id}/print \
+  -H "Authorization: Bearer <span id="key-example"></span>" \
+  -H "Content-Type: application/json" \
+  -d '{"zpl_raw": "^XA^FO50,50^FDTest^FS^XZ"}'</code></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeKeyDisplayModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/settings.js"></script>
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
         
-        // Load saved preferences
+        // Load saved preferences and API keys
         loadPreferences();
+        loadApiKeys();
     </script>
 </body>
 </html>
