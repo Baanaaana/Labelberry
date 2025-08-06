@@ -61,10 +61,11 @@ class MonitoringService:
     
     def get_system_info(self) -> Dict[str, Any]:
         try:
+            uname = psutil.os.uname()
             return {
-                "hostname": psutil.os.uname().nodename,
-                "platform": psutil.os.uname().system,
-                "release": psutil.os.uname().release,
+                "hostname": uname[1],  # nodename
+                "platform": uname[0],  # sysname
+                "release": uname[2],   # release
                 "cpu_count": psutil.cpu_count(),
                 "total_memory": psutil.virtual_memory().total,
                 "disk_usage": psutil.disk_usage('/').percent,
