@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Labelberry Admin Dashboard</title>
+    <title>LabelBerry - Admin Dashboard</title>
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -13,7 +13,7 @@
         <header class="dashboard-header">
             <div class="header-left">
                 <i data-lucide="package"></i>
-                <h1>Labelberry Admin Dashboard</h1>
+                <h1>LabelBerry - Admin Dashboard</h1>
             </div>
             <div class="header-right">
                 <a href="/docs" class="icon-btn" title="API Documentation" style="text-decoration: none;">
@@ -241,6 +241,170 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
                 <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Broadcast Print Modal -->
+    <div id="broadcast-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Broadcast Print to All Printers</h2>
+                <button class="modal-close" onclick="closeBroadcastModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="broadcast-form" onsubmit="sendBroadcast(event)">
+                <div class="form-group">
+                    <label>Select Printers</label>
+                    <div id="broadcast-printer-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                        <!-- Printer checkboxes will be added here -->
+                    </div>
+                </div>
+                
+                <div class="form-tabs">
+                    <button type="button" class="tab-btn active" onclick="switchBroadcastTab('raw')">Raw ZPL</button>
+                    <button type="button" class="tab-btn" onclick="switchBroadcastTab('url')">URL</button>
+                </div>
+                
+                <div id="broadcast-raw-input" class="tab-content active">
+                    <div class="form-group">
+                        <label for="broadcast-zpl-raw">ZPL Code</label>
+                        <textarea id="broadcast-zpl-raw" rows="8" placeholder="Enter ZPL code...">^XA
+^FO50,50^A0N,40,40^FDBroadcast Test^FS
+^FO50,100^A0N,25,25^FDSent to all printers^FS
+^XZ</textarea>
+                    </div>
+                </div>
+                
+                <div id="broadcast-url-input" class="tab-content">
+                    <div class="form-group">
+                        <label for="broadcast-zpl-url">ZPL URL</label>
+                        <input type="url" id="broadcast-zpl-url" placeholder="https://example.com/label.zpl">
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeBroadcastModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="send"></i> Send to Selected Printers
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Logs Modal -->
+    <div id="logs-modal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>System Logs</h2>
+                <button class="modal-close" onclick="closeLogsModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="padding: 0;">
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                        <select id="log-pi-filter" onchange="filterLogs()" class="form-control" style="flex: 1;">
+                            <option value="">All Printers</option>
+                        </select>
+                        <select id="log-level-filter" onchange="filterLogs()" class="form-control" style="width: 150px;">
+                            <option value="">All Levels</option>
+                            <option value="ERROR">Errors</option>
+                            <option value="WARNING">Warnings</option>
+                            <option value="INFO">Info</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="refreshLogs()">
+                            <i data-lucide="refresh-cw"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="logs-container" style="max-height: 500px; overflow-y: auto; background: #f8f9fa; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+                    <!-- Logs will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics Modal -->
+    <div id="metrics-modal" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h2>Performance Metrics</h2>
+                <button class="modal-close" onclick="closeMetricsModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="padding: 0;">
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <select id="metrics-pi-filter" onchange="loadMetrics()" class="form-control" style="flex: 1;">
+                            <option value="">All Printers</option>
+                        </select>
+                        <select id="metrics-time-range" onchange="loadMetrics()" class="form-control" style="width: 150px;">
+                            <option value="1">Last Hour</option>
+                            <option value="6">Last 6 Hours</option>
+                            <option value="24" selected>Last 24 Hours</option>
+                            <option value="168">Last Week</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Metrics Summary Cards -->
+                <div class="stats-grid" style="margin-bottom: 24px;">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Avg CPU Usage</span>
+                            <i data-lucide="cpu" class="stat-icon blue"></i>
+                        </div>
+                        <div class="stat-value" id="avg-cpu">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Avg Memory</span>
+                            <i data-lucide="hard-drive" class="stat-icon purple"></i>
+                        </div>
+                        <div class="stat-value" id="avg-memory">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Jobs</span>
+                            <i data-lucide="file-text" class="stat-icon green"></i>
+                        </div>
+                        <div class="stat-value" id="total-jobs">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Success Rate</span>
+                            <i data-lucide="check-circle" class="stat-icon green"></i>
+                        </div>
+                        <div class="stat-value" id="success-rate">0%</div>
+                    </div>
+                </div>
+                
+                <!-- Metrics Table -->
+                <div style="background: var(--bg-primary); border-radius: 8px; padding: 16px;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 16px;">Detailed Metrics</h3>
+                    <div style="overflow-x: auto;">
+                        <table id="metrics-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 8px;">Printer</th>
+                                    <th style="text-align: center; padding: 8px;">CPU %</th>
+                                    <th style="text-align: center; padding: 8px;">Memory %</th>
+                                    <th style="text-align: center; padding: 8px;">Queue</th>
+                                    <th style="text-align: center; padding: 8px;">Jobs</th>
+                                    <th style="text-align: center; padding: 8px;">Failed</th>
+                                    <th style="text-align: left; padding: 8px;">Last Update</th>
+                                </tr>
+                            </thead>
+                            <tbody id="metrics-tbody">
+                                <!-- Metrics rows will be added here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -534,17 +534,303 @@ function switchPrintTab(tabName) {
 
 // Show broadcast modal
 function showBroadcastModal() {
-    showAlert('Broadcast print feature coming soon!', 'info');
+    // Populate printer checkboxes
+    const list = document.getElementById('broadcast-printer-list');
+    const onlinePrinters = currentPis.filter(pi => pi.status === 'online');
+    
+    if (onlinePrinters.length === 0) {
+        list.innerHTML = '<p style="color: #999; margin: 0;">No online printers available</p>';
+    } else {
+        list.innerHTML = onlinePrinters.map(pi => `
+            <label style="display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 4px; transition: background 0.2s;" 
+                   onmouseover="this.style.background='#f0f0f0'" 
+                   onmouseout="this.style.background='transparent'">
+                <input type="checkbox" value="${pi.id}" checked style="margin-right: 12px;">
+                <span style="flex: 1;">${pi.friendly_name}</span>
+                <span style="color: #999; font-size: 12px;">${pi.location || ''}</span>
+            </label>
+        `).join('');
+    }
+    
+    document.getElementById('broadcast-modal').style.display = 'block';
+}
+
+// Close broadcast modal
+function closeBroadcastModal() {
+    document.getElementById('broadcast-modal').style.display = 'none';
+    document.getElementById('broadcast-form').reset();
+}
+
+// Switch broadcast tab
+function switchBroadcastTab(tabName) {
+    // Update tab buttons
+    const tabButtons = document.querySelectorAll('#broadcast-modal .tab-btn');
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Update tab content
+    document.getElementById('broadcast-raw-input').classList.toggle('active', tabName === 'raw');
+    document.getElementById('broadcast-url-input').classList.toggle('active', tabName === 'url');
+}
+
+// Send broadcast print
+async function sendBroadcast(event) {
+    event.preventDefault();
+    
+    // Get selected printers
+    const checkboxes = document.querySelectorAll('#broadcast-printer-list input[type="checkbox"]:checked');
+    const selectedPis = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedPis.length === 0) {
+        showAlert('Please select at least one printer', 'error');
+        return;
+    }
+    
+    // Determine print data
+    const activeTab = document.querySelector('#broadcast-modal .tab-content.active');
+    let printData = {};
+    
+    if (activeTab.id === 'broadcast-raw-input') {
+        const zplRaw = document.getElementById('broadcast-zpl-raw').value;
+        if (!zplRaw) {
+            showAlert('Please enter ZPL code', 'error');
+            return;
+        }
+        printData = { zpl_raw: zplRaw };
+    } else if (activeTab.id === 'broadcast-url-input') {
+        const zplUrl = document.getElementById('broadcast-zpl-url').value;
+        if (!zplUrl) {
+            showAlert('Please enter ZPL URL', 'error');
+            return;
+        }
+        printData = { zpl_url: zplUrl };
+    }
+    
+    // Send to each selected printer
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const piId of selectedPis) {
+        try {
+            const response = await fetch(`/api/pis/${piId}/print`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(printData)
+            });
+            
+            if (response.ok) {
+                successCount++;
+            } else {
+                failCount++;
+            }
+        } catch (error) {
+            failCount++;
+        }
+    }
+    
+    if (successCount > 0 && failCount === 0) {
+        showAlert(`Print job sent to ${successCount} printer(s) successfully!`, 'success');
+    } else if (successCount > 0 && failCount > 0) {
+        showAlert(`Sent to ${successCount} printer(s), failed for ${failCount}`, 'warning');
+    } else {
+        showAlert('Failed to send print job to all printers', 'error');
+    }
+    
+    closeBroadcastModal();
 }
 
 // View logs
 function viewLogs() {
-    showAlert('Log viewer coming soon!', 'info');
+    // Populate printer filter
+    const filter = document.getElementById('log-pi-filter');
+    filter.innerHTML = '<option value="">All Printers</option>' + 
+        currentPis.map(pi => `<option value="${pi.id}">${pi.friendly_name}</option>`).join('');
+    
+    // Load logs
+    loadLogs();
+    
+    document.getElementById('logs-modal').style.display = 'block';
+}
+
+// Close logs modal
+function closeLogsModal() {
+    document.getElementById('logs-modal').style.display = 'none';
+}
+
+// Load logs
+async function loadLogs() {
+    const piFilter = document.getElementById('log-pi-filter').value;
+    const levelFilter = document.getElementById('log-level-filter').value;
+    const container = document.getElementById('logs-container');
+    
+    container.innerHTML = '<div style="text-align: center; color: #999;">Loading logs...</div>';
+    
+    try {
+        let logs = [];
+        
+        if (piFilter) {
+            // Get logs for specific Pi
+            const response = await fetch(`/api/pis/${piFilter}/logs?limit=200`);
+            const data = await response.json();
+            if (data.success) {
+                logs = data.data.logs;
+            }
+        } else {
+            // Get logs for all Pis
+            for (const pi of currentPis) {
+                const response = await fetch(`/api/pis/${pi.id}/logs?limit=50`);
+                const data = await response.json();
+                if (data.success) {
+                    logs = logs.concat(data.data.logs.map(log => ({...log, pi_name: pi.friendly_name})));
+                }
+            }
+        }
+        
+        // Filter by level if specified
+        if (levelFilter) {
+            logs = logs.filter(log => log.level === levelFilter);
+        }
+        
+        // Sort by timestamp (newest first)
+        logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // Render logs
+        if (logs.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: #999;">No logs found</div>';
+        } else {
+            container.innerHTML = logs.map(log => {
+                const levelColor = log.level === 'ERROR' ? '#dc3545' : 
+                                   log.level === 'WARNING' ? '#ffc107' : '#6c757d';
+                return `
+                    <div style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 4px; border-left: 3px solid ${levelColor};">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color: ${levelColor}; font-weight: 600;">[${log.level}]</span>
+                            <span style="color: #999; font-size: 11px;">${log.pi_name || ''} - ${formatDateTime(log.timestamp)}</span>
+                        </div>
+                        <div style="color: #333; word-wrap: break-word;">${log.message}</div>
+                        ${log.details ? `<div style="color: #666; font-size: 11px; margin-top: 4px;">${log.details}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        container.innerHTML = '<div style="text-align: center; color: #dc3545;">Failed to load logs</div>';
+    }
+}
+
+// Filter logs
+function filterLogs() {
+    loadLogs();
+}
+
+// Refresh logs
+function refreshLogs() {
+    loadLogs();
+    showAlert('Logs refreshed', 'info');
 }
 
 // Show metrics
 function showMetrics() {
-    showAlert('Metrics dashboard coming soon!', 'info');
+    // Populate printer filter
+    const filter = document.getElementById('metrics-pi-filter');
+    filter.innerHTML = '<option value="">All Printers</option>' + 
+        currentPis.map(pi => `<option value="${pi.id}">${pi.friendly_name}</option>`).join('');
+    
+    // Load metrics
+    loadMetrics();
+    
+    document.getElementById('metrics-modal').style.display = 'block';
+}
+
+// Close metrics modal
+function closeMetricsModal() {
+    document.getElementById('metrics-modal').style.display = 'none';
+}
+
+// Load metrics
+async function loadMetrics() {
+    const piFilter = document.getElementById('metrics-pi-filter').value;
+    const timeRange = parseInt(document.getElementById('metrics-time-range').value);
+    
+    try {
+        let allMetrics = [];
+        let pis = piFilter ? [currentPis.find(p => p.id === piFilter)] : currentPis;
+        
+        for (const pi of pis) {
+            if (!pi) continue;
+            
+            const response = await fetch(`/api/pis/${pi.id}/metrics?hours=${timeRange}`);
+            const data = await response.json();
+            
+            if (data.success && data.data.metrics.length > 0) {
+                const piMetrics = data.data.metrics.map(m => ({
+                    ...m,
+                    pi_id: pi.id,
+                    pi_name: pi.friendly_name
+                }));
+                allMetrics = allMetrics.concat(piMetrics);
+            }
+        }
+        
+        // Calculate aggregates
+        if (allMetrics.length > 0) {
+            const avgCpu = allMetrics.reduce((sum, m) => sum + (m.cpu_usage || 0), 0) / allMetrics.length;
+            const avgMemory = allMetrics.reduce((sum, m) => sum + (m.memory_usage || 0), 0) / allMetrics.length;
+            const totalJobs = allMetrics.reduce((sum, m) => sum + (m.jobs_completed || 0), 0);
+            const totalFailed = allMetrics.reduce((sum, m) => sum + (m.jobs_failed || 0), 0);
+            const successRate = totalJobs > 0 ? ((totalJobs - totalFailed) / totalJobs * 100) : 0;
+            
+            document.getElementById('avg-cpu').textContent = avgCpu.toFixed(1) + '%';
+            document.getElementById('avg-memory').textContent = avgMemory.toFixed(1) + '%';
+            document.getElementById('total-jobs').textContent = totalJobs;
+            document.getElementById('success-rate').textContent = successRate.toFixed(1) + '%';
+            
+            // Group metrics by Pi and get latest for each
+            const latestMetrics = {};
+            for (const metric of allMetrics) {
+                if (!latestMetrics[metric.pi_id] || 
+                    new Date(metric.timestamp) > new Date(latestMetrics[metric.pi_id].timestamp)) {
+                    latestMetrics[metric.pi_id] = metric;
+                }
+            }
+            
+            // Render table
+            const tbody = document.getElementById('metrics-tbody');
+            tbody.innerHTML = Object.values(latestMetrics).map(m => `
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 12px 8px; font-weight: 500;">${m.pi_name}</td>
+                    <td style="padding: 12px 8px; text-align: center;">${(m.cpu_usage || 0).toFixed(1)}%</td>
+                    <td style="padding: 12px 8px; text-align: center;">${(m.memory_usage || 0).toFixed(1)}%</td>
+                    <td style="padding: 12px 8px; text-align: center;">${m.queue_size || 0}</td>
+                    <td style="padding: 12px 8px; text-align: center;">${m.jobs_completed || 0}</td>
+                    <td style="padding: 12px 8px; text-align: center; color: ${m.jobs_failed > 0 ? '#dc3545' : 'inherit'};">${m.jobs_failed || 0}</td>
+                    <td style="padding: 12px 8px;">${formatDateTime(m.timestamp)}</td>
+                </tr>
+            `).join('');
+        } else {
+            document.getElementById('avg-cpu').textContent = '0%';
+            document.getElementById('avg-memory').textContent = '0%';
+            document.getElementById('total-jobs').textContent = '0';
+            document.getElementById('success-rate').textContent = '0%';
+            
+            document.getElementById('metrics-tbody').innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 24px; color: #999;">
+                        No metrics data available for the selected time range
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading metrics:', error);
+        showAlert('Failed to load metrics', 'error');
+    }
+    
+    // Re-initialize Lucide icons for new content
+    lucide.createIcons();
 }
 
 // Close modals when clicking outside
