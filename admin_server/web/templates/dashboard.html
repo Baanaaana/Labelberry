@@ -23,9 +23,9 @@
                 <a href="/docs" class="icon-btn" title="API Documentation" style="text-decoration: none;">
                     <i data-lucide="book-open"></i>
                 </a>
-                <button class="icon-btn" onclick="showSettingsModal()" title="Settings">
+                <a href="/settings" class="icon-btn" title="Settings" style="text-decoration: none;">
                     <i data-lucide="settings"></i>
-                </button>
+                </a>
                 <button class="icon-btn" onclick="refreshDashboard()" title="Refresh">
                     <i data-lucide="refresh-cw"></i>
                 </button>
@@ -421,93 +421,6 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Settings</h2>
-                <button class="modal-close" onclick="closeSettingsModal()">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-            <form id="settings-form" onsubmit="saveSettings(event)">
-                <h3 style="font-size: 16px; margin: 0 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Account Settings</h3>
-                <div class="form-group">
-                    <label for="new-username">Username</label>
-                    <input type="text" id="new-username" class="form-control" placeholder="Enter new username">
-                    <small style="color: var(--text-secondary); font-size: 12px;">Leave empty to keep current username</small>
-                </div>
-                
-                <h3 style="font-size: 16px; margin: 20px 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Change Password</h3>
-                <div class="form-group">
-                    <label for="current-password">Current Password</label>
-                    <input type="password" id="current-password" class="form-control" autocomplete="current-password">
-                    <small style="color: var(--text-secondary); font-size: 12px;">Required for any account changes</small>
-                </div>
-                <div class="form-group">
-                    <label for="new-password">New Password</label>
-                    <input type="password" id="new-password" class="form-control" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                    <label for="confirm-password">Confirm New Password</label>
-                    <input type="password" id="confirm-password" class="form-control" autocomplete="new-password">
-                </div>
-                
-                <h3 style="font-size: 16px; margin: 20px 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Dashboard Settings</h3>
-                <div class="form-group">
-                    <label for="timezone-select">Timezone</label>
-                    <select id="timezone-select" class="form-control">
-                        <optgroup label="Europe">
-                            <option value="Europe/Amsterdam">Amsterdam (CET/CEST)</option>
-                            <option value="Europe/London">London (GMT/BST)</option>
-                            <option value="Europe/Paris">Paris (CET/CEST)</option>
-                            <option value="Europe/Berlin">Berlin (CET/CEST)</option>
-                            <option value="Europe/Brussels">Brussels (CET/CEST)</option>
-                        </optgroup>
-                        <optgroup label="Americas">
-                            <option value="America/New_York">New York (EST/EDT)</option>
-                            <option value="America/Chicago">Chicago (CST/CDT)</option>
-                            <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
-                        </optgroup>
-                        <optgroup label="Asia Pacific">
-                            <option value="Asia/Tokyo">Tokyo (JST)</option>
-                            <option value="Asia/Shanghai">Shanghai (CST)</option>
-                            <option value="Asia/Singapore">Singapore (SGT)</option>
-                            <option value="Australia/Sydney">Sydney (AEDT/AEST)</option>
-                        </optgroup>
-                        <optgroup label="Other">
-                            <option value="UTC">UTC</option>
-                        </optgroup>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="refresh-interval">Auto-refresh Interval</label>
-                    <select id="refresh-interval" class="form-control">
-                        <option value="5000">5 seconds</option>
-                        <option value="10000" selected>10 seconds</option>
-                        <option value="30000">30 seconds</option>
-                        <option value="60000">1 minute</option>
-                        <option value="0">Disabled</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="date-format">Date Format</label>
-                    <select id="date-format" class="form-control">
-                        <option value="DD-MM-YYYY">DD-MM-YYYY</option>
-                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                    </select>
-                </div>
-                
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Settings</button>
-                </div>
-            </form>
-        </div>
-    </div>
 
     <!-- Toast Container -->
     <div id="toast-container"></div>

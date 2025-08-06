@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - LabelBerry</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234263eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='5' width='14' height='14' rx='2'/%3E%3Cpath d='M9 9h6'/%3E%3Cpath d='M9 12h6'/%3E%3Cpath d='M9 15h4'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/settings.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="settings-container">
+        <!-- Header -->
+        <div class="settings-header">
+            <div class="header-left">
+                <a href="/" class="back-btn">
+                    <i data-lucide="arrow-left"></i>
+                    <span>Back to Dashboard</span>
+                </a>
+            </div>
+            <div class="header-center">
+                <h1>Settings</h1>
+            </div>
+            <div class="header-right">
+                <a href="/logout" class="icon-btn" title="Logout">
+                    <i data-lucide="log-out"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Settings Content -->
+        <div class="settings-content">
+            <div class="settings-sidebar">
+                <nav class="settings-nav">
+                    <a href="#account" class="nav-item active" onclick="switchSection('account', this)">
+                        <i data-lucide="user"></i>
+                        <span>Account</span>
+                    </a>
+                    <a href="#security" class="nav-item" onclick="switchSection('security', this)">
+                        <i data-lucide="lock"></i>
+                        <span>Security</span>
+                    </a>
+                    <a href="#preferences" class="nav-item" onclick="switchSection('preferences', this)">
+                        <i data-lucide="settings"></i>
+                        <span>Preferences</span>
+                    </a>
+                    <a href="#about" class="nav-item" onclick="switchSection('about', this)">
+                        <i data-lucide="info"></i>
+                        <span>About</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="settings-main">
+                <!-- Account Section -->
+                <div id="account-section" class="settings-section active">
+                    <div class="section-header">
+                        <h2>Account Settings</h2>
+                        <p>Manage your account information</p>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <h3>Username</h3>
+                        <p class="settings-description">Change your login username</p>
+                        <form id="username-form" onsubmit="changeUsername(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="new-username">New Username</label>
+                                    <input type="text" id="new-username" class="form-control" placeholder="Enter new username" minlength="3">
+                                </div>
+                                <div class="form-group">
+                                    <label for="username-password">Current Password</label>
+                                    <input type="password" id="username-password" class="form-control" placeholder="Enter current password" required>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Change Username</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Security Section -->
+                <div id="security-section" class="settings-section">
+                    <div class="section-header">
+                        <h2>Security</h2>
+                        <p>Manage your password and security settings</p>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <h3>Change Password</h3>
+                        <p class="settings-description">Update your account password</p>
+                        <form id="password-form" onsubmit="changePassword(event)">
+                            <div class="form-group">
+                                <label for="current-password">Current Password</label>
+                                <input type="password" id="current-password" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">New Password</label>
+                                <input type="password" id="new-password" class="form-control" minlength="6" required>
+                                <small>Minimum 6 characters</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-password">Confirm New Password</label>
+                                <input type="password" id="confirm-password" class="form-control" minlength="6" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Update Password</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Preferences Section -->
+                <div id="preferences-section" class="settings-section">
+                    <div class="section-header">
+                        <h2>Preferences</h2>
+                        <p>Customize your dashboard experience</p>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <h3>Display Settings</h3>
+                        <form id="preferences-form" onsubmit="savePreferences(event)">
+                            <div class="form-group">
+                                <label for="timezone-select">Timezone</label>
+                                <select id="timezone-select" class="form-control">
+                                    <optgroup label="Europe">
+                                        <option value="Europe/Amsterdam">Amsterdam (CET/CEST)</option>
+                                        <option value="Europe/London">London (GMT/BST)</option>
+                                        <option value="Europe/Paris">Paris (CET/CEST)</option>
+                                        <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                                        <option value="Europe/Brussels">Brussels (CET/CEST)</option>
+                                    </optgroup>
+                                    <optgroup label="Americas">
+                                        <option value="America/New_York">New York (EST/EDT)</option>
+                                        <option value="America/Chicago">Chicago (CST/CDT)</option>
+                                        <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                                    </optgroup>
+                                    <optgroup label="Asia Pacific">
+                                        <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                        <option value="Asia/Shanghai">Shanghai (CST)</option>
+                                        <option value="Asia/Singapore">Singapore (SGT)</option>
+                                        <option value="Australia/Sydney">Sydney (AEDT/AEST)</option>
+                                    </optgroup>
+                                    <optgroup label="Other">
+                                        <option value="UTC">UTC</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="date-format">Date Format</label>
+                                <select id="date-format" class="form-control">
+                                    <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+                                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="refresh-interval">Auto-refresh Interval</label>
+                                <select id="refresh-interval" class="form-control">
+                                    <option value="5000">5 seconds</option>
+                                    <option value="10000">10 seconds</option>
+                                    <option value="30000">30 seconds</option>
+                                    <option value="60000">1 minute</option>
+                                    <option value="0">Disabled</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Save Preferences</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- About Section -->
+                <div id="about-section" class="settings-section">
+                    <div class="section-header">
+                        <h2>About</h2>
+                        <p>System information and version details</p>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <h3>LabelBerry Admin Server</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Version</span>
+                                <span class="info-value">1.0.0</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Server Status</span>
+                                <span class="info-value status-online">Online</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Database</span>
+                                <span class="info-value">SQLite</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">API Documentation</span>
+                                <span class="info-value"><a href="/docs" target="_blank">View API Docs</a></span>
+                            </div>
+                        </div>
+                        
+                        <div class="info-divider"></div>
+                        
+                        <div class="info-item">
+                            <span class="info-label">GitHub Repository</span>
+                            <span class="info-value">
+                                <a href="https://github.com/Baanaaana/LabelBerry" target="_blank" class="github-link">
+                                    <i data-lucide="github"></i>
+                                    View on GitHub
+                                </a>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Load saved preferences
+        loadPreferences();
+    </script>
+</body>
+</html>

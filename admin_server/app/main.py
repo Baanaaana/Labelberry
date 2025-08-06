@@ -186,6 +186,15 @@ async def root(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """Settings page"""
+    # Check if user is logged in
+    if "user" not in request.session:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse("settings.html", {"request": request})
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Legacy dashboard URL - redirects to root"""
