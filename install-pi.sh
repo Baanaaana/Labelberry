@@ -5,6 +5,7 @@ set -e
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${GREEN}===============================================${NC}"
@@ -41,7 +42,7 @@ if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1
 fi
 echo -e "${GREEN}Python $PYTHON_VERSION found${NC}"
 
-echo -e "${YELLOW}[3/10] Installing system dependencies...${NC}"
+echo -e "${YELLOW}[3/11] Installing system dependencies...${NC}"
 apt-get update
 apt-get install -y \
     python3-pip \
@@ -51,9 +52,52 @@ apt-get install -y \
     libusb-1.0-0-dev \
     build-essential \
     python3-dev \
-    uuid-runtime
+    uuid-runtime \
+    usbutils
 
-echo -e "${YELLOW}[4/10] Creating installation directory...${NC}"
+echo -e "${YELLOW}[4/11] Detecting Zebra printers...${NC}"
+echo ""
+
+# Detect all Zebra printers
+PRINTER_COUNT=0
+PRINTER_DEVICES=()
+
+# Check for USB Zebra devices
+USB_DEVICES=$(lsusb | grep -i "zebra" || true)
+
+if [ -z "$USB_DEVICES" ]; then
+    echo -e "${YELLOW}No Zebra printers detected via USB${NC}"
+    echo "Continuing with manual configuration..."
+    PRINTER_COUNT=1
+    PRINTER_DEVICES=("/dev/usblp0")
+else
+    echo -e "${GREEN}Found Zebra printer(s):${NC}"
+    echo "$USB_DEVICES"
+    echo ""
+    
+    # Find all USB printer devices
+    for device in /dev/usb/lp*; do
+        if [ -e "$device" ]; then
+            PRINTER_DEVICES+=("$device")
+            ((PRINTER_COUNT++))
+        fi
+    done
+    
+    if [ ${#PRINTER_DEVICES[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No USB printer devices found in /dev/usb/${NC}"
+        echo "Using default device /dev/usblp0"
+        PRINTER_COUNT=1
+        PRINTER_DEVICES=("/dev/usblp0")
+    else
+        echo -e "${GREEN}Found $PRINTER_COUNT printer device(s):${NC}"
+        for device in "${PRINTER_DEVICES[@]}"; do
+            echo "  - $device"
+        done
+        echo ""
+    fi
+fi
+
+echo -e "${YELLOW}[5/11] Creating installation directory...${NC}"
 INSTALL_DIR="/opt/labelberry"
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}Installation directory already exists${NC}"
@@ -71,17 +115,17 @@ if [ -d "$INSTALL_DIR" ]; then
 fi
 mkdir -p "$INSTALL_DIR"
 
-echo -e "${YELLOW}[5/10] Cloning repository...${NC}"
+echo -e "${YELLOW}[6/11] Cloning repository...${NC}"
 cd "$INSTALL_DIR"
 git clone --sparse https://github.com/Baanaaana/LabelBerry.git .
 git sparse-checkout init --cone
 git sparse-checkout set pi_client shared
 
-echo -e "${YELLOW}[6/10] Creating virtual environment...${NC}"
+echo -e "${YELLOW}[7/11] Creating virtual environment...${NC}"
 python3 -m venv venv
 source venv/bin/activate
 
-echo -e "${YELLOW}[7/10] Installing Python packages...${NC}"
+echo -e "${YELLOW}[8/11] Installing Python packages...${NC}"
 pip install --upgrade pip
 pip install -r pi_client/requirements.txt
 
@@ -90,49 +134,156 @@ touch pi_client/__init__.py
 touch pi_client/app/__init__.py
 touch shared/__init__.py
 
-echo -e "${YELLOW}[8/10] Creating configuration...${NC}"
+echo -e "${YELLOW}[9/11] Creating configuration...${NC}"
 mkdir -p /etc/labelberry
+mkdir -p /etc/labelberry/printers
 mkdir -p /var/lib/labelberry
 mkdir -p /var/log/labelberry
 
 if [ -f "/etc/labelberry/client.conf.backup" ]; then
     echo -e "${GREEN}Restoring previous configuration...${NC}"
     mv /etc/labelberry/client.conf.backup /etc/labelberry/client.conf
+    # Also restore printer configs if they exist
+    if [ -d "/etc/labelberry/printers.backup" ]; then
+        rm -rf /etc/labelberry/printers
+        mv /etc/labelberry/printers.backup /etc/labelberry/printers
+    fi
 else
     echo -e "${YELLOW}Running initial configuration...${NC}"
-    
-    # Try uuidgen first, fallback to Python if not available
-    if command -v uuidgen &> /dev/null; then
-        DEVICE_ID=$(uuidgen)
-        API_KEY=$(uuidgen)
-    else
-        DEVICE_ID=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
-        API_KEY=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
-    fi
+    echo ""
     
     read -p "Enter the admin server URL (e.g., http://192.168.1.100:8080): " ADMIN_SERVER </dev/tty
+    echo ""
     
-    cat > /etc/labelberry/client.conf <<EOF
-device_id: $DEVICE_ID
-api_key: $API_KEY
+    # Check if we have multiple printers
+    if [ $PRINTER_COUNT -gt 1 ]; then
+        echo -e "${GREEN}===============================================${NC}"
+        echo -e "${GREEN}    Configuring $PRINTER_COUNT printer(s)              ${NC}"
+        echo -e "${GREEN}===============================================${NC}"
+        echo ""
+        echo -e "${YELLOW}For each printer, you'll need to:${NC}"
+        echo "  1. Give it a friendly name (e.g., 'Warehouse Printer 1')"
+        echo "  2. Note down the generated Device ID and API Key"
+        echo "  3. Register it in the admin dashboard"
+        echo ""
+        
+        # Create main config file for multi-printer mode
+        cat > /etc/labelberry/client.conf <<EOF
+# LabelBerry Multi-Printer Configuration
 admin_server: $ADMIN_SERVER
-printer_device: /dev/usblp0
 queue_size: 100
 retry_attempts: 3
 retry_delay: 5
 log_level: INFO
 log_file: /var/log/labelberry/client.log
 metrics_interval: 60
+multi_printer_mode: true
+printers:
 EOF
-    
-    echo -e "${GREEN}Configuration created${NC}"
-    echo -e "${YELLOW}Device ID: $DEVICE_ID${NC}"
-    echo -e "${YELLOW}API Key: $API_KEY${NC}"
-    echo -e "${YELLOW}Please save these values for admin server registration${NC}"
+        
+        ALL_CONFIGS=""
+        
+        for i in "${!PRINTER_DEVICES[@]}"; do
+            PRINTER_NUM=$((i + 1))
+            DEVICE="${PRINTER_DEVICES[$i]}"
+            
+            echo -e "${BLUE}------- Printer $PRINTER_NUM -------${NC}"
+            echo -e "Device: ${YELLOW}$DEVICE${NC}"
+            echo ""
+            
+            read -p "Enter a friendly name for this printer: " PRINTER_NAME </dev/tty
+            
+            # Generate unique IDs for this printer
+            if command -v uuidgen &> /dev/null; then
+                DEVICE_ID=$(uuidgen)
+                API_KEY=$(uuidgen)
+            else
+                DEVICE_ID=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
+                API_KEY=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
+            fi
+            
+            # Create individual printer config file
+            cat > "/etc/labelberry/printers/printer_${i}.conf" <<EOF
+# Configuration for $PRINTER_NAME
+name: $PRINTER_NAME
+device_id: $DEVICE_ID
+api_key: $API_KEY
+device_path: $DEVICE
+enabled: true
+EOF
+            
+            # Add to main config
+            echo "  printer_${i}: /etc/labelberry/printers/printer_${i}.conf" >> /etc/labelberry/client.conf
+            
+            # Store for summary
+            ALL_CONFIGS="${ALL_CONFIGS}\n${GREEN}$PRINTER_NAME:${NC}\n  Device ID: ${BLUE}$DEVICE_ID${NC}\n  API Key: ${BLUE}$API_KEY${NC}\n  Device: ${YELLOW}$DEVICE${NC}\n"
+            
+            echo ""
+            echo -e "${GREEN}Printer $PRINTER_NUM configured successfully${NC}"
+            echo ""
+        done
+        
+        echo -e "${GREEN}All printers configured!${NC}"
+        echo ""
+        echo -e "${YELLOW}⚠️  IMPORTANT: Save these credentials for registering in the admin dashboard:${NC}"
+        echo -e "$ALL_CONFIGS"
+        
+    else
+        # Single printer configuration (backward compatible)
+        if command -v uuidgen &> /dev/null; then
+            DEVICE_ID=$(uuidgen)
+            API_KEY=$(uuidgen)
+        else
+            DEVICE_ID=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
+            API_KEY=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
+        fi
+        
+        cat > /etc/labelberry/client.conf <<EOF
+device_id: $DEVICE_ID
+api_key: $API_KEY
+admin_server: $ADMIN_SERVER
+printer_device: ${PRINTER_DEVICES[0]}
+queue_size: 100
+retry_attempts: 3
+retry_delay: 5
+log_level: INFO
+log_file: /var/log/labelberry/client.log
+metrics_interval: 60
+multi_printer_mode: false
+EOF
+        
+        echo -e "${GREEN}Configuration created${NC}"
+        echo -e "${YELLOW}Device ID: ${BLUE}$DEVICE_ID${NC}"
+        echo -e "${YELLOW}API Key: ${BLUE}$API_KEY${NC}"
+        echo -e "${YELLOW}Please save these values for admin server registration${NC}"
+    fi
 fi
 
-echo -e "${YELLOW}[9/10] Creating systemd service...${NC}"
-cat > /etc/systemd/system/labelberry-client.service <<EOF
+echo -e "${YELLOW}[10/11] Creating systemd service...${NC}"
+
+# Check if multi-printer mode
+if grep -q "multi_printer_mode: true" /etc/labelberry/client.conf 2>/dev/null; then
+    cat > /etc/systemd/system/labelberry-client.service <<EOF
+[Unit]
+Description=LabelBerry Multi-Printer Client
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$INSTALL_DIR
+Environment="PATH=$INSTALL_DIR/venv/bin"
+Environment="PYTHONPATH=$INSTALL_DIR"
+Environment="LABELBERRY_MULTI_PRINTER=true"
+ExecStart=$INSTALL_DIR/venv/bin/python -m pi_client.app.main_multi
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+else
+    cat > /etc/systemd/system/labelberry-client.service <<EOF
 [Unit]
 Description=LabelBerry Pi Client
 After=network.target
@@ -150,11 +301,12 @@ RestartSec=10
 [Install]
 WantedBy=multi-user.target
 EOF
+fi
 
 systemctl daemon-reload
 systemctl enable labelberry-client.service
 
-echo -e "${YELLOW}[10/10] Creating CLI symlink...${NC}"
+echo -e "${YELLOW}[11/11] Creating CLI symlink...${NC}"
 cat > /usr/local/bin/labelberry <<EOF
 #!/bin/bash
 export PYTHONPATH=$INSTALL_DIR
@@ -174,9 +326,29 @@ echo "3. Check status: sudo systemctl status labelberry-client"
 echo "4. View logs: sudo journalctl -u labelberry-client -f"
 echo "5. Use CLI: labelberry status"
 echo ""
-echo -e "${YELLOW}Register this Pi on your admin server with:${NC}"
-echo -e "   Device ID: ${BLUE}$(grep device_id /etc/labelberry/client.conf | cut -d' ' -f2)${NC}"
-echo -e "   API Key: ${BLUE}$(grep api_key /etc/labelberry/client.conf | cut -d' ' -f2)${NC}"
+# Display configuration summary
+if [ -d "/etc/labelberry/printers" ] && [ "$(ls -A /etc/labelberry/printers)" ]; then
+    echo -e "${YELLOW}Register your printer(s) on the admin server:${NC}"
+    echo ""
+    for config_file in /etc/labelberry/printers/*.conf; do
+        if [ -f "$config_file" ]; then
+            NAME=$(grep "name:" "$config_file" | cut -d' ' -f2-)
+            DEVICE_ID=$(grep "device_id:" "$config_file" | cut -d' ' -f2)
+            API_KEY=$(grep "api_key:" "$config_file" | cut -d' ' -f2)
+            DEVICE_PATH=$(grep "device_path:" "$config_file" | cut -d' ' -f2)
+            
+            echo -e "${GREEN}$NAME:${NC}"
+            echo -e "  Device ID: ${BLUE}$DEVICE_ID${NC}"
+            echo -e "  API Key: ${BLUE}$API_KEY${NC}"
+            echo -e "  Device: ${YELLOW}$DEVICE_PATH${NC}"
+            echo ""
+        fi
+    done
+else
+    echo -e "${YELLOW}Register this Pi on your admin server with:${NC}"
+    echo -e "   Device ID: ${BLUE}$(grep device_id /etc/labelberry/client.conf | cut -d' ' -f2)${NC}"
+    echo -e "   API Key: ${BLUE}$(grep api_key /etc/labelberry/client.conf | cut -d' ' -f2)${NC}"
+fi
 echo ""
 
 read -p "Do you want to start the service now? (Y/n): " -n 1 -r </dev/tty

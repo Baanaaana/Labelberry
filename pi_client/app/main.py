@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import sys
+import os
 import requests
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -310,4 +311,10 @@ async def cancel_job(job_id: str, api_key: str = Depends(verify_api_key)):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Check if running in multi-printer mode
+    if os.getenv("LABELBERRY_MULTI_PRINTER", "false").lower() == "true":
+        logger.info("Starting in multi-printer mode")
+        from . import main_multi
+        uvicorn.run(main_multi.app, host="0.0.0.0", port=8000)
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=8000)
