@@ -339,6 +339,7 @@ class Database:
                         api_key=row['api_key'],
                         location=row['location'],
                         printer_model=row['printer_model'],
+                        label_size_id=row['label_size_id'],
                         status=row['status'],
                         last_seen=datetime.fromisoformat(row['last_seen']) if row['last_seen'] else None
                     ))
