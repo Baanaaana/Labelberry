@@ -217,12 +217,16 @@ function createPrinterItem(pi) {
                     <span class="detail-value" style="font-family: monospace; font-size: 11px;">${pi.id}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Location:</span>
-                    <span class="detail-value">${pi.location || 'Not specified'}</span>
+                    <span class="detail-label">Last Seen:</span>
+                    <span class="detail-value">${formatDateTime(pi.last_seen)}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Model:</span>
                     <span class="detail-value">${pi.printer_model || 'Unknown'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">${pi.location || 'Not specified'}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Label Size:</span>
@@ -231,10 +235,6 @@ function createPrinterItem(pi) {
                 <div class="detail-item">
                     <span class="detail-label">Queue:</span>
                     <span class="detail-value">${pi.queue_count || 0} jobs</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Last Seen:</span>
-                    <span class="detail-value">${formatDateTime(pi.last_seen)}</span>
                 </div>
             </div>
             <div class="printer-actions">
