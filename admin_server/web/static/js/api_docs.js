@@ -14,21 +14,28 @@ function scrollToSection(sectionId, navItem) {
     // Scroll to section with offset
     const section = document.getElementById(sectionId);
     if (section) {
-        // Get the absolute position of the section
-        const sectionTop = section.offsetTop;
+        // Calculate the section's position from the top of the document
+        let element = section;
+        let offsetTop = 0;
         
-        // Get the first nav item position to align with
-        const firstNavItem = document.querySelector('.nav-item');
-        const navRect = firstNavItem ? firstNavItem.getBoundingClientRect() : null;
+        while (element) {
+            offsetTop += element.offsetTop;
+            element = element.offsetParent;
+        }
         
-        // We want the section to be at the same level as the first nav item
-        // The nav is sticky at 24px, plus internal padding
-        // Let's use a fixed offset that works visually
-        const offset = 90; // Adjust this value to fine-tune alignment
+        // The header is fixed, get its height
+        const header = document.querySelector('.docs-header');
+        const headerHeight = header ? header.offsetHeight : 0;
         
-        // Smooth scroll to the calculated position
+        // Additional offset to align with sidebar (sidebar is sticky at 24px)
+        // Total offset = header height + extra padding
+        const totalOffset = headerHeight + 24;
+        
+        // Scroll to position
+        const scrollTarget = offsetTop - totalOffset;
+        
         window.scrollTo({
-            top: Math.max(0, sectionTop - offset),
+            top: scrollTarget,
             behavior: 'smooth'
         });
     }
