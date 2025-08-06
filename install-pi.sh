@@ -175,8 +175,8 @@ echo "4. View logs: sudo journalctl -u labelberry-client -f"
 echo "5. Use CLI: labelberry status"
 echo ""
 echo -e "${YELLOW}Register this Pi on your admin server with:${NC}"
-echo "   Device ID: $(grep device_id /etc/labelberry/client.conf | cut -d' ' -f2)"
-echo "   API Key: $(grep api_key /etc/labelberry/client.conf | cut -d' ' -f2)"
+echo -e "   Device ID: ${BLUE}$(grep device_id /etc/labelberry/client.conf | cut -d' ' -f2)${NC}"
+echo -e "   API Key: ${BLUE}$(grep api_key /etc/labelberry/client.conf | cut -d' ' -f2)${NC}"
 echo ""
 
 read -p "Do you want to start the service now? (Y/n): " -n 1 -r </dev/tty
