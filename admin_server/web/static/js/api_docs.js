@@ -14,19 +14,21 @@ function scrollToSection(sectionId, navItem) {
     // Scroll to section with offset
     const section = document.getElementById(sectionId);
     if (section) {
-        const sectionRect = section.getBoundingClientRect();
-        const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
-        const sectionTop = sectionRect.top + currentScrollY;
+        // Get the absolute position of the section
+        const sectionTop = section.offsetTop;
         
-        // The sidebar nav (.docs-nav) is sticky positioned at top: 24px from viewport
-        // The nav also has internal padding of 12px (from CSS)
-        // So the first nav item starts at: 24px (sticky top) + 12px (padding) = 36px from viewport
-        // To align section title with first nav item, we need to scroll section to 36px from viewport
-        const targetScrollPosition = sectionTop - 36;
+        // Get the first nav item position to align with
+        const firstNavItem = document.querySelector('.nav-item');
+        const navRect = firstNavItem ? firstNavItem.getBoundingClientRect() : null;
+        
+        // We want the section to be at the same level as the first nav item
+        // The nav is sticky at 24px, plus internal padding
+        // Let's use a fixed offset that works visually
+        const offset = 90; // Adjust this value to fine-tune alignment
         
         // Smooth scroll to the calculated position
         window.scrollTo({
-            top: targetScrollPosition,
+            top: Math.max(0, sectionTop - offset),
             behavior: 'smooth'
         });
     }
