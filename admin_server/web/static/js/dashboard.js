@@ -2,6 +2,7 @@
 let currentPis = [];
 let selectedPiId = null;
 let refreshInterval = null;
+let labelSizes = [];
 
 // Settings with defaults
 let dashboardSettings = {
@@ -28,12 +29,49 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load saved settings
     loadSettings();
     
+    // Load label sizes
+    loadLabelSizes();
+    
     // Load dashboard
     loadDashboard();
     
     // Set up auto-refresh based on settings
     setupAutoRefresh();
 });
+
+// Load label sizes from server
+async function loadLabelSizes() {
+    try {
+        const response = await fetch('/api/label-sizes');
+        const data = await response.json();
+        
+        if (data.success) {
+            labelSizes = data.data.sizes;
+            updateLabelSizeDropdowns();
+        }
+    } catch (error) {
+        console.error('Failed to load label sizes:', error);
+    }
+}
+
+// Update label size dropdowns
+function updateLabelSizeDropdowns() {
+    const registerSelect = document.getElementById('label-size');
+    const editSelect = document.getElementById('edit-label-size');
+    
+    // Build options HTML
+    let optionsHTML = '<option value="">Select label size...</option>';
+    labelSizes.forEach(size => {
+        optionsHTML += `<option value="${size.id}">${size.display_name}</option>`;
+    });
+    
+    if (registerSelect) {
+        registerSelect.innerHTML = optionsHTML;
+    }
+    if (editSelect) {
+        editSelect.innerHTML = optionsHTML;
+    }
+}
 
 // Setup auto-refresh based on settings
 function setupAutoRefresh() {
@@ -124,6 +162,10 @@ function createPrinterItem(pi) {
                     <span class="detail-value">${pi.printer_model || 'Unknown'}</span>
                 </div>
                 <div class="detail-item">
+                    <span class="detail-label">Label Size:</span>
+                    <span class="detail-value">${pi.label_size ? pi.label_size.display_name : 'Not specified'}</span>
+                </div>
+                <div class="detail-item">
                     <span class="detail-label">Queue:</span>
                     <span class="detail-value">${pi.queue_count || 0} jobs</span>
                 </div>
@@ -167,6 +209,7 @@ async function registerPi(event) {
     const friendlyName = document.getElementById('friendly-name').value;
     const location = document.getElementById('location').value;
     const printerModel = document.getElementById('printer-model').value;
+    const labelSizeId = document.getElementById('label-size').value;
     
     const piData = {
         id: deviceId,
@@ -174,6 +217,7 @@ async function registerPi(event) {
         friendly_name: friendlyName,
         location: location || null,
         printer_model: printerModel || null,
+        label_size_id: labelSizeId ? parseInt(labelSizeId) : null,
         status: 'offline'
     };
     
@@ -443,10 +487,14 @@ async function showEditModal(piId) {
     const pi = currentPis.find(p => p.id === piId);
     if (!pi) return;
     
+    // Make sure dropdowns are populated
+    updateLabelSizeDropdowns();
+    
     document.getElementById('edit-pi-id').value = pi.id;
     document.getElementById('edit-friendly-name').value = pi.friendly_name;
     document.getElementById('edit-location').value = pi.location || '';
     document.getElementById('edit-printer-model').value = pi.printer_model || '';
+    document.getElementById('edit-label-size').value = pi.label_size_id || '';
     
     document.getElementById('edit-modal').style.display = 'block';
 }
@@ -462,10 +510,12 @@ async function updatePi(event) {
     event.preventDefault();
     
     const piId = document.getElementById('edit-pi-id').value;
+    const labelSizeId = document.getElementById('edit-label-size').value;
     const updates = {
         friendly_name: document.getElementById('edit-friendly-name').value,
         location: document.getElementById('edit-location').value || null,
-        printer_model: document.getElementById('edit-printer-model').value || null
+        printer_model: document.getElementById('edit-printer-model').value || null,
+        label_size_id: labelSizeId ? parseInt(labelSizeId) : null
     };
     
     try {

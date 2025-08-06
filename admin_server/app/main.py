@@ -258,6 +258,14 @@ async def get_pi_details(pi_id: str):
             pi_dict["status"] = "online"
         pi_dict["config"] = database.get_pi_config(pi_id)
         
+        # Get label size details if assigned
+        if pi.label_size_id:
+            sizes = database.get_label_sizes()
+            for size in sizes:
+                if size['id'] == pi.label_size_id:
+                    pi_dict["label_size"] = size
+                    break
+        
         return ApiResponse(
             success=True,
             message="Pi details retrieved",
@@ -630,6 +638,75 @@ async def revoke_api_key(
         raise
     except Exception as e:
         logger.error(f"Failed to revoke API key: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/label-sizes", response_model=ApiResponse)
+async def get_label_sizes():
+    """Get all available label sizes"""
+    try:
+        sizes = database.get_label_sizes()
+        return ApiResponse(
+            success=True,
+            message="Label sizes retrieved",
+            data={"sizes": sizes}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get label sizes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/label-sizes", response_model=ApiResponse)
+async def add_label_size(
+    request: Request,
+    current_user: str = Depends(require_login)
+):
+    """Add a new label size"""
+    try:
+        data = await request.json()
+        name = data.get("name")
+        width_mm = data.get("width_mm")
+        height_mm = data.get("height_mm")
+        
+        if not all([name, width_mm, height_mm]):
+            raise HTTPException(status_code=400, detail="Name, width, and height are required")
+        
+        size_id = database.add_label_size(name, width_mm, height_mm)
+        
+        if size_id:
+            return ApiResponse(
+                success=True,
+                message="Label size added successfully",
+                data={"id": size_id}
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Failed to add label size (may already exist)")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add label size: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/label-sizes/{size_id}", response_model=ApiResponse)
+async def delete_label_size(
+    size_id: int,
+    current_user: str = Depends(require_login)
+):
+    """Delete a label size"""
+    try:
+        if database.delete_label_size(size_id):
+            return ApiResponse(
+                success=True,
+                message="Label size deleted successfully",
+                data={"id": size_id}
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Cannot delete default size or size in use")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete label size: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

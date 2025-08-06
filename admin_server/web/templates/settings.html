@@ -52,6 +52,10 @@
                         <i data-lucide="key"></i>
                         <span>API Keys</span>
                     </a>
+                    <a href="#label-sizes" class="nav-item" onclick="switchSection('label-sizes', this)">
+                        <i data-lucide="ruler"></i>
+                        <span>Label Sizes</span>
+                    </a>
                     <a href="#about" class="nav-item" onclick="switchSection('about', this)">
                         <i data-lucide="info"></i>
                         <span>About</span>
@@ -205,6 +209,28 @@
                     </div>
                 </div>
 
+                <!-- Label Sizes Section -->
+                <div id="label-sizes-section" class="settings-section">
+                    <div class="section-header">
+                        <h2>Label Sizes</h2>
+                        <p>Manage available label sizes for your printers</p>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3>Available Label Sizes</h3>
+                            <button class="btn btn-primary" onclick="showAddLabelSizeModal()">
+                                <i data-lucide="plus"></i>
+                                Add Label Size
+                            </button>
+                        </div>
+                        
+                        <div id="label-sizes-list">
+                            <!-- Label sizes will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
                 <!-- About Section -->
                 <div id="about-section" class="settings-section">
                     <div class="section-header">
@@ -318,14 +344,47 @@
         </div>
     </div>
 
+    <!-- Add Label Size Modal -->
+    <div id="add-label-size-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Add Label Size</h2>
+                <button class="modal-close" onclick="closeAddLabelSizeModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="add-label-size-form" onsubmit="addLabelSize(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="size-name">Name *</label>
+                        <input type="text" id="size-name" class="form-control" required placeholder="e.g., Extra Large">
+                    </div>
+                    <div class="form-group">
+                        <label for="size-width">Width (mm) *</label>
+                        <input type="number" id="size-width" class="form-control" required min="1" max="500" placeholder="e.g., 102">
+                    </div>
+                    <div class="form-group">
+                        <label for="size-height">Height (mm) *</label>
+                        <input type="number" id="size-height" class="form-control" required min="1" max="500" placeholder="e.g., 150">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddLabelSizeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Size</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="/static/js/settings.js"></script>
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
         
-        // Load saved preferences and API keys
+        // Load saved preferences, API keys, and label sizes
         loadPreferences();
         loadApiKeys();
+        loadLabelSizes();
     </script>
 </body>
 </html>

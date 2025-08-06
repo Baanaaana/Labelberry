@@ -532,6 +532,130 @@ function formatDate(dateString) {
     }
 }
 
+// Label Size Management Functions
+async function loadLabelSizes() {
+    try {
+        const response = await fetch('/api/label-sizes');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayLabelSizes(data.data.sizes);
+        }
+    } catch (error) {
+        console.error('Error loading label sizes:', error);
+    }
+}
+
+function displayLabelSizes(sizes) {
+    const container = document.getElementById('label-sizes-list');
+    
+    if (sizes.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <i data-lucide="ruler" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                <p>No label sizes defined. Add your first label size above.</p>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div style="display: grid; gap: 12px;">
+                ${sizes.map(size => `
+                    <div style="display: flex; align-items: center; padding: 16px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: var(--text-primary);">
+                                ${escapeHtml(size.name)}
+                            </div>
+                            <div style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;">
+                                ${size.width_mm}mm × ${size.height_mm}mm
+                                ${size.is_default ? '<span style="margin-left: 12px; padding: 2px 8px; background: var(--primary-color); color: white; border-radius: 4px; font-size: 11px;">DEFAULT</span>' : ''}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            ${!size.is_default ? `
+                                <button class="btn btn-danger" onclick="deleteLabelSize(${size.id})" title="Delete this label size">
+                                    <i data-lucide="trash-2"></i>
+                                    Delete
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    // Re-initialize Lucide icons
+    lucide.createIcons();
+}
+
+function showAddLabelSizeModal() {
+    document.getElementById('add-label-size-modal').style.display = 'block';
+}
+
+function closeAddLabelSizeModal() {
+    document.getElementById('add-label-size-modal').style.display = 'none';
+    document.getElementById('add-label-size-form').reset();
+}
+
+async function addLabelSize(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('size-name').value;
+    const width = parseInt(document.getElementById('size-width').value);
+    const height = parseInt(document.getElementById('size-height').value);
+    
+    try {
+        const response = await fetch('/api/label-sizes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                width_mm: width,
+                height_mm: height
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Label size added successfully', 'success');
+            closeAddLabelSizeModal();
+            loadLabelSizes();
+        } else {
+            showAlert(data.detail || 'Failed to add label size (may already exist)', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding label size:', error);
+        showAlert('Failed to add label size', 'error');
+    }
+}
+
+async function deleteLabelSize(sizeId) {
+    if (!confirm('Are you sure you want to delete this label size? It cannot be deleted if any printer is using it.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/label-sizes/${sizeId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Label size deleted successfully', 'success');
+            loadLabelSizes();
+        } else {
+            showAlert(data.detail || 'Cannot delete label size (may be in use or default)', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting label size:', error);
+        showAlert('Failed to delete label size', 'error');
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Check URL hash for initial section

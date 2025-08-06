@@ -48,6 +48,19 @@ class Database:
                 )
             """)
             
+            # Create label_sizes table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS label_sizes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    width_mm INTEGER NOT NULL,
+                    height_mm INTEGER NOT NULL,
+                    is_default BOOLEAN DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(width_mm, height_mm)
+                )
+            """)
+            
             # Create API keys table for admin server API access
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS api_keys (
@@ -81,11 +94,32 @@ class Database:
                     api_key TEXT UNIQUE NOT NULL,
                     location TEXT,
                     printer_model TEXT,
+                    label_size_id INTEGER,
                     status TEXT DEFAULT 'offline',
                     last_seen TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (label_size_id) REFERENCES label_sizes (id)
                 )
             """)
+            
+            # Insert default label sizes if not exist
+            default_sizes = [
+                ("Large Shipping", 102, 150, 1),  # Default
+                ("Standard", 57, 32, 1),
+                ("Small", 57, 19, 1)
+            ]
+            
+            for name, width, height, is_default in default_sizes:
+                cursor.execute("""
+                    INSERT OR IGNORE INTO label_sizes (name, width_mm, height_mm, is_default)
+                    VALUES (?, ?, ?, ?)
+                """, (name, width, height, is_default))
+            
+            # Check if label_size_id column exists in pis table, add if missing (for migration)
+            cursor.execute("PRAGMA table_info(pis)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if 'label_size_id' not in columns:
+                cursor.execute("ALTER TABLE pis ADD COLUMN label_size_id INTEGER")
             
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS configurations (
@@ -147,19 +181,85 @@ class Database:
             
         logger.info(f"Database initialized at {self.db_path}")
     
+    def get_label_sizes(self) -> List[Dict[str, Any]]:
+        """Get all label sizes"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT id, name, width_mm, height_mm, is_default
+                    FROM label_sizes
+                    ORDER BY width_mm DESC, height_mm DESC
+                """)
+                
+                sizes = []
+                for row in cursor.fetchall():
+                    sizes.append({
+                        'id': row['id'],
+                        'name': row['name'],
+                        'width_mm': row['width_mm'],
+                        'height_mm': row['height_mm'],
+                        'is_default': bool(row['is_default']),
+                        'display_name': f"{row['name']} ({row['width_mm']}mm x {row['height_mm']}mm)"
+                    })
+                return sizes
+        except Exception as e:
+            logger.error(f"Failed to get label sizes: {e}")
+            return []
+    
+    def add_label_size(self, name: str, width_mm: int, height_mm: int) -> Optional[int]:
+        """Add a new label size"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO label_sizes (name, width_mm, height_mm, is_default)
+                    VALUES (?, ?, ?, 0)
+                """, (name, width_mm, height_mm))
+                return cursor.lastrowid
+        except Exception as e:
+            logger.error(f"Failed to add label size: {e}")
+            return None
+    
+    def delete_label_size(self, size_id: int) -> bool:
+        """Delete a label size if not in use and not default"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Check if it's a default size
+                cursor.execute("SELECT is_default FROM label_sizes WHERE id = ?", (size_id,))
+                result = cursor.fetchone()
+                if result and result['is_default']:
+                    logger.warning("Cannot delete default label size")
+                    return False
+                
+                # Check if any printer is using this size
+                cursor.execute("SELECT COUNT(*) as count FROM pis WHERE label_size_id = ?", (size_id,))
+                if cursor.fetchone()['count'] > 0:
+                    logger.warning("Cannot delete label size in use by printers")
+                    return False
+                
+                cursor.execute("DELETE FROM label_sizes WHERE id = ?", (size_id,))
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete label size: {e}")
+            return False
+    
     def register_pi(self, device: PiDevice) -> bool:
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT OR REPLACE INTO pis (id, friendly_name, api_key, location, printer_model, status, last_seen)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO pis (id, friendly_name, api_key, location, printer_model, label_size_id, status, last_seen)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     device.id,
                     device.friendly_name,
                     device.api_key,
                     device.location,
                     device.printer_model,
+                    getattr(device, 'label_size_id', None),
                     device.status,
                     datetime.now(timezone.utc)
                 ))
@@ -189,6 +289,7 @@ class Database:
                         api_key=row['api_key'],
                         location=row['location'],
                         printer_model=row['printer_model'],
+                        label_size_id=row['label_size_id'],
                         status=row['status'],
                         last_seen=datetime.fromisoformat(row['last_seen']) if row['last_seen'] else None
                     )
@@ -211,6 +312,7 @@ class Database:
                         api_key=row['api_key'],
                         location=row['location'],
                         printer_model=row['printer_model'],
+                        label_size_id=row['label_size_id'],
                         status=row['status'],
                         last_seen=datetime.fromisoformat(row['last_seen']) if row['last_seen'] else None
                     )
