@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -47,7 +48,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="LabelBerry API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    # Disable automatic docs in production for security
+    # Set ENABLE_DOCS=false in production environment
+    docs_url="/docs" if os.getenv("ENABLE_DOCS", "true").lower() == "true" else None,
+    redoc_url="/redoc" if os.getenv("ENABLE_DOCS", "true").lower() == "true" else None
 )
 
 app.add_middleware(
@@ -626,6 +631,47 @@ async def revoke_api_key(
     except Exception as e:
         logger.error(f"Failed to revoke API key: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api-docs", response_class=HTMLResponse)
+async def custom_docs(request: Request, current_user: str = Depends(require_login)):
+    """Protected API documentation - requires authentication"""
+    if os.getenv("ENABLE_DOCS", "false").lower() == "true":
+        # Redirect to the actual docs if they're enabled
+        return RedirectResponse(url="/docs")
+    else:
+        # Return a simple message if docs are disabled
+        return HTMLResponse(content="""
+        <html>
+            <head>
+                <title>API Documentation</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 40px; background: #f5f5f5; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    h1 { color: #333; }
+                    p { color: #666; line-height: 1.6; }
+                    .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>LabelBerry API Documentation</h1>
+                    <div class="warning">
+                        <strong>⚠️ Interactive API documentation is disabled for security reasons.</strong>
+                    </div>
+                    <p>The interactive API documentation (Swagger UI) has been disabled in production to prevent unauthorized API access.</p>
+                    <p>To enable documentation for development:</p>
+                    <ol>
+                        <li>Set the environment variable: <code>ENABLE_DOCS=true</code></li>
+                        <li>Restart the LabelBerry admin service</li>
+                        <li>Access the docs at <code>/docs</code></li>
+                    </ol>
+                    <p><strong>Note:</strong> Only enable documentation in secure development environments.</p>
+                </div>
+            </body>
+        </html>
+        """)
 
 
 @app.get("/health")

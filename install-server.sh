@@ -128,6 +128,7 @@ User=root
 WorkingDirectory=$INSTALL_DIR
 Environment="PATH=$INSTALL_DIR/venv/bin"
 Environment="PYTHONPATH=$INSTALL_DIR"
+Environment="ENABLE_DOCS=false"
 ExecStart=$INSTALL_DIR/venv/bin/python -m uvicorn admin_server.app.main:app --host 0.0.0.0 --port $PORT
 Restart=always
 RestartSec=10
