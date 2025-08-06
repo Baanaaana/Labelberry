@@ -39,7 +39,6 @@ class WebSocketClient:
             headers = {"Authorization": f"Bearer {self.api_key}"}
             
             self.ws = await self.session.ws_connect(url, headers=headers)
-            self.running = True
             self.reconnect_interval = 5
             
             await self.send_message("connect", {
@@ -50,8 +49,13 @@ class WebSocketClient:
             logger.info(f"Connected to admin server: {url}")
             return True
             
+        except aiohttp.ClientError as e:
+            logger.error(f"WebSocket connection failed (ClientError): {e}")
+            return False
         except Exception as e:
-            logger.error(f"WebSocket connection failed: {e}")
+            logger.error(f"WebSocket connection failed (General): {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
     async def disconnect(self):
@@ -103,6 +107,7 @@ class WebSocketClient:
             logger.warning(f"No handler for message type: {message_type}")
     
     async def listen(self):
+        self.running = True  # Start the listen loop
         while self.running:
             try:
                 if not self.ws or self.ws.closed:
