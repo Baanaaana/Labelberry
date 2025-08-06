@@ -11,10 +11,23 @@ function scrollToSection(sectionId, navItem) {
     });
     navItem.classList.add('active');
     
-    // Scroll to section
+    // Scroll to section with offset
     const section = document.getElementById(sectionId);
     if (section) {
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Get the position of the section and sidebar
+        const sectionTop = section.getBoundingClientRect().top + window.pageYOffset;
+        const headerHeight = document.querySelector('.docs-header').offsetHeight;
+        const sidebarTop = document.querySelector('.docs-sidebar').getBoundingClientRect().top + window.pageYOffset;
+        
+        // Calculate the offset to align section top with sidebar top
+        // The sidebar starts at headerHeight + 24px (padding)
+        const targetScrollPosition = sectionTop - headerHeight - 24;
+        
+        // Smooth scroll to the calculated position
+        window.scrollTo({
+            top: targetScrollPosition,
+            behavior: 'smooth'
+        });
     }
     return false;
 }
