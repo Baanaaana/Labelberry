@@ -98,7 +98,12 @@ async def list_pis():
         pi_list = []
         for pi in pis:
             pi_dict = pi.model_dump()
-            pi_dict["websocket_connected"] = connection_manager.is_connected(pi.id)
+            is_connected = connection_manager.is_connected(pi.id)
+            pi_dict["websocket_connected"] = is_connected
+            # Override status based on actual WebSocket connection
+            if is_connected:
+                pi_dict["status"] = "online"
+            # Keep the database status if not connected (could be offline, error, etc.)
             pi_list.append(pi_dict)
         
         return ApiResponse(
@@ -119,7 +124,11 @@ async def get_pi_details(pi_id: str):
             raise HTTPException(status_code=404, detail="Pi not found")
         
         pi_dict = pi.model_dump()
-        pi_dict["websocket_connected"] = connection_manager.is_connected(pi_id)
+        is_connected = connection_manager.is_connected(pi_id)
+        pi_dict["websocket_connected"] = is_connected
+        # Override status based on actual WebSocket connection
+        if is_connected:
+            pi_dict["status"] = "online"
         pi_dict["config"] = database.get_pi_config(pi_id)
         
         return ApiResponse(
@@ -373,8 +382,11 @@ async def get_dashboard_stats():
 
 @app.websocket("/ws/pi/{pi_id}")
 async def websocket_endpoint(websocket: WebSocket, pi_id: str):
+    logger.info(f"WebSocket connection attempt from Pi {pi_id}")
+    
     auth_header = websocket.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
+        logger.warning(f"Pi {pi_id} WebSocket rejected - missing auth header")
         await websocket.close(code=1008, reason="Unauthorized")
         return
     
@@ -382,14 +394,17 @@ async def websocket_endpoint(websocket: WebSocket, pi_id: str):
     pi = database.get_pi_by_api_key(api_key)
     
     if not pi or pi.id != pi_id:
+        logger.warning(f"Pi {pi_id} WebSocket rejected - invalid credentials")
         await websocket.close(code=1008, reason="Invalid credentials")
         return
     
+    logger.info(f"Pi {pi_id} WebSocket authenticated - connecting...")
     await connection_manager.connect(pi_id, websocket)
     
     try:
         await connection_manager.handle_pi_message(pi_id, websocket)
     except WebSocketDisconnect:
+        logger.info(f"Pi {pi_id} WebSocket disconnected")
         connection_manager.disconnect(pi_id)
     except Exception as e:
         logger.error(f"WebSocket error for Pi {pi_id}: {e}")
