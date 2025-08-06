@@ -340,10 +340,10 @@ a.icon-btn:hover i {
 .printer-actions {
     display: flex;
     gap: 8px;
+    justify-content: flex-end;
 }
 
 .printer-btn {
-    flex: 1;
     padding: 6px 12px;
     border: 1px solid var(--border-color);
     background: var(--bg-secondary);
@@ -355,6 +355,7 @@ a.icon-btn:hover i {
     align-items: center;
     justify-content: center;
     gap: 6px;
+    width: auto;
 }
 
 .printer-btn:hover {
