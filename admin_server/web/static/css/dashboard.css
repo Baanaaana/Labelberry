@@ -162,7 +162,7 @@ a.icon-btn:hover i {
 .stat-icon.green { color: var(--success-color); }
 .stat-icon.blue { color: var(--info-color); }
 .stat-icon.purple { color: #7c3aed; }
-.stat-icon.orange { color: var(--warning-color); }
+.stat-icon.orange { color: #f97316; }
 
 .stat-value {
     font-size: 28px;

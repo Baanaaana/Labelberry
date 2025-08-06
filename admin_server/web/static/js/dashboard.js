@@ -24,6 +24,52 @@ function loadSettings() {
     return dashboardSettings;
 }
 
+// Display server IP address
+function displayServerIP() {
+    const serverIpElement = document.getElementById('server-ip');
+    if (serverIpElement) {
+        // Get the current URL's hostname and port
+        const hostname = window.location.hostname;
+        const port = window.location.port || '80';
+        
+        // If accessing via localhost, try to get the actual IP
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            // For local development, show localhost
+            serverIpElement.textContent = `localhost:${port}`;
+        } else {
+            // Show the actual hostname/IP being used
+            serverIpElement.textContent = `${hostname}:${port}`;
+        }
+    }
+}
+
+// Copy server address to clipboard
+async function copyServerAddress() {
+    const serverIpElement = document.getElementById('server-ip');
+    if (serverIpElement) {
+        const address = `http://${serverIpElement.textContent}`;
+        try {
+            await navigator.clipboard.writeText(address);
+            
+            // Show success feedback
+            const copyBtn = event.target.closest('button');
+            const originalIcon = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px; color: #12b886;"></i>';
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                copyBtn.innerHTML = originalIcon;
+                lucide.createIcons();
+            }, 2000);
+            
+            showToast('Server address copied to clipboard!', 'success');
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            showToast('Failed to copy address', 'error');
+        }
+    }
+}
+
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
     // Load saved settings
@@ -34,6 +80,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load dashboard
     loadDashboard();
+    
+    // Display server IP
+    displayServerIP();
     
     // Set up auto-refresh based on settings
     setupAutoRefresh();
