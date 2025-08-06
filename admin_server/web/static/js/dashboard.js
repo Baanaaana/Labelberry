@@ -542,12 +542,15 @@ function showBroadcastModal() {
         list.innerHTML = '<p style="color: #999; margin: 0;">No online printers available</p>';
     } else {
         list.innerHTML = onlinePrinters.map(pi => `
-            <label style="display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 4px; transition: background 0.2s;" 
-                   onmouseover="this.style.background='#f0f0f0'" 
+            <label style="display: flex; align-items: center; padding: 12px; cursor: pointer; border-radius: 6px; transition: background 0.2s; margin-bottom: 8px; background: transparent;" 
+                   onmouseover="this.style.background='#f8f9fa'" 
                    onmouseout="this.style.background='transparent'">
-                <input type="checkbox" value="${pi.id}" checked style="margin-right: 12px;">
-                <span style="flex: 1;">${pi.friendly_name}</span>
-                <span style="color: #999; font-size: 12px;">${pi.location || ''}</span>
+                <input type="checkbox" 
+                       value="${pi.id}" 
+                       checked 
+                       style="margin-right: 12px; flex-shrink: 0;">
+                <span style="flex: 1; font-size: 14px; font-weight: 500; color: var(--text-primary);">${pi.friendly_name}</span>
+                <span style="color: var(--text-secondary); font-size: 12px; margin-left: auto; padding-left: 12px;">${pi.location || ''}</span>
             </label>
         `).join('');
     }
