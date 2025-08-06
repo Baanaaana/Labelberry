@@ -20,7 +20,7 @@ fi
 echo -e "${YELLOW}This will remove Labelberry Admin Server from your system.${NC}"
 echo -e "${YELLOW}Database and configuration will be backed up to /tmp/labelberry-backup/${NC}"
 echo ""
-read -p "Are you sure you want to uninstall? (y/N): " -n 1 -r
+read -p "Are you sure you want to uninstall? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     echo "Uninstallation cancelled."
@@ -88,7 +88,7 @@ fi
 echo -e "${YELLOW}[8/9] Cleaning up directories...${NC}"
 
 # Ask about removing config directory
-read -p "Remove configuration directory /etc/labelberry? (y/N): " -n 1 -r
+read -p "Remove configuration directory /etc/labelberry? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     rm -rf /etc/labelberry
@@ -98,7 +98,7 @@ else
 fi
 
 # Ask about removing database directory
-read -p "Remove database directory /var/lib/labelberry? (y/N): " -n 1 -r
+read -p "Remove database directory /var/lib/labelberry? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     rm -rf /var/lib/labelberry
@@ -108,7 +108,7 @@ else
 fi
 
 # Ask about removing log directory
-read -p "Remove log directory /var/log/labelberry? (y/N): " -n 1 -r
+read -p "Remove log directory /var/log/labelberry? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     rm -rf /var/log/labelberry
@@ -123,7 +123,7 @@ echo "  - nginx"
 echo "  - certbot"
 echo "  - python3-certbot-nginx"
 echo "  - sqlite3"
-read -p "Do you want to remove these packages? (y/N): " -n 1 -r
+read -p "Do you want to remove these packages? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     apt-get remove -y nginx certbot python3-certbot-nginx sqlite3

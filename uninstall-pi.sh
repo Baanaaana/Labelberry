@@ -20,7 +20,7 @@ fi
 echo -e "${YELLOW}This will remove Labelberry Pi Client from your system.${NC}"
 echo -e "${YELLOW}Configuration will be backed up to /tmp/labelberry-backup/${NC}"
 echo ""
-read -p "Are you sure you want to uninstall? (y/N): " -n 1 -r
+read -p "Are you sure you want to uninstall? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     echo "Uninstallation cancelled."
@@ -85,7 +85,7 @@ fi
 
 echo -e "${YELLOW}[7/7] Cleaning up directories...${NC}"
 # Ask about removing config and data
-read -p "Remove configuration directory /etc/labelberry? (y/N): " -n 1 -r
+read -p "Remove configuration directory /etc/labelberry? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     rm -rf /etc/labelberry
@@ -94,7 +94,7 @@ else
     echo "Configuration directory kept"
 fi
 
-read -p "Remove data directory /var/lib/labelberry? (y/N): " -n 1 -r
+read -p "Remove data directory /var/lib/labelberry? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     rm -rf /var/lib/labelberry
@@ -103,7 +103,7 @@ else
     echo "Data directory kept"
 fi
 
-read -p "Remove log directory /var/log/labelberry? (y/N): " -n 1 -r
+read -p "Remove log directory /var/log/labelberry? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     rm -rf /var/log/labelberry

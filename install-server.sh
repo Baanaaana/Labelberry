@@ -20,7 +20,7 @@ fi
 echo -e "${YELLOW}[1/12] Checking system requirements...${NC}"
 if ! lsb_release -d | grep -q "Ubuntu"; then
     echo -e "${YELLOW}Warning: This doesn't appear to be Ubuntu${NC}"
-    read -p "Do you want to continue anyway? (y/N): " -n 1 -r
+    read -p "Do you want to continue anyway? (y/N): " -n 1 -r </dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 1
@@ -59,7 +59,7 @@ echo -e "${YELLOW}[4/12] Creating installation directory...${NC}"
 INSTALL_DIR="/opt/labelberry-admin"
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}Installation directory already exists${NC}"
-    read -p "Do you want to reinstall? This will backup your database (y/N): " -n 1 -r
+    read -p "Do you want to reinstall? This will backup your database (y/N): " -n 1 -r </dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         if [ -f "/var/lib/labelberry/db.sqlite" ]; then
@@ -99,7 +99,7 @@ mkdir -p /var/log/labelberry
 
 echo -e "${YELLOW}[9/12] Creating configuration...${NC}"
 if [ ! -f "/etc/labelberry/server.conf" ]; then
-    read -p "Enter the port for the admin server (default 8080): " PORT
+    read -p "Enter the port for the admin server (default 8080): " PORT </dev/tty
     PORT=${PORT:-8080}
     
     cat > /etc/labelberry/server.conf <<EOF
@@ -147,7 +147,7 @@ systemctl enable labelberry-admin.service
 
 echo -e "${YELLOW}[11/12] Configuring nginx...${NC}"
 SERVER_NAME=$(hostname -I | awk '{print $1}')
-read -p "Enter your domain name (or press Enter to use IP: $SERVER_NAME): " DOMAIN
+read -p "Enter your domain name (or press Enter to use IP: $SERVER_NAME): " DOMAIN </dev/tty
 DOMAIN=${DOMAIN:-$SERVER_NAME}
 
 cat > /etc/nginx/sites-available/labelberry <<EOF
@@ -186,10 +186,10 @@ nginx -t
 systemctl reload nginx
 
 echo -e "${YELLOW}[12/12] Setting up SSL (optional)...${NC}"
-read -p "Do you want to set up SSL with Let's Encrypt? (y/N): " -n 1 -r
+read -p "Do you want to set up SSL with Let's Encrypt? (y/N): " -n 1 -r </dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -p "Enter your email for Let's Encrypt: " EMAIL
+    read -p "Enter your email for Let's Encrypt: " EMAIL </dev/tty
     certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
     
     sed -i 's/ssl_enabled: false/ssl_enabled: true/' /etc/labelberry/server.conf
@@ -214,7 +214,7 @@ echo "3. View logs: sudo journalctl -u labelberry-admin -f"
 echo "4. Access API docs: http://$DOMAIN/docs"
 echo ""
 
-read -p "Do you want to start the service now? (Y/n): " -n 1 -r
+read -p "Do you want to start the service now? (Y/n): " -n 1 -r </dev/tty
 echo
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     systemctl start labelberry-admin

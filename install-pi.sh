@@ -20,7 +20,7 @@ fi
 echo -e "${YELLOW}[1/10] Checking system requirements...${NC}"
 if ! grep -q "Raspberry Pi" /proc/cpuinfo && ! grep -q "BCM" /proc/cpuinfo; then
     echo -e "${YELLOW}Warning: This doesn't appear to be a Raspberry Pi${NC}"
-    read -p "Do you want to continue anyway? (y/N): " -n 1 -r
+    read -p "Do you want to continue anyway? (y/N): " -n 1 -r </dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 1
@@ -57,7 +57,7 @@ echo -e "${YELLOW}[4/10] Creating installation directory...${NC}"
 INSTALL_DIR="/opt/labelberry"
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}Installation directory already exists${NC}"
-    read -p "Do you want to reinstall? This will backup your config (y/N): " -n 1 -r
+    read -p "Do you want to reinstall? This will backup your config (y/N): " -n 1 -r </dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         if [ -f "/etc/labelberry/client.conf" ]; then
@@ -110,8 +110,8 @@ else
         API_KEY=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
     fi
     
-    read -p "Enter a friendly name for this Pi: " FRIENDLY_NAME
-    read -p "Enter the admin server URL (e.g., http://192.168.1.100:8080): " ADMIN_SERVER
+    read -p "Enter a friendly name for this Pi: " FRIENDLY_NAME </dev/tty
+    read -p "Enter the admin server URL (e.g., http://192.168.1.100:8080): " ADMIN_SERVER </dev/tty
     
     cat > /etc/labelberry/client.conf <<EOF
 device_id: $DEVICE_ID
@@ -181,7 +181,7 @@ echo "   Device ID: $(grep device_id /etc/labelberry/client.conf | cut -d' ' -f2
 echo "   API Key: $(grep api_key /etc/labelberry/client.conf | cut -d' ' -f2)"
 echo ""
 
-read -p "Do you want to start the service now? (Y/n): " -n 1 -r
+read -p "Do you want to start the service now? (Y/n): " -n 1 -r </dev/tty
 echo
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     systemctl start labelberry-client
