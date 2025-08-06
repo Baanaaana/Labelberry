@@ -359,24 +359,48 @@ function showAlert(message, type = 'info') {
 function updateActiveSection() {
     const sections = document.querySelectorAll('.doc-section');
     const navItems = document.querySelectorAll('.nav-item');
-    const scrollPosition = window.scrollY + 100; // Offset for header
     
-    let currentSection = '';
+    // Get current scroll position
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
     
-    sections.forEach(section => {
-        const sectionTop = section.offsetTop;
-        const sectionHeight = section.offsetHeight;
+    let currentSection = null;
+    let minDistance = Infinity;
+    
+    // Check if we're at the bottom of the page
+    if (scrollTop + windowHeight >= documentHeight - 50) {
+        // Highlight the last section (examples)
+        currentSection = 'examples';
+    } else {
+        // Find the section that is most visible in the viewport
+        sections.forEach(section => {
+            const rect = section.getBoundingClientRect();
+            const sectionId = section.getAttribute('id');
+            
+            // Calculate how far the section top is from a point near the top of viewport
+            const targetPoint = 100; // Point to check against (100px from top)
+            const distance = Math.abs(rect.top - targetPoint);
+            
+            // If this section is closer to our target point, it's our new current section
+            if (rect.top <= targetPoint && rect.bottom > targetPoint) {
+                // Section is currently at our target point
+                currentSection = sectionId;
+                minDistance = 0;
+            } else if (distance < minDistance && rect.top < windowHeight) {
+                // Section is visible and closer to target than previous best
+                minDistance = distance;
+                currentSection = sectionId;
+            }
+        });
         
-        if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
-            currentSection = section.getAttribute('id');
+        // Fallback: if no section found and we're at the top, highlight overview
+        if (!currentSection && scrollTop < 100) {
+            currentSection = 'overview';
         }
-    });
-    
-    // If we're near the top, highlight the first section
-    if (window.scrollY < 100) {
-        currentSection = 'overview';
     }
     
+    // Update nav items
     navItems.forEach(item => {
         item.classList.remove('active');
         const href = item.getAttribute('href');
@@ -418,14 +442,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Set up scroll spy
     updateActiveSection();
-    let scrollTimer = null;
+    
+    // Add scroll event listener with throttling
+    let isScrolling = false;
     window.addEventListener('scroll', () => {
-        if (scrollTimer !== null) {
-            clearTimeout(scrollTimer);
+        if (!isScrolling) {
+            window.requestAnimationFrame(() => {
+                updateActiveSection();
+                isScrolling = false;
+            });
+            isScrolling = true;
         }
-        scrollTimer = setTimeout(() => {
-            updateActiveSection();
-        }, 50); // Debounce for performance
+    });
+    
+    // Also update on resize
+    window.addEventListener('resize', () => {
+        updateActiveSection();
     });
     
     // Load printers and API keys
