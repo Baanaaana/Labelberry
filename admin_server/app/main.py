@@ -5,11 +5,13 @@ from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Request, Form
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+import secrets
 import uvicorn
 import requests
 
@@ -55,14 +57,92 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add session middleware for authentication
+SECRET_KEY = secrets.token_urlsafe(32)  # In production, load from environment variable
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "web" / "static"), name="static")
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "templates")
 
 
+# Authentication dependency
+async def require_login(request: Request):
+    """Check if user is logged in"""
+    if "user" not in request.session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return request.session["user"]
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Serve login page"""
+    # If already logged in, redirect to dashboard
+    if "user" in request.session:
+        return RedirectResponse(url="/", status_code=302)
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.post("/login")
+async def login(request: Request):
+    """Handle login"""
+    try:
+        data = await request.json()
+        username = data.get("username")
+        password = data.get("password")
+        remember = data.get("remember", False)
+        
+        if database.verify_user(username, password):
+            request.session["user"] = username
+            # If remember me, extend session (this would need more implementation)
+            return JSONResponse({"success": True, "message": "Login successful"})
+        else:
+            return JSONResponse({"success": False, "message": "Invalid username or password"}, status_code=401)
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return JSONResponse({"success": False, "message": "Login failed"}, status_code=500)
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    """Handle logout"""
+    request.session.clear()
+    return RedirectResponse(url="/login?message=logout", status_code=302)
+
+
+@app.post("/api/change-password")
+async def change_password(request: Request):
+    """Change user password"""
+    # Check if user is logged in
+    if "user" not in request.session:
+        return JSONResponse({"success": False, "message": "Not authenticated"}, status_code=401)
+    
+    try:
+        data = await request.json()
+        current_password = data.get("current_password")
+        new_password = data.get("new_password")
+        username = request.session["user"]
+        
+        # Verify current password
+        if not database.verify_user(username, current_password):
+            return JSONResponse({"success": False, "message": "Current password is incorrect"}, status_code=401)
+        
+        # Update password
+        if database.update_user_password(username, new_password):
+            return JSONResponse({"success": True, "message": "Password changed successfully"})
+        else:
+            return JSONResponse({"success": False, "message": "Failed to update password"}, status_code=500)
+    except Exception as e:
+        logger.error(f"Password change error: {e}")
+        return JSONResponse({"success": False, "message": "Failed to change password"}, status_code=500)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     """Main page - serves the dashboard"""
+    # Check if user is logged in
+    if "user" not in request.session:
+        return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 

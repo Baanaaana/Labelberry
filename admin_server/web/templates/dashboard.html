@@ -29,6 +29,9 @@
                 <button class="icon-btn" onclick="refreshDashboard()" title="Refresh">
                     <i data-lucide="refresh-cw"></i>
                 </button>
+                <a href="/logout" class="icon-btn" title="Logout" style="text-decoration: none;">
+                    <i data-lucide="log-out"></i>
+                </a>
             </div>
         </header>
 
@@ -428,6 +431,7 @@
                 </button>
             </div>
             <form id="settings-form" onsubmit="saveSettings(event)">
+                <h3 style="font-size: 16px; margin: 0 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Dashboard Settings</h3>
                 <div class="form-group">
                     <label for="timezone-select">Timezone</label>
                     <select id="timezone-select" class="form-control">
@@ -473,6 +477,20 @@
                         <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                         <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                     </select>
+                </div>
+                
+                <h3 style="font-size: 16px; margin: 20px 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Change Password</h3>
+                <div class="form-group">
+                    <label for="current-password">Current Password</label>
+                    <input type="password" id="current-password" class="form-control" autocomplete="current-password">
+                </div>
+                <div class="form-group">
+                    <label for="new-password">New Password</label>
+                    <input type="password" id="new-password" class="form-control" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm New Password</label>
+                    <input type="password" id="confirm-password" class="form-control" autocomplete="new-password">
                 </div>
                 
                 <div class="modal-footer">

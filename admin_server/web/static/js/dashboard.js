@@ -544,7 +544,7 @@ function closeSettingsModal() {
 }
 
 // Save settings
-function saveSettings(event) {
+async function saveSettings(event) {
     event.preventDefault();
     
     // Get values from form
@@ -557,6 +557,62 @@ function saveSettings(event) {
     
     // Apply new settings
     setupAutoRefresh();
+    
+    // Check if password change is requested
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+    
+    if (currentPassword || newPassword || confirmPassword) {
+        // Validate password fields
+        if (!currentPassword) {
+            showAlert('Please enter your current password', 'error');
+            return;
+        }
+        if (!newPassword) {
+            showAlert('Please enter a new password', 'error');
+            return;
+        }
+        if (newPassword.length < 6) {
+            showAlert('New password must be at least 6 characters', 'error');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            showAlert('New passwords do not match', 'error');
+            return;
+        }
+        
+        // Change password
+        try {
+            const response = await fetch('/api/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('Password changed successfully!', 'success');
+                // Clear password fields
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+            } else {
+                showAlert(data.message || 'Failed to change password', 'error');
+                return;
+            }
+        } catch (error) {
+            console.error('Error changing password:', error);
+            showAlert('Failed to change password', 'error');
+            return;
+        }
+    }
     
     // Reload dashboard to apply timezone changes
     loadDashboard();

@@ -37,6 +37,28 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
+            # Create users table for authentication
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # Create default admin user if not exists
+            cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
+            if cursor.fetchone()[0] == 0:
+                import hashlib
+                # Hash the default password
+                password_hash = hashlib.sha256("admin123".encode()).hexdigest()
+                cursor.execute(
+                    "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                    ("admin", password_hash)
+                )
+            
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS pis (
                     id TEXT PRIMARY KEY,
@@ -457,3 +479,55 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to get dashboard stats: {e}")
             return {}
+    
+    def verify_user(self, username: str, password: str) -> bool:
+        """Verify user credentials"""
+        try:
+            import hashlib
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT password_hash FROM users WHERE username = ?",
+                    (username,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    password_hash = hashlib.sha256(password.encode()).hexdigest()
+                    return row['password_hash'] == password_hash
+                return False
+        except Exception as e:
+            logger.error(f"Failed to verify user: {e}")
+            return False
+    
+    def update_user_password(self, username: str, new_password: str) -> bool:
+        """Update user password"""
+        try:
+            import hashlib
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+                cursor.execute(
+                    "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ?",
+                    (password_hash, username)
+                )
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Failed to update user password: {e}")
+            return False
+    
+    def get_user(self, username: str) -> Optional[Dict[str, Any]]:
+        """Get user details"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id, username, created_at, updated_at FROM users WHERE username = ?",
+                    (username,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    return dict(row)
+                return None
+        except Exception as e:
+            logger.error(f"Failed to get user: {e}")
+            return None
