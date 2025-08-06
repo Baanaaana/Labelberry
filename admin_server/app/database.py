@@ -671,22 +671,6 @@ class Database:
             logger.error(f"Failed to get user: {e}")
             return None
     
-    def has_default_credentials(self) -> bool:
-        """Check if default admin/admin123 credentials exist"""
-        try:
-            import hashlib
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                # Check if admin user exists with default password
-                default_password_hash = hashlib.sha256("admin123".encode()).hexdigest()
-                cursor.execute(
-                    "SELECT COUNT(*) FROM users WHERE username = 'admin' AND password_hash = ?",
-                    (default_password_hash,)
-                )
-                return cursor.fetchone()[0] > 0
-        except Exception as e:
-            logger.error(f"Failed to check default credentials: {e}")
-            return False
     
     def create_api_key(self, name: str, description: str, created_by: str) -> Optional[str]:
         """Create a new API key"""

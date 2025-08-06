@@ -101,12 +101,8 @@ async def login_page(request: Request):
     if "user" in request.session:
         return RedirectResponse(url="/", status_code=302)
     
-    # Check if default credentials are still active
-    show_default_creds = database.has_default_credentials()
-    
     return templates.TemplateResponse("login.html", {
-        "request": request,
-        "show_default_credentials": show_default_creds
+        "request": request
     })
 
 
