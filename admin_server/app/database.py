@@ -650,11 +650,18 @@ class Database:
                 keys = []
                 for row in cursor.fetchall():
                     key_dict = dict(row)
-                    # Format timestamps for display
+                    # Format timestamps for display - ensure they include timezone info
                     if key_dict['created_at']:
-                        key_dict['created_at'] = datetime.fromisoformat(key_dict['created_at']).isoformat()
+                        # SQLite stores as UTC, make sure we indicate that
+                        dt = datetime.fromisoformat(key_dict['created_at'])
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        key_dict['created_at'] = dt.isoformat()
                     if key_dict['last_used']:
-                        key_dict['last_used'] = datetime.fromisoformat(key_dict['last_used']).isoformat()
+                        dt = datetime.fromisoformat(key_dict['last_used'])
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        key_dict['last_used'] = dt.isoformat()
                     keys.append(key_dict)
                 return keys
         except Exception as e:

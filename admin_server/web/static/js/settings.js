@@ -468,8 +468,16 @@ function formatDate(dateString) {
     const settings = JSON.parse(localStorage.getItem('labelberrySettings') || '{}');
     const userTimezone = settings.timezone || 'Europe/Amsterdam';
     
-    // Parse the UTC date string and convert to user's timezone
-    const date = new Date(dateString);
+    // Parse the date string - ensure it's treated as UTC if it doesn't have timezone info
+    let date;
+    if (dateString.includes('Z') || dateString.includes('+') || dateString.includes('T')) {
+        // Already has timezone info
+        date = new Date(dateString);
+    } else {
+        // Assume it's UTC if no timezone specified
+        date = new Date(dateString + 'Z');
+    }
+    
     const now = new Date();
     
     // Calculate difference in milliseconds
@@ -477,7 +485,7 @@ function formatDate(dateString) {
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
     // If less than 24 hours ago, show relative time
-    if (diffMs < 24 * 60 * 60 * 1000) {
+    if (diffMs < 24 * 60 * 60 * 1000 && diffMs >= 0) {
         if (diffMs < 60 * 1000) {
             return 'Just now';
         } else if (diffMs < 60 * 60 * 1000) {
@@ -489,8 +497,14 @@ function formatDate(dateString) {
         }
     }
     // If less than 7 days ago, show days
-    else if (diffDays < 7) {
-        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    else if (diffDays < 7 && diffDays >= 0) {
+        if (diffDays === 0) {
+            return 'Today';
+        } else if (diffDays === 1) {
+            return 'Yesterday';
+        } else {
+            return `${diffDays} days ago`;
+        }
     }
     // Otherwise show date in user's timezone
     else {
