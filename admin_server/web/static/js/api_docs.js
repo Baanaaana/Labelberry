@@ -80,12 +80,22 @@ async function copyCode(button) {
         const originalHTML = button.innerHTML;
         button.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px;"></i>';
         button.style.color = '#12b886';
-        lucide.createIcons();
+        lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
         
         setTimeout(() => {
             button.innerHTML = originalHTML;
             button.style.color = '';
-            lucide.createIcons();
+            lucide.createIcons({
+                attrs: {
+                    width: 20,
+                    height: 20
+                }
+            });
         }, 2000);
     } catch (err) {
         console.error('Failed to copy:', err);
@@ -390,7 +400,12 @@ function showAlert(message, type = 'info') {
     container.appendChild(toast);
     
     // Re-initialize Lucide icons for the new toast
-    lucide.createIcons();
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
     
     // Auto-remove after 5 seconds
     setTimeout(() => {

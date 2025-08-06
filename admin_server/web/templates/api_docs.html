@@ -573,8 +573,13 @@ echo $result['message'];</code></pre>
 
     <script src="/static/js/api_docs.js?v={{ static_version }}"></script>
     <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
+        // Initialize Lucide icons with custom size
+        lucide.createIcons({
+            attrs: {
+                width: 20,
+                height: 20
+            }
+        });
     </script>
 </body>
 </html>

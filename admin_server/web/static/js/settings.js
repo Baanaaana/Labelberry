@@ -174,7 +174,12 @@ function showAlert(message, type = 'info') {
     container.appendChild(toast);
     
     // Re-initialize Lucide icons for the new toast
-    lucide.createIcons();
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
     
     // Auto-remove after 5 seconds
     setTimeout(() => {
@@ -278,7 +283,12 @@ function displayApiKeys(keys) {
     }
     
     // Re-initialize Lucide icons
-    lucide.createIcons();
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
 }
 
 // Helper function to escape HTML
@@ -332,7 +342,12 @@ async function createApiKey(event) {
     cancelButton.disabled = true;
     const originalButtonText = submitButton.innerHTML;
     submitButton.innerHTML = '<i data-lucide="loader-2" class="spinning"></i> Creating...';
-    lucide.createIcons();
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
     
     try {
         const response = await fetch('/api/keys', {
@@ -369,7 +384,12 @@ async function createApiKey(event) {
             submitButton.disabled = false;
             cancelButton.disabled = false;
             submitButton.innerHTML = originalButtonText;
-            lucide.createIcons();
+            lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
         }
     } catch (error) {
         console.error('Error creating API key:', error);
@@ -378,7 +398,12 @@ async function createApiKey(event) {
         submitButton.disabled = false;
         cancelButton.disabled = false;
         submitButton.innerHTML = originalButtonText;
-        lucide.createIcons();
+        lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
     }
 }
 
@@ -455,11 +480,21 @@ function copyApiKey() {
     const button = event.target.closest('button');
     const originalHTML = button.innerHTML;
     button.innerHTML = '<i data-lucide="check"></i> Copied!';
-    lucide.createIcons();
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
     
     setTimeout(() => {
         button.innerHTML = originalHTML;
-        lucide.createIcons();
+        lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
     }, 2000);
 }
 
@@ -585,7 +620,12 @@ function displayLabelSizes(sizes) {
     }
     
     // Re-initialize Lucide icons
-    lucide.createIcons();
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
 }
 
 function showAddLabelSizeModal() {

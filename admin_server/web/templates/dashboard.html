@@ -465,14 +465,24 @@
 
     <script src="/static/js/dashboard.js?v={{ static_version }}"></script>
     <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
+        // Initialize Lucide icons with custom size
+        lucide.createIcons({
+            attrs: {
+                width: 20,
+                height: 20
+            }
+        });
         
         // Re-initialize icons after dynamic content updates
         const originalRenderPrinters = window.renderPrinters;
         window.renderPrinters = function(pis) {
             originalRenderPrinters(pis);
-            setTimeout(() => lucide.createIcons(), 10);
+            setTimeout(() => lucide.createIcons({
+                attrs: {
+                    width: 20,
+                    height: 20
+                }
+            }), 10);
         };
     </script>
 </body>

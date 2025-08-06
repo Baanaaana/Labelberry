@@ -64,11 +64,21 @@ async function copyServerAddress() {
             const copyBtn = event.target.closest('button');
             const originalIcon = copyBtn.innerHTML;
             copyBtn.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px; color: #12b886;"></i>';
-            lucide.createIcons();
+            lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
             
             setTimeout(() => {
                 copyBtn.innerHTML = originalIcon;
-                lucide.createIcons();
+                lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
             }, 2000);
             
             showToast('Server address copied to clipboard!', 'success');
@@ -191,12 +201,22 @@ function renderPrinters(pis) {
                 <p style="margin: 8px 0 0; font-size: 14px;">Click "Register Printer" to add your first printer</p>
             </div>
         `;
-        lucide.createIcons();
+        lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
         return;
     }
     
     list.innerHTML = pis.map(pi => createPrinterItem(pi)).join('');
-    lucide.createIcons();
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
 }
 
 // Create printer item HTML
@@ -501,7 +521,12 @@ function showAlert(message, type = 'info') {
     `;
     
     container.appendChild(toast);
-    lucide.createIcons();
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
     
     // Auto-dismiss after 4 seconds
     setTimeout(() => {
@@ -968,7 +993,12 @@ async function loadMetrics() {
     }
     
     // Re-initialize Lucide icons for new content
-    lucide.createIcons();
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
 }
 
 // Close modals when clicking outside

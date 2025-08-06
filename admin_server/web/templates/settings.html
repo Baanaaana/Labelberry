@@ -378,8 +378,13 @@
 
     <script src="/static/js/settings.js?v={{ static_version }}"></script>
     <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
+        // Initialize Lucide icons with custom size
+        lucide.createIcons({
+            attrs: {
+                width: 20,
+                height: 20
+            }
+        });
         
         // Load saved preferences, API keys, and label sizes
         loadPreferences();

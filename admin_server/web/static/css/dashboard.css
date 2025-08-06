@@ -29,6 +29,24 @@ body {
     font-size: 14px;
 }
 
+/* Force all Lucide icons to be 20x20 by default */
+[data-lucide] {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Keep specific icons at 24x24 */
+.header-left [data-lucide="receipt-text"] {
+    width: 24px !important;
+    height: 24px !important;
+}
+
+/* Make printer button icons smaller */
+.printer-btn [data-lucide] {
+    width: 12px !important;
+    height: 12px !important;
+}
+
 /* Dashboard Container */
 .dashboard-container {
     max-width: 1400px;
@@ -350,7 +368,7 @@ a.icon-btn:hover i {
     border: 1px solid var(--border-color);
     background: var(--bg-secondary);
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -671,8 +689,8 @@ input[type="checkbox"]:hover {
     position: fixed;
     bottom: 24px;
     right: 24px;
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
     background: var(--text-primary);
     border-radius: 50%;
     display: flex;
