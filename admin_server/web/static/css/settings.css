@@ -303,7 +303,7 @@
 /* Toast Notifications */
 #toast-container {
     position: fixed;
-    top: 90px;
+    top: 100px;
     right: 20px;
     z-index: 2000;
 }

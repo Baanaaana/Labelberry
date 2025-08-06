@@ -4,15 +4,25 @@
 function loadPreferences() {
     const settings = JSON.parse(localStorage.getItem('labelberrySettings') || '{}');
     
-    // Apply saved settings to form fields
-    if (settings.timezone) {
-        document.getElementById('timezone-select').value = settings.timezone;
+    // Set defaults if not present
+    if (!settings.timezone) {
+        settings.timezone = 'Europe/Amsterdam';
     }
-    if (settings.refreshInterval) {
-        document.getElementById('refresh-interval').value = settings.refreshInterval;
+    if (!settings.refreshInterval) {
+        settings.refreshInterval = 10000;
     }
-    if (settings.dateFormat) {
-        document.getElementById('date-format').value = settings.dateFormat;
+    if (!settings.dateFormat) {
+        settings.dateFormat = 'DD-MM-YYYY';
+    }
+    
+    // Apply settings to form fields
+    document.getElementById('timezone-select').value = settings.timezone;
+    document.getElementById('refresh-interval').value = settings.refreshInterval;
+    document.getElementById('date-format').value = settings.dateFormat;
+    
+    // Save defaults if they weren't set
+    if (!localStorage.getItem('labelberrySettings')) {
+        localStorage.setItem('labelberrySettings', JSON.stringify(settings));
     }
 }
 
@@ -139,6 +149,12 @@ async function savePreferences(event) {
     localStorage.setItem('labelberrySettings', JSON.stringify(settings));
     
     showAlert('Preferences saved successfully!', 'success');
+    
+    // Refresh API keys display if we're on that section to show updated times
+    const apiKeysSection = document.getElementById('api-keys-section');
+    if (apiKeysSection && apiKeysSection.classList.contains('active')) {
+        loadApiKeys();
+    }
 }
 
 // Show alert toast
@@ -448,8 +464,15 @@ function copyApiKey() {
 }
 
 function formatDate(dateString) {
+    // Get user's timezone preference or default to Europe/Amsterdam
+    const settings = JSON.parse(localStorage.getItem('labelberrySettings') || '{}');
+    const userTimezone = settings.timezone || 'Europe/Amsterdam';
+    
+    // Parse the UTC date string and convert to user's timezone
     const date = new Date(dateString);
     const now = new Date();
+    
+    // Calculate difference in milliseconds
     const diffMs = now - date;
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
@@ -469,15 +492,29 @@ function formatDate(dateString) {
     else if (diffDays < 7) {
         return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
     }
-    // Otherwise show date
+    // Otherwise show date in user's timezone
     else {
-        return date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        try {
+            return date.toLocaleString('en-US', { 
+                timeZone: userTimezone,
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        } catch (e) {
+            // Fallback if timezone is invalid
+            return date.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        }
     }
 }
 
