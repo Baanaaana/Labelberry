@@ -21,7 +21,13 @@ function scrollToSection(sectionId, navItem) {
 // Copy code to clipboard
 async function copyCode(button) {
     const codeBlock = button.closest('.code-block');
-    const code = codeBlock.querySelector('code').textContent;
+    let code = codeBlock.querySelector('code').textContent;
+    
+    // Replace placeholders with actual values
+    const baseUrl = window.location.origin;
+    code = code.replace(/http:\/\/your-server:8080/g, baseUrl);
+    code = code.replace(/\{pi_id\}/g, availablePrinters.length > 0 ? availablePrinters[0].id : 'YOUR_PRINTER_ID');
+    code = code.replace(/labk_your_api_key_here/g, 'YOUR_API_KEY');
     
     try {
         await navigator.clipboard.writeText(code);
@@ -52,9 +58,121 @@ async function loadPrinters() {
         if (data.success) {
             availablePrinters = data.data.pis;
             updatePrinterSelect();
+            updateDynamicCommands();
         }
     } catch (error) {
         console.error('Failed to load printers:', error);
+    }
+}
+
+// Update all dynamic commands with actual values
+function updateDynamicCommands() {
+    const baseUrl = window.location.origin;
+    
+    // Update all base URLs
+    document.querySelectorAll('.dynamic-url').forEach(el => {
+        el.textContent = baseUrl;
+    });
+    
+    // Update printer IDs if available
+    if (availablePrinters.length > 0) {
+        const firstPrinter = availablePrinters[0];
+        document.querySelectorAll('.dynamic-printer-id').forEach(el => {
+            el.textContent = firstPrinter.id;
+        });
+        
+        // Update printer info displays
+        document.querySelectorAll('.dynamic-printer-info').forEach(el => {
+            el.textContent = `${firstPrinter.friendly_name} (${firstPrinter.id})`;
+        });
+    }
+    
+    // Generate actual cURL commands
+    generateCurlCommands();
+}
+
+// Generate actual cURL commands
+function generateCurlCommands() {
+    const baseUrl = window.location.origin;
+    const printerId = availablePrinters.length > 0 ? availablePrinters[0].id : 'PRINTER_ID';
+    const printerName = availablePrinters.length > 0 ? availablePrinters[0].friendly_name : 'your printer';
+    
+    // List printers command
+    const listCmd = document.getElementById('curl-list-printers');
+    if (listCmd) {
+        listCmd.textContent = `curl -X GET ${baseUrl}/api/pis`;
+    }
+    
+    // Second list printers command
+    const listCmd2 = document.getElementById('curl-list-printers-2');
+    if (listCmd2) {
+        listCmd2.textContent = `curl -X GET ${baseUrl}/api/pis`;
+    }
+    
+    // Print command with actual printer ID
+    const printCmd = document.getElementById('curl-print');
+    if (printCmd) {
+        if (availablePrinters.length > 0) {
+            printCmd.textContent = `# Print to "${printerName}"
+curl -X POST ${baseUrl}/api/pis/${printerId}/print \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "zpl_raw": "^XA^FO50,50^FDHello World^FS^XZ"
+  }'`;
+        } else {
+            printCmd.textContent = `# Replace PRINTER_ID with your actual printer ID
+curl -X POST ${baseUrl}/api/pis/PRINTER_ID/print \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "zpl_raw": "^XA^FO50,50^FDHello World^FS^XZ"
+  }'`;
+        }
+    }
+    
+    // Print from URL command
+    const printUrlCmd = document.getElementById('curl-print-url');
+    if (printUrlCmd) {
+        if (availablePrinters.length > 0) {
+            printUrlCmd.textContent = `# Print from URL to "${printerName}"
+curl -X POST ${baseUrl}/api/pis/${printerId}/print \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "zpl_url": "https://example.com/label.zpl"
+  }'`;
+        } else {
+            printUrlCmd.textContent = `# Replace PRINTER_ID with your actual printer ID
+curl -X POST ${baseUrl}/api/pis/PRINTER_ID/print \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "zpl_url": "https://example.com/label.zpl"
+  }'`;
+        }
+    }
+    
+    // Print file command
+    const printFileCmd = document.getElementById('curl-print-file');
+    if (printFileCmd) {
+        if (availablePrinters.length > 0) {
+            printFileCmd.textContent = `# Upload ZPL file to "${printerName}"
+curl -X POST ${baseUrl}/api/pis/${printerId}/print \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "zpl_file=@/path/to/label.zpl"`;
+        } else {
+            printFileCmd.textContent = `# Replace PRINTER_ID with your actual printer ID
+curl -X POST ${baseUrl}/api/pis/PRINTER_ID/print \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "zpl_file=@/path/to/label.zpl"`;
+        }
+    }
+    
+    // Label sizes command
+    const sizesCmd = document.getElementById('curl-label-sizes');
+    if (sizesCmd) {
+        sizesCmd.textContent = `curl -X GET ${baseUrl}/api/label-sizes`;
     }
 }
 
@@ -239,6 +357,15 @@ function showAlert(message, type = 'info') {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize base URL immediately
+    const baseUrl = window.location.origin;
+    document.querySelectorAll('.dynamic-url').forEach(el => {
+        el.textContent = baseUrl;
+    });
+    
+    // Generate initial commands even before printers load
+    generateCurlCommands();
+    
     // Highlight code syntax (basic)
     document.querySelectorAll('.code-block code').forEach(block => {
         // Basic syntax highlighting for JSON
@@ -257,4 +384,8 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
         });
     });
+    
+    // Load printers and API keys
+    loadPrinters();
+    loadUserApiKeys();
 });
