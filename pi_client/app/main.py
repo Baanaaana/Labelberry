@@ -171,17 +171,17 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(process_queue())
     asyncio.create_task(send_metrics_periodically())
     
-    logger.info(f"Labelberry Pi Client started - Device ID: {config.device_id}")
+    logger.info(f"LabelBerry Pi Client started - Device ID: {config.device_id}")
     
     yield
     
     await ws_client.disconnect()
     printer.disconnect()
-    logger.info("Labelberry Pi Client stopped")
+    logger.info("LabelBerry Pi Client stopped")
 
 
 app = FastAPI(
-    title="Labelberry Pi Client",
+    title="LabelBerry Pi Client",
     version="1.0.0",
     lifespan=lifespan
 )

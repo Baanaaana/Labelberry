@@ -1,7 +1,7 @@
-# Labelberry Project Context
+# LabelBerry Project Context
 
 ## Project Overview
-Labelberry is a Raspberry Pi-based label printing system for Zebra printers with centralized management capabilities. The system consists of multiple Raspberry Pi clients that receive print requests via API and a central Ubuntu admin server for configuration and monitoring.
+LabelBerry is a Raspberry Pi-based label printing system for Zebra printers with centralized management capabilities. The system consists of multiple Raspberry Pi clients that receive print requests via API and a central Ubuntu admin server for configuration and monitoring.
 
 ## Architecture
 
@@ -46,7 +46,7 @@ Labelberry is a Raspberry Pi-based label printing system for Zebra printers with
 
 ## Project Structure
 ```
-Labelberry/
+LabelBerry/
 ├── pi_client/           # Raspberry Pi client application
 │   ├── app/            # FastAPI application
 │   ├── cli/            # CLI tool
@@ -165,7 +165,7 @@ sudo journalctl -u labelberry-admin -f
 Set `log_level: DEBUG` in configuration files for verbose logging
 
 ## Contact
-Repository: https://github.com/Baanaaana/Labelberry
+Repository: https://github.com/Baanaaana/LabelBerry
 
 ## Notes for Development
 - Always check and install only missing dependencies

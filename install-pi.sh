@@ -8,7 +8,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${GREEN}===============================================${NC}"
-echo -e "${GREEN}    Labelberry Pi Client Installation Script   ${NC}"
+echo -e "${GREEN}    LabelBerry Pi Client Installation Script   ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
 
@@ -73,7 +73,7 @@ mkdir -p "$INSTALL_DIR"
 
 echo -e "${YELLOW}[5/10] Cloning repository...${NC}"
 cd "$INSTALL_DIR"
-git clone --sparse https://github.com/Baanaaana/Labelberry.git .
+git clone --sparse https://github.com/Baanaaana/LabelBerry.git .
 git sparse-checkout init --cone
 git sparse-checkout set pi_client shared
 
@@ -136,7 +136,7 @@ fi
 echo -e "${YELLOW}[9/10] Creating systemd service...${NC}"
 cat > /etc/systemd/system/labelberry-client.service <<EOF
 [Unit]
-Description=Labelberry Pi Client
+Description=LabelBerry Pi Client
 After=network.target
 
 [Service]

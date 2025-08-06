@@ -8,7 +8,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${RED}===============================================${NC}"
-echo -e "${RED}  Labelberry Admin Server Uninstallation      ${NC}"
+echo -e "${RED}  LabelBerry Admin Server Uninstallation      ${NC}"
 echo -e "${RED}===============================================${NC}"
 echo ""
 
@@ -17,7 +17,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}This will remove Labelberry Admin Server from your system.${NC}"
+echo -e "${YELLOW}This will remove LabelBerry Admin Server from your system.${NC}"
 echo -e "${YELLOW}Database and configuration will be backed up to /tmp/labelberry-backup/${NC}"
 echo ""
 read -p "Are you sure you want to uninstall? (y/N): " -n 1 -r </dev/tty
@@ -118,7 +118,7 @@ else
 fi
 
 echo -e "${YELLOW}[9/9] Optional: Uninstall system packages...${NC}"
-echo "The following packages were installed for Labelberry:"
+echo "The following packages were installed for LabelBerry:"
 echo "  - nginx"
 echo "  - sqlite3"
 read -p "Do you want to remove these packages? (y/N): " -n 1 -r </dev/tty
@@ -136,8 +136,8 @@ echo -e "${GREEN}===============================================${NC}"
 echo -e "${GREEN}    Uninstallation Complete!                  ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
-echo -e "${YELLOW}Labelberry Admin Server has been removed.${NC}"
+echo -e "${YELLOW}LabelBerry Admin Server has been removed.${NC}"
 echo -e "${YELLOW}Backups saved in: /tmp/labelberry-backup/${NC}"
 echo ""
 echo "To reinstall, run:"
-echo "curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-server.sh | sudo bash"
+echo "curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install-server.sh | sudo bash"

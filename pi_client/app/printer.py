@@ -120,7 +120,7 @@ class ZebraPrinter:
     
     def test_print(self) -> bool:
         test_zpl = """^XA
-^FO50,50^A0N,50,50^FDLabelberry Test^FS
+^FO50,50^A0N,50,50^FDLabelBerry Test^FS
 ^FO50,150^A0N,30,30^FDPrinter Connected Successfully^FS
 ^FO50,200^A0N,25,25^FDTime: """ + time.strftime("%Y-%m-%d %H:%M:%S") + """^FS
 ^XZ"""

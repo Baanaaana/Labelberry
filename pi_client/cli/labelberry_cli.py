@@ -12,7 +12,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from pi_client.app.config import ConfigManager
 
 
-class LabelberryCLI:
+class LabelBerryCLI:
     def __init__(self):
         self.config_manager = ConfigManager()
         self.config = self.config_manager.get_config()
@@ -45,7 +45,7 @@ class LabelberryCLI:
             response.raise_for_status()
             data = response.json()['data']
             
-            print("\n=== Labelberry Status ===\n")
+            print("\n=== LabelBerry Status ===\n")
             print(f"Device ID: {data['device_id']}")
             print(f"Friendly Name: {data['friendly_name']}")
             print(f"WebSocket Connected: {data['websocket_connected']}")
@@ -72,7 +72,7 @@ class LabelberryCLI:
             print(f"Disk Usage: {system.get('disk_usage', 'Unknown')}%")
             
         except requests.RequestException as e:
-            print(f"Error: Could not connect to Labelberry service: {e}")
+            print(f"Error: Could not connect to LabelBerry service: {e}")
             print("Make sure the service is running: sudo systemctl status labelberry-client")
             sys.exit(1)
     
@@ -163,7 +163,7 @@ class LabelberryCLI:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Labelberry CLI - Manage your Labelberry Pi client"
+        description="LabelBerry CLI - Manage your LabelBerry Pi client"
     )
     
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
@@ -192,7 +192,7 @@ def main():
         parser.print_help()
         sys.exit(0)
     
-    cli = LabelberryCLI()
+    cli = LabelBerryCLI()
     
     if args.command == 'config':
         if args.config_command == 'get':

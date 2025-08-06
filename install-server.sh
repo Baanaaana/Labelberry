@@ -8,7 +8,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${GREEN}===============================================${NC}"
-echo -e "${GREEN}   Labelberry Admin Server Installation Script ${NC}"
+echo -e "${GREEN}   LabelBerry Admin Server Installation Script ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
 
@@ -72,7 +72,7 @@ mkdir -p "$INSTALL_DIR"
 
 echo -e "${YELLOW}[5/12] Cloning repository...${NC}"
 cd "$INSTALL_DIR"
-git clone --sparse https://github.com/Baanaaana/Labelberry.git .
+git clone --sparse https://github.com/Baanaaana/LabelBerry.git .
 git sparse-checkout init --cone
 git sparse-checkout set admin_server shared
 
@@ -119,7 +119,7 @@ fi
 echo -e "${YELLOW}[10/12] Creating systemd service...${NC}"
 cat > /etc/systemd/system/labelberry-admin.service <<EOF
 [Unit]
-Description=Labelberry Admin Server
+Description=LabelBerry Admin Server
 After=network.target
 
 [Service]

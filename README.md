@@ -1,4 +1,4 @@
-# Labelberry 🏷️
+# LabelBerry 🏷️
 
 A Raspberry Pi-based label printing system for Zebra printers with centralized management capabilities.
 
@@ -41,7 +41,7 @@ A Raspberry Pi-based label printing system for Zebra printers with centralized m
 
 ## Architecture
 
-Labelberry consists of two main components:
+LabelBerry consists of two main components:
 
 ### 1. Pi Client (`pi_client`)
 - Runs on each Raspberry Pi connected to a Zebra printer
@@ -84,7 +84,7 @@ http://YOUR_SERVER_IP:8080
 
 ### Uninstall
 
-To remove Labelberry from your system:
+To remove LabelBerry from your system:
 
 **Raspberry Pi:**
 ```bash
@@ -98,7 +98,7 @@ curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/uninstall-
 
 Both uninstall scripts will:
 - Backup your configuration and data to `/tmp/labelberry-backup/`
-- Remove all Labelberry files and services
+- Remove all LabelBerry files and services
 - Optionally remove data directories (with confirmation)
 - Display saved credentials for future reinstallation
 
@@ -223,7 +223,7 @@ labelberry queue clear
 
 **Status Command:**
 ```
-=== Labelberry Status ===
+=== LabelBerry Status ===
 Device ID: a0973a9f-5d0c-4e6f-81fa-831f851d7b07
 Friendly Name: Warehouse Pi 1
 WebSocket Connected: True
@@ -282,7 +282,7 @@ rate_limit: 100
 ```bash
 # Clone repository
 git clone https://github.com/Baanaaana/Labelberry.git
-cd Labelberry
+cd LabelBerry
 
 # Create virtual environment
 python3 -m venv venv

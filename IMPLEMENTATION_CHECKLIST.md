@@ -1,4 +1,4 @@
-# Labelberry Implementation Checklist
+# LabelBerry Implementation Checklist
 
 ## 📋 Project Overview
 A Raspberry Pi-based label printing system with centralized management for Zebra printers.
@@ -17,7 +17,7 @@ A Raspberry Pi-based label printing system with centralized management for Zebra
 ## 📁 Project Structure Setup
 
 ### Repository Organization
-- [ ] Create main repository at https://github.com/Baanaaana/Labelberry
+- [ ] Create main repository at https://github.com/Baanaaana/LabelBerry
 - [ ] Create `/pi-client` directory
 - [ ] Create `/admin-server` directory
 - [ ] Create `/shared` directory

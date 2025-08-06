@@ -36,13 +36,13 @@ connection_manager = ConnectionManager(database)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Labelberry Admin Server started")
+    logger.info("LabelBerry Admin Server started")
     yield
-    logger.info("Labelberry Admin Server stopped")
+    logger.info("LabelBerry Admin Server stopped")
 
 
 app = FastAPI(
-    title="Labelberry Admin Server",
+    title="LabelBerry Admin Server",
     version="1.0.0",
     lifespan=lifespan
 )

@@ -8,7 +8,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${RED}===============================================${NC}"
-echo -e "${RED}  Labelberry Pi Client Uninstallation Script  ${NC}"
+echo -e "${RED}  LabelBerry Pi Client Uninstallation Script  ${NC}"
 echo -e "${RED}===============================================${NC}"
 echo ""
 
@@ -17,7 +17,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}This will remove Labelberry Pi Client from your system.${NC}"
+echo -e "${YELLOW}This will remove LabelBerry Pi Client from your system.${NC}"
 echo -e "${YELLOW}Configuration will be backed up to /tmp/labelberry-backup/${NC}"
 echo ""
 read -p "Are you sure you want to uninstall? (y/N): " -n 1 -r </dev/tty
@@ -117,8 +117,8 @@ echo -e "${GREEN}===============================================${NC}"
 echo -e "${GREEN}    Uninstallation Complete!                  ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
-echo -e "${YELLOW}Labelberry Pi Client has been removed.${NC}"
+echo -e "${YELLOW}LabelBerry Pi Client has been removed.${NC}"
 echo -e "${YELLOW}Configuration backup saved in: /tmp/labelberry-backup/${NC}"
 echo ""
 echo "To reinstall, run:"
-echo "curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-pi.sh | sudo bash"
+echo "curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install-pi.sh | sudo bash"
