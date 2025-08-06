@@ -213,6 +213,10 @@ function createPrinterItem(pi) {
             </div>
             <div class="printer-details">
                 <div class="detail-item">
+                    <span class="detail-label">Device ID:</span>
+                    <span class="detail-value" style="font-family: monospace; font-size: 11px;">${pi.id}</span>
+                </div>
+                <div class="detail-item">
                     <span class="detail-label">Location:</span>
                     <span class="detail-value">${pi.location || 'Not specified'}</span>
                 </div>
