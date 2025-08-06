@@ -73,7 +73,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "1.3"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "1.4"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -222,6 +222,12 @@ async def dashboard(request: Request):
 async def list_pis():
     try:
         pis = database.get_all_pis()
+        label_sizes = database.get_label_sizes()
+        
+        # Create a map of label sizes by ID
+        label_size_map = {}
+        for ls in label_sizes:
+            label_size_map[ls['id']] = ls
         
         pi_list = []
         for pi in pis:
@@ -231,6 +237,13 @@ async def list_pis():
             # Override status based on actual WebSocket connection
             if is_connected:
                 pi_dict["status"] = "online"
+            
+            # Add label size details if available
+            if pi.label_size_id and pi.label_size_id in label_size_map:
+                pi_dict["label_size"] = label_size_map[pi.label_size_id]
+            else:
+                pi_dict["label_size"] = None
+                
             # Keep the database status if not connected (could be offline, error, etc.)
             pi_list.append(pi_dict)
         
