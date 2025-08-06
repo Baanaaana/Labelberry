@@ -87,6 +87,11 @@ echo -e "${YELLOW}[7/12] Installing Python packages...${NC}"
 pip install --upgrade pip
 pip install -r admin_server/requirements.txt
 
+# Create __init__.py files for proper Python package structure
+touch admin_server/__init__.py
+touch admin_server/app/__init__.py
+touch shared/__init__.py
+
 echo -e "${YELLOW}[8/12] Creating directories...${NC}"
 mkdir -p /etc/labelberry
 mkdir -p /var/lib/labelberry
@@ -128,6 +133,7 @@ Type=simple
 User=root
 WorkingDirectory=$INSTALL_DIR
 Environment="PATH=$INSTALL_DIR/venv/bin"
+Environment="PYTHONPATH=$INSTALL_DIR"
 ExecStart=$INSTALL_DIR/venv/bin/python -m uvicorn admin_server.app.main:app --host 0.0.0.0 --port $PORT
 Restart=always
 RestartSec=10

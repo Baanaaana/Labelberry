@@ -6,14 +6,14 @@ Labelberry is a Raspberry Pi-based label printing system for Zebra printers with
 ## Architecture
 
 ### Components
-1. **Raspberry Pi Clients** (`/pi-client`)
+1. **Raspberry Pi Clients** (`/pi_client`)
    - FastAPI application running on each Raspberry Pi
    - Connects to Zebra printers via USB
    - Receives print requests with ZPL (either URL or raw)
    - Maintains WebSocket connection to admin server
    - Local CLI for configuration
 
-2. **Admin Server** (`/admin-server`)
+2. **Admin Server** (`/admin_server`)
    - Runs on Ubuntu 24.04 server (separate machine)
    - Web interface for managing all Raspberry Pis
    - SQLite database for configuration and monitoring
@@ -47,11 +47,11 @@ Labelberry is a Raspberry Pi-based label printing system for Zebra printers with
 ## Project Structure
 ```
 Labelberry/
-├── pi-client/           # Raspberry Pi client application
+├── pi_client/           # Raspberry Pi client application
 │   ├── app/            # FastAPI application
 │   ├── cli/            # CLI tool
 │   └── requirements.txt
-├── admin-server/        # Ubuntu admin server
+├── admin_server/        # Ubuntu admin server
 │   ├── app/            # FastAPI backend
 │   ├── web/            # Web interface
 │   └── requirements.txt
@@ -116,10 +116,10 @@ Labelberry/
 ### Development
 ```bash
 # Run Pi client locally
-cd pi-client && python -m uvicorn app.main:app --reload
+cd pi_client && python -m uvicorn app.main:app --reload
 
 # Run admin server locally
-cd admin-server && python -m uvicorn app.main:app --reload
+cd admin_server && python -m uvicorn app.main:app --reload
 
 # Run tests
 pytest

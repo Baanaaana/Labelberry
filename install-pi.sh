@@ -85,6 +85,11 @@ echo -e "${YELLOW}[7/10] Installing Python packages...${NC}"
 pip install --upgrade pip
 pip install -r pi_client/requirements.txt
 
+# Create __init__.py files for proper Python package structure
+touch pi_client/__init__.py
+touch pi_client/app/__init__.py
+touch shared/__init__.py
+
 echo -e "${YELLOW}[8/10] Creating configuration...${NC}"
 mkdir -p /etc/labelberry
 mkdir -p /var/lib/labelberry
@@ -139,6 +144,7 @@ Type=simple
 User=root
 WorkingDirectory=$INSTALL_DIR
 Environment="PATH=$INSTALL_DIR/venv/bin"
+Environment="PYTHONPATH=$INSTALL_DIR"
 ExecStart=$INSTALL_DIR/venv/bin/python -m uvicorn pi_client.app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=10
@@ -151,11 +157,10 @@ systemctl daemon-reload
 systemctl enable labelberry-client.service
 
 echo -e "${YELLOW}[10/10] Creating CLI symlink...${NC}"
-ln -sf "$INSTALL_DIR/venv/bin/python" /usr/local/bin/labelberry-python
 cat > /usr/local/bin/labelberry <<EOF
 #!/bin/bash
 export PYTHONPATH=$INSTALL_DIR
-/usr/local/bin/labelberry-python $INSTALL_DIR/pi_client/cli/labelberry_cli.py "\$@"
+$INSTALL_DIR/venv/bin/python $INSTALL_DIR/pi_client/cli/labelberry_cli.py "\$@"
 EOF
 chmod +x /usr/local/bin/labelberry
 

@@ -17,13 +17,13 @@ A Raspberry Pi-based label printing system for Zebra printers with centralized m
 
 Labelberry consists of two main components:
 
-### 1. Pi Client
+### 1. Pi Client (`pi_client`)
 - Runs on each Raspberry Pi connected to a Zebra printer
 - Receives print requests via REST API
 - Manages local print queue
 - Reports status and metrics to admin server
 
-### 2. Admin Server
+### 2. Admin Server (`admin_server`)
 - Runs on Ubuntu 24.04 server
 - Web interface for managing all Raspberry Pis
 - Collects metrics and logs
@@ -42,6 +42,26 @@ curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-pi
 ```bash
 curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-server.sh | sudo bash
 ```
+
+### Uninstall
+
+To remove Labelberry from your system:
+
+**Raspberry Pi:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/uninstall-pi.sh | sudo bash
+```
+
+**Ubuntu Server:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/uninstall-server.sh | sudo bash
+```
+
+Both uninstall scripts will:
+- Backup your configuration and data to `/tmp/labelberry-backup/`
+- Remove all Labelberry files and services
+- Optionally remove data directories (with confirmation)
+- Display saved credentials for future reinstallation
 
 ## API Usage
 
@@ -146,23 +166,23 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies for Pi client
-pip install -r pi-client/requirements.txt
+pip install -r pi_client/requirements.txt
 
 # Install dependencies for admin server
-pip install -r admin-server/requirements.txt
+pip install -r admin_server/requirements.txt
 ```
 
 ### Run Locally
 
 **Pi Client:**
 ```bash
-cd pi-client
+cd pi_client
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
 **Admin Server:**
 ```bash
-cd admin-server
+cd admin_server
 python -m uvicorn app.main:app --reload --port 8080
 ```
 
