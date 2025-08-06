@@ -52,7 +52,8 @@ apt-get install -y \
     certbot \
     python3-certbot-nginx \
     build-essential \
-    python3-dev
+    python3-dev \
+    uuid-runtime
 
 echo -e "${YELLOW}[4/12] Creating installation directory...${NC}"
 INSTALL_DIR="/opt/labelberry-admin"

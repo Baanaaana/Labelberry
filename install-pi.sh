@@ -50,7 +50,8 @@ apt-get install -y \
     libusb-1.0-0 \
     libusb-1.0-0-dev \
     build-essential \
-    python3-dev
+    python3-dev \
+    uuid-runtime
 
 echo -e "${YELLOW}[4/10] Creating installation directory...${NC}"
 INSTALL_DIR="/opt/labelberry"
@@ -95,8 +96,14 @@ if [ -f "/etc/labelberry/client.conf.backup" ]; then
 else
     echo -e "${YELLOW}Running initial configuration...${NC}"
     
-    DEVICE_ID=$(uuidgen)
-    API_KEY=$(uuidgen)
+    # Try uuidgen first, fallback to Python if not available
+    if command -v uuidgen &> /dev/null; then
+        DEVICE_ID=$(uuidgen)
+        API_KEY=$(uuidgen)
+    else
+        DEVICE_ID=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
+        API_KEY=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
+    fi
     
     read -p "Enter a friendly name for this Pi: " FRIENDLY_NAME
     read -p "Enter the admin server URL (e.g., http://192.168.1.100:8080): " ADMIN_SERVER
