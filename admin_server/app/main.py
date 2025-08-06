@@ -711,8 +711,14 @@ async def delete_label_size(
 
 
 @app.get("/api-docs", response_class=HTMLResponse)
-async def custom_docs(request: Request, current_user: str = Depends(require_login)):
-    """Protected API documentation - requires authentication"""
+async def api_documentation(request: Request):
+    """Interactive API documentation page"""
+    return templates.TemplateResponse("api_docs.html", {"request": request})
+
+
+@app.get("/swagger-docs", response_class=HTMLResponse)
+async def swagger_docs(request: Request, current_user: str = Depends(require_login)):
+    """Protected Swagger documentation - requires authentication"""
     if os.getenv("ENABLE_DOCS", "false").lower() == "true":
         # Redirect to the actual docs if they're enabled
         return RedirectResponse(url="/docs")
