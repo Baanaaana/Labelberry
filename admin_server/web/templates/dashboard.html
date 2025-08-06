@@ -425,13 +425,35 @@
     <div id="settings-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Dashboard Settings</h2>
+                <h2>Settings</h2>
                 <button class="modal-close" onclick="closeSettingsModal()">
                     <i data-lucide="x"></i>
                 </button>
             </div>
             <form id="settings-form" onsubmit="saveSettings(event)">
-                <h3 style="font-size: 16px; margin: 0 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Dashboard Settings</h3>
+                <h3 style="font-size: 16px; margin: 0 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Account Settings</h3>
+                <div class="form-group">
+                    <label for="new-username">Username</label>
+                    <input type="text" id="new-username" class="form-control" placeholder="Enter new username">
+                    <small style="color: var(--text-secondary); font-size: 12px;">Leave empty to keep current username</small>
+                </div>
+                
+                <h3 style="font-size: 16px; margin: 20px 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Change Password</h3>
+                <div class="form-group">
+                    <label for="current-password">Current Password</label>
+                    <input type="password" id="current-password" class="form-control" autocomplete="current-password">
+                    <small style="color: var(--text-secondary); font-size: 12px;">Required for any account changes</small>
+                </div>
+                <div class="form-group">
+                    <label for="new-password">New Password</label>
+                    <input type="password" id="new-password" class="form-control" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm New Password</label>
+                    <input type="password" id="confirm-password" class="form-control" autocomplete="new-password">
+                </div>
+                
+                <h3 style="font-size: 16px; margin: 20px 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Dashboard Settings</h3>
                 <div class="form-group">
                     <label for="timezone-select">Timezone</label>
                     <select id="timezone-select" class="form-control">
@@ -477,28 +499,6 @@
                         <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                         <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                     </select>
-                </div>
-                
-                <h3 style="font-size: 16px; margin: 20px 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Account Settings</h3>
-                <div class="form-group">
-                    <label for="new-username">Username</label>
-                    <input type="text" id="new-username" class="form-control" placeholder="Enter new username">
-                    <small style="color: var(--text-secondary); font-size: 12px;">Leave empty to keep current username</small>
-                </div>
-                
-                <h3 style="font-size: 16px; margin: 20px 20px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">Change Password</h3>
-                <div class="form-group">
-                    <label for="current-password">Current Password</label>
-                    <input type="password" id="current-password" class="form-control" autocomplete="current-password">
-                    <small style="color: var(--text-secondary); font-size: 12px;">Required for any account changes</small>
-                </div>
-                <div class="form-group">
-                    <label for="new-password">New Password</label>
-                    <input type="password" id="new-password" class="form-control" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                    <label for="confirm-password">Confirm New Password</label>
-                    <input type="password" id="confirm-password" class="form-control" autocomplete="new-password">
                 </div>
                 
                 <div class="modal-footer">

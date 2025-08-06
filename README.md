@@ -14,6 +14,9 @@ A Raspberry Pi-based label printing system for Zebra printers with centralized m
 - **API key authentication** for secure printing
 - **Auto-discovery** of USB printers on multiple device paths
 - **Responsive design** works on desktop and mobile devices
+- **User authentication** with secure login system
+- **Account management** for username and password changes
+- **Multi-size label support** with predefined templates (57mm x 32mm, 102mm x 150mm)
 
 ## System Requirements
 
@@ -82,6 +85,12 @@ After installation, access the dashboard at:
 http://YOUR_SERVER_IP:8080
 ```
 
+Default login credentials:
+- Username: `admin`
+- Password: `admin123`
+
+⚠️ **Important**: Change the default credentials after first login!
+
 ### Uninstall
 
 To remove LabelBerry from your system:
@@ -108,34 +117,56 @@ The admin server includes a full-featured web dashboard for managing all your pr
 
 ### Dashboard Features
 
+#### 🔐 Authentication
+- Secure login with username/password
+- Session management with remember me option
+- Auto-hide default credentials after change
+- Logout functionality
+
 #### 📊 Overview
 - Real-time printer status monitoring
 - Total printers, online count, and job statistics
-- Auto-refresh every 10 seconds
+- Auto-refresh with configurable interval
+- WebSocket connectivity indicators
 
 #### 🖨️ Printer Management
 - **Register New Printers**: Add Raspberry Pis using their Device ID and API Key
 - **View Details**: See configuration, metrics, and current status
 - **Remote Control**: Send commands and configuration updates
+- **Broadcast Print**: Send same job to multiple printers
+- **Search & Filter**: Find printers by name, location, or model
 
 #### 🎯 Test Printing
-Send test prints to any connected printer using:
+Send test prints to any connected printer:
+- **Label Size Selection**: Choose from 57mm x 32mm or 102mm x 150mm
 - **Raw ZPL**: Type or paste ZPL code directly
 - **File Upload**: Upload .zpl files from your computer
 - **URL**: Provide a URL to a ZPL file
+- **Pre-configured Templates**: Use built-in test labels for each size
 
 #### 📈 Metrics & Monitoring
-- CPU and memory usage graphs
-- Print queue status
+- CPU and memory usage tracking
+- Print queue status and size
 - Job success/failure rates
 - Network connectivity status
+- Historical metrics with time range selection
+- Error logs with severity filtering
+
+#### ⚙️ Settings
+- **Account Management**: Change username and password
+- **Timezone Configuration**: Set local timezone for timestamps
+- **Auto-refresh Interval**: Configure dashboard update frequency
+- **Date Format**: Choose preferred date display format
 
 ### Using the Dashboard
 
-1. **Access the Dashboard**
+1. **Login to Dashboard**
    ```
    http://YOUR_SERVER_IP:8080
    ```
+   - Enter username and password
+   - Default: `admin` / `admin123`
+   - Check "Remember me" to stay logged in
 
 2. **Register a Printer**
    - Click "Register New Pi"
@@ -145,6 +176,7 @@ Send test prints to any connected printer using:
 
 3. **Send Test Print**
    - Click "Test Print" on any printer card
+   - Choose label size (57mm x 32mm or 102mm x 150mm)
    - Choose input method (Raw/File/URL)
    - Enter or upload ZPL content
    - Click "Send Print Job"
@@ -153,6 +185,13 @@ Send test prints to any connected printer using:
    - Click "Details" on any printer card
    - See configuration, metrics, and logs
    - Monitor real-time performance
+
+5. **Manage Account**
+   - Click Settings icon in top-right
+   - Change username (minimum 3 characters)
+   - Change password (minimum 6 characters)
+   - Configure timezone and refresh interval
+   - Click "Save Settings"
 
 ## API Usage
 
@@ -267,6 +306,7 @@ database_path: /var/lib/labelberry/db.sqlite
 log_level: INFO
 cors_origins: ["*"]
 rate_limit: 100
+session_timeout: 3600
 ```
 
 ## Development
@@ -406,13 +446,43 @@ Once running, access the interactive API documentation:
    sudo netstat -tlnp | grep 8080
    ```
 
-## Security Considerations
+## Authentication & Security
 
-- Always use API key authentication
-- Use Nginx Proxy Manager or reverse proxy for SSL/TLS
-- Restrict CORS origins in production
-- Use firewall rules to limit access
-- Regularly update dependencies
+### Login System
+- **Session-based authentication** protects the admin dashboard
+- **Default credentials** shown only until changed
+- **Password requirements**: Minimum 6 characters
+- **Username requirements**: Minimum 3 characters
+- **Session management** with configurable timeout
+
+### Account Management
+1. **Change Username**
+   - Navigate to Settings (gear icon)
+   - Enter new username in Account Settings
+   - Enter current password for verification
+   - Click "Save Settings"
+
+2. **Change Password**
+   - Navigate to Settings (gear icon)
+   - Enter current password
+   - Enter new password (min 6 characters)
+   - Confirm new password
+   - Click "Save Settings"
+
+3. **Logout**
+   - Click logout icon in top-right corner
+   - Returns to login page
+   - Session is cleared
+
+### Security Best Practices
+- **Change default credentials immediately** after installation
+- **Use strong passwords** with mix of characters
+- **Unique API keys** for each Raspberry Pi
+- **Use HTTPS** with reverse proxy (Nginx/Caddy)
+- **Restrict CORS origins** in production
+- **Firewall rules** to limit access
+- **Regular updates** of dependencies
+- **Monitor access logs** for suspicious activity
 
 ## Quick Reference
 
