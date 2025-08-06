@@ -186,56 +186,95 @@ function displayApiKeys(keys) {
     
     if (keys.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                <i data-lucide="key" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
-                <p>No API keys created yet</p>
-                <p style="font-size: 13px;">Create your first API key to enable programmatic access</p>
+            <div class="api-keys-empty">
+                <i data-lucide="key-round"></i>
+                <h3>No API Keys Yet</h3>
+                <p>Create your first API key to enable secure programmatic access to the LabelBerry printing API</p>
+                <button class="btn btn-primary" onclick="showCreateKeyModal()">
+                    <i data-lucide="plus-circle"></i>
+                    Create Your First Key
+                </button>
             </div>
         `;
     } else {
-        container.innerHTML = keys.map(key => `
-            <div class="api-key-item">
-                <div class="api-key-header">
-                    <span class="api-key-name">${key.name}</span>
-                    <span class="api-key-status ${key.is_active ? 'active' : 'revoked'}">
-                        ${key.is_active ? 'Active' : 'Revoked'}
-                    </span>
-                </div>
-                ${key.description ? `<p style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 13px;">${key.description}</p>` : ''}
-                <div class="api-key-details">
-                    <div class="api-key-detail">
-                        <span class="api-key-detail-label">Created:</span>
-                        <span class="api-key-detail-value">${formatDate(key.created_at)}</span>
+        container.innerHTML = `
+            <div class="api-keys-grid">
+                ${keys.map(key => `
+                    <div class="api-key-item">
+                        <div class="api-key-header">
+                            <div class="api-key-info">
+                                <div class="api-key-name">
+                                    <i data-lucide="key"></i>
+                                    ${escapeHtml(key.name)}
+                                </div>
+                                ${key.description ? `<p class="api-key-description">${escapeHtml(key.description)}</p>` : '<p class="api-key-description">No description provided</p>'}
+                            </div>
+                            <span class="api-key-status ${key.is_active ? 'active' : 'revoked'}">
+                                ${key.is_active ? '<i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Active' : '<i data-lucide="x-circle" style="width: 14px; height: 14px;"></i> Revoked'}
+                            </span>
+                        </div>
+                        <div class="api-key-details">
+                            <div class="api-key-detail">
+                                <span class="api-key-detail-label">Created</span>
+                                <span class="api-key-detail-value">
+                                    <i data-lucide="calendar"></i>
+                                    ${formatDate(key.created_at)}
+                                </span>
+                            </div>
+                            <div class="api-key-detail">
+                                <span class="api-key-detail-label">Created By</span>
+                                <span class="api-key-detail-value">
+                                    <i data-lucide="user"></i>
+                                    ${escapeHtml(key.created_by)}
+                                </span>
+                            </div>
+                            <div class="api-key-detail">
+                                <span class="api-key-detail-label">Last Used</span>
+                                <span class="api-key-detail-value">
+                                    <i data-lucide="activity"></i>
+                                    ${key.last_used ? formatDate(key.last_used) : '<span style="color: var(--text-secondary);">Never used</span>'}
+                                </span>
+                            </div>
+                            <div class="api-key-detail">
+                                <span class="api-key-detail-label">Permissions</span>
+                                <span class="api-key-detail-value">
+                                    <i data-lucide="shield"></i>
+                                    ${key.permissions || 'Print API'}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="api-key-actions">
+                            ${key.is_active ? `
+                                <button class="btn btn-secondary" onclick="revokeApiKey(${key.id})" title="Revoke this API key">
+                                    <i data-lucide="ban"></i>
+                                    Revoke
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-danger" onclick="deleteApiKey(${key.id})" title="Permanently delete this API key">
+                                <i data-lucide="trash-2"></i>
+                                Delete
+                            </button>
+                        </div>
                     </div>
-                    <div class="api-key-detail">
-                        <span class="api-key-detail-label">Created by:</span>
-                        <span class="api-key-detail-value">${key.created_by}</span>
-                    </div>
-                    <div class="api-key-detail">
-                        <span class="api-key-detail-label">Last used:</span>
-                        <span class="api-key-detail-value">${key.last_used ? formatDate(key.last_used) : 'Never'}</span>
-                    </div>
-                    <div class="api-key-detail">
-                        <span class="api-key-detail-label">Permissions:</span>
-                        <span class="api-key-detail-value">${key.permissions || 'Print'}</span>
-                    </div>
-                </div>
-                <div class="api-key-actions">
-                    ${key.is_active ? `
-                        <button class="btn btn-secondary" onclick="revokeApiKey(${key.id})">
-                            <i data-lucide="ban"></i> Revoke
-                        </button>
-                    ` : ''}
-                    <button class="btn btn-danger" onclick="deleteApiKey(${key.id})">
-                        <i data-lucide="trash-2"></i> Delete
-                    </button>
-                </div>
+                `).join('')}
             </div>
-        `).join('');
+        `;
     }
     
     // Re-initialize Lucide icons
     lucide.createIcons();
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
 }
 
 function showCreateKeyModal() {
@@ -243,8 +282,21 @@ function showCreateKeyModal() {
 }
 
 function closeCreateKeyModal() {
-    document.getElementById('create-key-modal').style.display = 'none';
-    document.getElementById('create-key-form').reset();
+    const modal = document.getElementById('create-key-modal');
+    const form = document.getElementById('create-key-form');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const cancelButton = form.querySelector('button[type="button"]');
+    
+    // Reset form
+    form.reset();
+    
+    // Re-enable buttons and restore original text if needed
+    submitButton.disabled = false;
+    cancelButton.disabled = false;
+    submitButton.innerHTML = 'Create Key';
+    
+    // Hide modal
+    modal.style.display = 'none';
 }
 
 function closeKeyDisplayModal() {
@@ -256,6 +308,15 @@ async function createApiKey(event) {
     
     const name = document.getElementById('key-name').value;
     const description = document.getElementById('key-description').value;
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    const cancelButton = event.target.querySelector('button[type="button"]');
+    
+    // Disable both buttons and show loading state
+    submitButton.disabled = true;
+    cancelButton.disabled = true;
+    const originalButtonText = submitButton.innerHTML;
+    submitButton.innerHTML = '<i data-lucide="loader-2" class="spinning"></i> Creating...';
+    lucide.createIcons();
     
     try {
         const response = await fetch('/api/keys', {
@@ -274,17 +335,34 @@ async function createApiKey(event) {
             
             // Show the key display modal
             document.getElementById('api-key-display').value = data.data.api_key;
-            document.getElementById('key-example').textContent = data.data.api_key;
+            
+            // Format usage example
+            const usageExample = `curl -X POST http://your-server:8080/api/pis/{pi_id}/print \\
+  -H "Authorization: Bearer ${data.data.api_key}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"zpl_raw": "^XA^FO50,50^FDTest^FS^XZ"}'`;
+            
+            document.getElementById('usage-example-code').textContent = usageExample;
             document.getElementById('key-display-modal').style.display = 'block';
             
             // Reload the keys list
             loadApiKeys();
         } else {
             showAlert(data.message || 'Failed to create API key', 'error');
+            // Re-enable buttons on error
+            submitButton.disabled = false;
+            cancelButton.disabled = false;
+            submitButton.innerHTML = originalButtonText;
+            lucide.createIcons();
         }
     } catch (error) {
         console.error('Error creating API key:', error);
         showAlert('Failed to create API key', 'error');
+        // Re-enable buttons on error
+        submitButton.disabled = false;
+        cancelButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+        lucide.createIcons();
     }
 }
 
@@ -292,6 +370,10 @@ async function revokeApiKey(keyId) {
     if (!confirm('Are you sure you want to revoke this API key? Applications using this key will lose access.')) {
         return;
     }
+    
+    // Disable all action buttons to prevent double-clicks
+    const allButtons = document.querySelectorAll('.api-key-actions button');
+    allButtons.forEach(btn => btn.disabled = true);
     
     try {
         const response = await fetch(`/api/keys/${keyId}/revoke`, {
@@ -305,10 +387,14 @@ async function revokeApiKey(keyId) {
             loadApiKeys();
         } else {
             showAlert(data.message || 'Failed to revoke API key', 'error');
+            // Re-enable buttons on error
+            allButtons.forEach(btn => btn.disabled = false);
         }
     } catch (error) {
         console.error('Error revoking API key:', error);
         showAlert('Failed to revoke API key', 'error');
+        // Re-enable buttons on error
+        allButtons.forEach(btn => btn.disabled = false);
     }
 }
 
@@ -316,6 +402,10 @@ async function deleteApiKey(keyId) {
     if (!confirm('Are you sure you want to delete this API key? This action cannot be undone.')) {
         return;
     }
+    
+    // Disable all action buttons to prevent double-clicks
+    const allButtons = document.querySelectorAll('.api-key-actions button');
+    allButtons.forEach(btn => btn.disabled = true);
     
     try {
         const response = await fetch(`/api/keys/${keyId}`, {
@@ -329,10 +419,14 @@ async function deleteApiKey(keyId) {
             loadApiKeys();
         } else {
             showAlert(data.message || 'Failed to delete API key', 'error');
+            // Re-enable buttons on error
+            allButtons.forEach(btn => btn.disabled = false);
         }
     } catch (error) {
         console.error('Error deleting API key:', error);
         showAlert('Failed to delete API key', 'error');
+        // Re-enable buttons on error
+        allButtons.forEach(btn => btn.disabled = false);
     }
 }
 
@@ -355,7 +449,36 @@ function copyApiKey() {
 
 function formatDate(dateString) {
     const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    // If less than 24 hours ago, show relative time
+    if (diffMs < 24 * 60 * 60 * 1000) {
+        if (diffMs < 60 * 1000) {
+            return 'Just now';
+        } else if (diffMs < 60 * 60 * 1000) {
+            const minutes = Math.floor(diffMs / (60 * 1000));
+            return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        } else {
+            const hours = Math.floor(diffMs / (60 * 60 * 1000));
+            return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        }
+    }
+    // If less than 7 days ago, show days
+    else if (diffDays < 7) {
+        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    }
+    // Otherwise show date
+    else {
+        return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
 }
 
 // Initialize on page load
