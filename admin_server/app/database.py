@@ -218,6 +218,18 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to update Pi status: {e}")
     
+    def update_last_seen(self, pi_id: str):
+        """Update only the last_seen timestamp for a Pi"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE pis SET last_seen = ? WHERE id = ?
+                """, (datetime.utcnow(), pi_id))
+                logger.debug(f"Updated last_seen for Pi {pi_id}")
+        except Exception as e:
+            logger.error(f"Failed to update last_seen for Pi {pi_id}: {e}")
+    
     def delete_pi(self, pi_id: str) -> bool:
         try:
             with self.get_connection() as conn:

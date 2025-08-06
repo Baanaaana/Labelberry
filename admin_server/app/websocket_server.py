@@ -90,6 +90,9 @@ class ConnectionManager:
             
             logger.info(f"Received {msg_type} from Pi {pi_id}")
             
+            # Update last seen on any message
+            self.database.update_last_seen(pi_id)
+            
             if msg_type == "connect":
                 await self.handle_connect(pi_id, data)
             
@@ -145,6 +148,7 @@ class ConnectionManager:
             logger.error(f"Failed to handle metrics from Pi {pi_id}: {e}")
     
     async def handle_status(self, pi_id: str, data: Dict):
+        # Update last seen timestamp and status
         self.database.update_pi_status(pi_id, PiStatus.ONLINE)
         
         await self.broadcast_admin_update("status_update", {
@@ -185,7 +189,8 @@ class ConnectionManager:
             })
     
     async def handle_pong(self, pi_id: str, data: Dict):
-        self.database.update_pi_status(pi_id, PiStatus.ONLINE)
+        # Update last seen on pong (heartbeat)
+        self.database.update_last_seen(pi_id)
     
     async def ping_loop(self, pi_id: str):
         while pi_id in self.active_connections:
