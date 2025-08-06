@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="LabelBerry Admin Server",
+    title="LabelBerry API",
     version="1.0.0",
     lifespan=lifespan
 )
