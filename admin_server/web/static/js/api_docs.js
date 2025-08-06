@@ -3,9 +3,15 @@
 let availablePrinters = [];
 let userApiKeys = [];
 
+// Flag to prevent scroll spy during programmatic scrolling
+let isScrolling = false;
+
 // Scroll to section
 function scrollToSection(sectionId, navItem) {
-    // Update active nav item
+    // Set flag to prevent scroll spy interference
+    isScrolling = true;
+    
+    // Update active nav item immediately
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
@@ -15,6 +21,7 @@ function scrollToSection(sectionId, navItem) {
     const section = document.getElementById(sectionId);
     if (!section) {
         console.error('Section not found:', sectionId);
+        isScrolling = false;
         return;
     }
     
@@ -23,6 +30,7 @@ function scrollToSection(sectionId, navItem) {
     if (!sidebarNav) {
         // Fallback to simple scroll if sidebar not found
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => { isScrolling = false; }, 500);
         return;
     }
     
@@ -42,17 +50,16 @@ function scrollToSection(sectionId, navItem) {
     // We want to scroll so the section is at the same position as the sidebar
     const targetScrollPosition = sectionAbsoluteTop - 24;
     
-    console.log('Scrolling to align section with sidebar:', {
-        sectionTop: sectionAbsoluteTop,
-        targetScroll: targetScrollPosition,
-        currentScroll: currentScrollY
-    });
-    
     // Smooth scroll to target position
     window.scrollTo({
         top: targetScrollPosition,
         behavior: 'smooth'
     });
+    
+    // Reset flag after scrolling is done
+    setTimeout(() => {
+        isScrolling = false;
+    }, 500);
 }
 
 // Copy code to clipboard
@@ -392,6 +399,65 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
+// Update active section based on scroll position
+function updateActiveSection() {
+    // Don't update if we're in the middle of programmatic scrolling
+    if (isScrolling) return;
+    
+    const sections = document.querySelectorAll('.doc-section');
+    const navItems = document.querySelectorAll('.nav-item');
+    
+    // Get current scroll position with the same offset as our scroll function (24px)
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    const viewportTop = scrollY + 24; // Match the sticky nav position
+    
+    // Find which section is currently in view
+    let currentSection = null;
+    let minDistance = Infinity;
+    
+    // Check each section to find the one closest to our viewport top
+    sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.offsetHeight;
+        const sectionBottom = sectionTop + sectionHeight;
+        
+        // Calculate distance from viewport top to section top
+        const distance = Math.abs(sectionTop - viewportTop);
+        
+        // Check if this section is in view and closer to viewport top
+        if (viewportTop >= sectionTop - 10 && viewportTop < sectionBottom) {
+            if (distance < minDistance) {
+                minDistance = distance;
+                currentSection = section.getAttribute('id');
+            }
+        }
+    });
+    
+    // Special case: if we're near the bottom, highlight the last section
+    if ((window.innerHeight + scrollY) >= document.body.offsetHeight - 50) {
+        const lastSection = sections[sections.length - 1];
+        if (lastSection) {
+            currentSection = lastSection.getAttribute('id');
+        }
+    }
+    
+    // Special case: if we're at the very top, highlight the first section
+    if (scrollY < 10) {
+        currentSection = 'overview';
+    }
+    
+    // Update active state in navigation
+    if (currentSection) {
+        navItems.forEach(item => {
+            item.classList.remove('active');
+            const href = item.getAttribute('href');
+            if (href === '#' + currentSection) {
+                item.classList.add('active');
+            }
+        });
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize base URL immediately
@@ -415,8 +481,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Remove any default click handlers that might interfere
-    // Navigation is handled by onclick attribute
+    // Set up scroll spy
+    let scrollTimeout;
+    window.addEventListener('scroll', () => {
+        // Debounce scroll events for better performance
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            updateActiveSection();
+        }, 10);
+    });
+    
+    // Update on initial load
+    updateActiveSection();
     
     // Load printers and API keys
     loadPrinters();
