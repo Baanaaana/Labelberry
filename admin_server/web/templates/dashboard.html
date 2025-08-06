@@ -5,72 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Labelberry Admin Dashboard</title>
     <link rel="stylesheet" href="/static/css/dashboard.css">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1><i class="ri-printer-line"></i> Labelberry Admin Dashboard</h1>
-            <div class="header-stats">
-                <div class="stat">
-                    <span class="stat-value" id="total-pis">0</span>
-                    <span class="stat-label">Total Printers</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value" id="online-pis">0</span>
-                    <span class="stat-label">Online</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value" id="jobs-today">0</span>
-                    <span class="stat-label">Jobs Today</span>
-                </div>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <i data-lucide="package"></i>
+                <h1>Labelberry Admin Dashboard</h1>
+            </div>
+            <div class="header-right">
+                <button class="icon-btn" onclick="showSettingsModal()" title="Settings">
+                    <i data-lucide="settings"></i>
+                </button>
+                <button class="icon-btn" onclick="refreshDashboard()" title="Refresh">
+                    <i data-lucide="refresh-cw"></i>
+                </button>
             </div>
         </header>
 
-        <div class="actions-bar">
-            <button class="btn btn-primary" onclick="showRegisterModal()">
-                <i class="ri-add-line"></i> Register New Pi
-            </button>
-            <button class="btn btn-secondary" onclick="refreshDashboard()">
-                <i class="ri-refresh-line"></i> Refresh
-            </button>
-            <button class="btn btn-secondary" onclick="showSettingsModal()">
-                <i class="ri-settings-3-line"></i> Settings
-            </button>
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Active Printers</span>
+                    <i data-lucide="printer" class="stat-icon green"></i>
+                </div>
+                <div class="stat-value" id="online-pis">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Total Printers</span>
+                    <i data-lucide="package-2" class="stat-icon blue"></i>
+                </div>
+                <div class="stat-value" id="total-pis">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Jobs Today</span>
+                    <i data-lucide="file-text" class="stat-icon purple"></i>
+                </div>
+                <div class="stat-value" id="jobs-today">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Queue Status</span>
+                    <i data-lucide="clock" class="stat-icon orange"></i>
+                </div>
+                <div class="stat-value" id="queue-status">0</div>
+            </div>
         </div>
 
-        <div class="printers-grid" id="printers-grid">
-            <!-- Printer cards will be dynamically added here -->
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Quick Actions Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Quick Actions</h2>
+                </div>
+                <div class="panel-content">
+                    <button class="action-btn" onclick="showRegisterModal()">
+                        <i data-lucide="plus-circle"></i>
+                        <span>Register Printer</span>
+                    </button>
+                    <button class="action-btn" onclick="showBroadcastModal()">
+                        <i data-lucide="send"></i>
+                        <span>Broadcast Print</span>
+                    </button>
+                    <button class="action-btn" onclick="viewLogs()">
+                        <i data-lucide="file-text"></i>
+                        <span>View Logs</span>
+                    </button>
+                    <button class="action-btn" onclick="showMetrics()">
+                        <i data-lucide="bar-chart-2"></i>
+                        <span>Performance Metrics</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Printers List -->
+            <div class="panel flex-grow">
+                <div class="panel-header">
+                    <h2>Printers</h2>
+                    <div class="panel-actions">
+                        <input type="text" class="search-input" placeholder="Search printers..." onkeyup="searchPrinters(this.value)">
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <div id="printers-list" class="printers-list">
+                        <!-- Printer items will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Register Pi Modal -->
+    <!-- Register Printer Modal -->
     <div id="register-modal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeRegisterModal()">&times;</span>
-            <h2>Register New Raspberry Pi</h2>
+            <div class="modal-header">
+                <h2>Register New Printer</h2>
+                <button class="modal-close" onclick="closeRegisterModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
             <form id="register-form" onsubmit="registerPi(event)">
                 <div class="form-group">
-                    <label for="device-id">Device ID:</label>
+                    <label for="device-id">Device ID</label>
                     <input type="text" id="device-id" required placeholder="Enter Device ID from Pi">
                 </div>
                 <div class="form-group">
-                    <label for="api-key">API Key:</label>
+                    <label for="api-key">API Key</label>
                     <input type="text" id="api-key" required placeholder="Enter API Key from Pi">
                 </div>
                 <div class="form-group">
-                    <label for="friendly-name">Friendly Name:</label>
+                    <label for="friendly-name">Friendly Name</label>
                     <input type="text" id="friendly-name" required placeholder="e.g., Warehouse Printer 1">
                 </div>
                 <div class="form-group">
-                    <label for="location">Location (optional):</label>
+                    <label for="location">Location</label>
                     <input type="text" id="location" placeholder="e.g., Building A, Floor 2">
                 </div>
                 <div class="form-group">
-                    <label for="printer-model">Printer Model (optional):</label>
+                    <label for="printer-model">Printer Model</label>
                     <input type="text" id="printer-model" placeholder="e.g., Zebra ZD220">
                 </div>
-                <button type="submit" class="btn btn-primary">Register Pi</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeRegisterModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Register Printer</button>
+                </div>
             </form>
         </div>
     </div>
@@ -78,97 +145,99 @@
     <!-- Test Print Modal -->
     <div id="print-modal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closePrintModal()">&times;</span>
-            <h2>Send Test Print to <span id="print-pi-name"></span></h2>
+            <div class="modal-header">
+                <h2>Send Print Job to <span id="print-pi-name"></span></h2>
+                <button class="modal-close" onclick="closePrintModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
             <form id="print-form" onsubmit="sendPrint(event)">
-                <div class="form-group">
-                    <label>Print Method:</label>
-                    <div class="radio-group">
-                        <label>
-                            <input type="radio" name="print-method" value="raw" checked onchange="togglePrintMethod()">
-                            Raw ZPL Code
-                        </label>
-                        <label>
-                            <input type="radio" name="print-method" value="file" onchange="togglePrintMethod()">
-                            ZPL File
-                        </label>
-                        <label>
-                            <input type="radio" name="print-method" value="url" onchange="togglePrintMethod()">
-                            ZPL URL
-                        </label>
+                <div class="form-tabs">
+                    <button type="button" class="tab-btn active" onclick="switchPrintTab('raw')">Raw ZPL</button>
+                    <button type="button" class="tab-btn" onclick="switchPrintTab('file')">File Upload</button>
+                    <button type="button" class="tab-btn" onclick="switchPrintTab('url')">URL</button>
+                </div>
+                
+                <div id="raw-input" class="tab-content active">
+                    <div class="form-group">
+                        <label for="zpl-raw">ZPL Code</label>
+                        <textarea id="zpl-raw" rows="10" placeholder="Enter ZPL code...">^XA
+^FO50,50^A0N,50,50^FDLabelberry Test^FS
+^FO50,120^A0N,30,30^FDPrinter: ${new Date().toLocaleString()}^FS
+^XZ</textarea>
                     </div>
                 </div>
                 
-                <div id="raw-input" class="form-group">
-                    <label for="zpl-raw">ZPL Code:</label>
-                    <textarea id="zpl-raw" rows="10" placeholder="^XA&#10;^FO50,50^A0N,50,50^FDTest Label^FS&#10;^XZ">^XA
-^FO50,50^A0N,50,50^FDLabelberry Test^FS
-^FO50,120^A0N,30,30^FDAdmin Dashboard Print^FS
-^FO50,170^A0N,25,25^FDTime: ${new Date().toLocaleString()}^FS
-^XZ</textarea>
+                <div id="file-input" class="tab-content">
+                    <div class="form-group">
+                        <label for="zpl-file">Select ZPL File</label>
+                        <input type="file" id="zpl-file" accept=".zpl,.txt">
+                    </div>
                 </div>
                 
-                <div id="file-input" class="form-group" style="display:none;">
-                    <label for="zpl-file">Select ZPL File:</label>
-                    <input type="file" id="zpl-file" accept=".zpl,.txt">
+                <div id="url-input" class="tab-content">
+                    <div class="form-group">
+                        <label for="zpl-url">ZPL URL</label>
+                        <input type="url" id="zpl-url" placeholder="https://example.com/label.zpl">
+                    </div>
                 </div>
                 
-                <div id="url-input" class="form-group" style="display:none;">
-                    <label for="zpl-url">ZPL URL:</label>
-                    <input type="url" id="zpl-url" placeholder="https://example.com/label.zpl">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closePrintModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send Print Job</button>
                 </div>
-                
-                <button type="submit" class="btn btn-primary">Send Print Job</button>
             </form>
         </div>
     </div>
 
-    <!-- Pi Details Modal -->
-    <div id="details-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeDetailsModal()">&times;</span>
-            <h2>Printer Details: <span id="details-pi-name"></span></h2>
-            <div id="pi-details-content">
-                <!-- Details will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Pi Modal -->
+    <!-- Edit Printer Modal -->
     <div id="edit-modal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeEditModal()">&times;</span>
-            <h2>Edit Printer: <span id="edit-pi-name"></span></h2>
+            <div class="modal-header">
+                <h2>Edit Printer</h2>
+                <button class="modal-close" onclick="closeEditModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
             <form id="edit-form" onsubmit="updatePi(event)">
                 <input type="hidden" id="edit-pi-id">
                 <div class="form-group">
-                    <label for="edit-friendly-name">Friendly Name:</label>
+                    <label for="edit-friendly-name">Friendly Name</label>
                     <input type="text" id="edit-friendly-name" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-location">Location:</label>
+                    <label for="edit-location">Location</label>
                     <input type="text" id="edit-location" placeholder="e.g., Building A, Floor 2">
                 </div>
                 <div class="form-group">
-                    <label for="edit-printer-model">Printer Model:</label>
+                    <label for="edit-printer-model">Printer Model</label>
                     <input type="text" id="edit-printer-model" placeholder="e.g., Zebra ZD220">
                 </div>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
             </form>
         </div>
     </div>
 
     <!-- Delete Confirmation Modal -->
     <div id="delete-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeDeleteModal()">&times;</span>
-            <h2>Delete Printer</h2>
-            <p>Are you sure you want to delete <strong id="delete-pi-name"></strong>?</p>
-            <p class="warning-text">This action cannot be undone. The printer will need to be re-registered to use it again.</p>
+        <div class="modal-content compact">
+            <div class="modal-header">
+                <h2>Delete Printer</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="delete-pi-name"></strong>?</p>
+                <p class="warning-text">This action cannot be undone.</p>
+            </div>
             <input type="hidden" id="delete-pi-id">
-            <div class="modal-actions">
+            <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
-                <button class="btn btn-danger" onclick="confirmDelete()">Delete Printer</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
             </div>
         </div>
     </div>
@@ -176,11 +245,15 @@
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeSettingsModal()">&times;</span>
-            <h2><i class="ri-settings-3-line"></i> Dashboard Settings</h2>
+            <div class="modal-header">
+                <h2>Dashboard Settings</h2>
+                <button class="modal-close" onclick="closeSettingsModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
             <form id="settings-form" onsubmit="saveSettings(event)">
                 <div class="form-group">
-                    <label for="timezone-select">Timezone:</label>
+                    <label for="timezone-select">Timezone</label>
                     <select id="timezone-select" class="form-control">
                         <optgroup label="Europe">
                             <option value="Europe/Amsterdam">Amsterdam (CET/CEST)</option>
@@ -188,42 +261,26 @@
                             <option value="Europe/Paris">Paris (CET/CEST)</option>
                             <option value="Europe/Berlin">Berlin (CET/CEST)</option>
                             <option value="Europe/Brussels">Brussels (CET/CEST)</option>
-                            <option value="Europe/Madrid">Madrid (CET/CEST)</option>
-                            <option value="Europe/Rome">Rome (CET/CEST)</option>
-                            <option value="Europe/Stockholm">Stockholm (CET/CEST)</option>
-                            <option value="Europe/Moscow">Moscow (MSK)</option>
                         </optgroup>
                         <optgroup label="Americas">
                             <option value="America/New_York">New York (EST/EDT)</option>
                             <option value="America/Chicago">Chicago (CST/CDT)</option>
-                            <option value="America/Denver">Denver (MST/MDT)</option>
                             <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
-                            <option value="America/Toronto">Toronto (EST/EDT)</option>
-                            <option value="America/Mexico_City">Mexico City (CST)</option>
-                            <option value="America/Sao_Paulo">São Paulo (BRT)</option>
                         </optgroup>
                         <optgroup label="Asia Pacific">
                             <option value="Asia/Tokyo">Tokyo (JST)</option>
                             <option value="Asia/Shanghai">Shanghai (CST)</option>
-                            <option value="Asia/Hong_Kong">Hong Kong (HKT)</option>
                             <option value="Asia/Singapore">Singapore (SGT)</option>
-                            <option value="Asia/Seoul">Seoul (KST)</option>
-                            <option value="Asia/Kolkata">Mumbai (IST)</option>
-                            <option value="Asia/Dubai">Dubai (GST)</option>
                             <option value="Australia/Sydney">Sydney (AEDT/AEST)</option>
-                            <option value="Australia/Melbourne">Melbourne (AEDT/AEST)</option>
-                            <option value="Pacific/Auckland">Auckland (NZDT/NZST)</option>
                         </optgroup>
                         <optgroup label="Other">
                             <option value="UTC">UTC</option>
-                            <option value="GMT">GMT</option>
                         </optgroup>
                     </select>
-                    <small class="form-text">Select your local timezone for displaying timestamps</small>
                 </div>
                 
                 <div class="form-group">
-                    <label for="refresh-interval">Auto-refresh interval:</label>
+                    <label for="refresh-interval">Auto-refresh Interval</label>
                     <select id="refresh-interval" class="form-control">
                         <option value="5000">5 seconds</option>
                         <option value="10000" selected>10 seconds</option>
@@ -231,24 +288,39 @@
                         <option value="60000">1 minute</option>
                         <option value="0">Disabled</option>
                     </select>
-                    <small class="form-text">How often to refresh the dashboard data</small>
                 </div>
                 
                 <div class="form-group">
-                    <label for="date-format">Date format:</label>
+                    <label for="date-format">Date Format</label>
                     <select id="date-format" class="form-control">
-                        <option value="DD-MM-YYYY">DD-MM-YYYY (European)</option>
-                        <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
-                        <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
+                        <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                     </select>
-                    <small class="form-text">Format for displaying dates</small>
                 </div>
                 
-                <button type="submit" class="btn btn-primary">Save Settings</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                </div>
             </form>
         </div>
     </div>
 
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
     <script src="/static/js/dashboard.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Re-initialize icons after dynamic content updates
+        const originalRenderPrinters = window.renderPrinters;
+        window.renderPrinters = function(pis) {
+            originalRenderPrinters(pis);
+            setTimeout(() => lucide.createIcons(), 10);
+        };
+    </script>
 </body>
 </html>

@@ -79,69 +79,68 @@ function updateStats(stats) {
     document.getElementById('total-pis').textContent = stats.total_pis || 0;
     document.getElementById('online-pis').textContent = stats.online_pis || 0;
     document.getElementById('jobs-today').textContent = stats.jobs_24h || 0;
+    document.getElementById('queue-status').textContent = stats.total_queue || 0;
 }
 
 // Render printer cards
 function renderPrinters(pis) {
-    const grid = document.getElementById('printers-grid');
+    const list = document.getElementById('printers-list');
     
     if (pis.length === 0) {
-        grid.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 40px; background: white; border-radius: 12px;">
-                <i class="ri-printer-line" style="font-size: 3em; color: #ccc;"></i>
-                <p style="margin-top: 20px; color: #666;">No printers registered yet</p>
-                <p style="margin-top: 10px; color: #999;">Click "Register New Pi" to add your first printer</p>
+        list.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #6c757d;">
+                <i data-lucide="printer" style="width: 48px; height: 48px; margin: 0 auto 16px;"></i>
+                <p style="margin: 0; font-size: 16px; font-weight: 500;">No printers registered yet</p>
+                <p style="margin: 8px 0 0; font-size: 14px;">Click "Register Printer" to add your first printer</p>
             </div>
         `;
+        lucide.createIcons();
         return;
     }
     
-    grid.innerHTML = pis.map(pi => createPrinterCard(pi)).join('');
+    list.innerHTML = pis.map(pi => createPrinterItem(pi)).join('');
+    lucide.createIcons();
 }
 
-// Create printer card HTML
-function createPrinterCard(pi) {
-    const statusClass = pi.status === 'online' ? 'status-online' : 
-                       pi.status === 'error' ? 'status-error' : 'status-offline';
-    const statusText = pi.status === 'online' ? 'Online' : 
-                      pi.status === 'error' ? 'Error' : 'Offline';
+// Create printer item HTML
+function createPrinterItem(pi) {
+    const isOnline = pi.status === 'online';
+    const statusClass = isOnline ? 'status-online' : 'status-offline';
+    const statusText = isOnline ? 'Online' : 'Offline';
     
     return `
-        <div class="printer-card">
-            <div class="printer-header">
+        <div class="printer-item">
+            <div class="printer-item-header">
                 <div class="printer-name">${pi.friendly_name}</div>
                 <div class="printer-status ${statusClass}">${statusText}</div>
             </div>
-            <div class="printer-info">
-                <div class="info-row">
-                    <span class="info-label">Location:</span>
-                    <span class="info-value">${pi.location || 'Not specified'}</span>
+            <div class="printer-details">
+                <div class="detail-item">
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">${pi.location || 'Not specified'}</span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">Model:</span>
-                    <span class="info-value">${pi.printer_model || 'Unknown'}</span>
+                <div class="detail-item">
+                    <span class="detail-label">Model:</span>
+                    <span class="detail-value">${pi.printer_model || 'Unknown'}</span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">Queue:</span>
-                    <span class="info-value">${pi.queue_count || 0} jobs</span>
+                <div class="detail-item">
+                    <span class="detail-label">Queue:</span>
+                    <span class="detail-value">${pi.queue_count || 0} jobs</span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">Last Seen:</span>
-                    <span class="info-value">${formatDateTime(pi.last_seen)}</span>
+                <div class="detail-item">
+                    <span class="detail-label">Last Seen:</span>
+                    <span class="detail-value">${formatDateTime(pi.last_seen)}</span>
                 </div>
             </div>
-            <div class="printer-actions-grid">
-                <button class="btn btn-primary" onclick="showPrintModal('${pi.id}', '${pi.friendly_name}')">
-                    <i class="ri-printer-line"></i> Test Print
+            <div class="printer-actions">
+                <button class="printer-btn primary" onclick="showPrintModal('${pi.id}', '${pi.friendly_name}')">
+                    <i data-lucide="printer"></i> Test
                 </button>
-                <button class="btn btn-secondary" onclick="showDetailsModal('${pi.id}')">
-                    <i class="ri-information-line"></i> Details
+                <button class="printer-btn" onclick="showEditModal('${pi.id}')">
+                    <i data-lucide="edit-2"></i> Edit
                 </button>
-                <button class="btn btn-edit" onclick="showEditModal('${pi.id}')">
-                    <i class="ri-edit-line"></i> Edit
-                </button>
-                <button class="btn btn-delete" onclick="showDeleteModal('${pi.id}', '${pi.friendly_name}')">
-                    <i class="ri-delete-bin-line"></i> Delete
+                <button class="printer-btn" onclick="showDeleteModal('${pi.id}', '${pi.friendly_name}')">
+                    <i data-lucide="trash-2"></i> Delete
                 </button>
             </div>
         </div>
@@ -216,15 +215,6 @@ function closePrintModal() {
     selectedPiId = null;
 }
 
-// Toggle print method inputs
-function togglePrintMethod() {
-    const method = document.querySelector('input[name="print-method"]:checked').value;
-    
-    document.getElementById('raw-input').style.display = method === 'raw' ? 'block' : 'none';
-    document.getElementById('file-input').style.display = method === 'file' ? 'block' : 'none';
-    document.getElementById('url-input').style.display = method === 'url' ? 'block' : 'none';
-}
-
 // Send print job
 async function sendPrint(event) {
     event.preventDefault();
@@ -240,24 +230,25 @@ async function sendPrint(event) {
         return;
     }
     
-    const method = document.querySelector('input[name="print-method"]:checked').value;
+    // Determine which tab is active
+    const activeTab = document.querySelector('.tab-content.active');
     let printData = {};
     
-    if (method === 'raw') {
+    if (activeTab.id === 'raw-input') {
         const zplRaw = document.getElementById('zpl-raw').value;
         if (!zplRaw) {
             showAlert('Please enter ZPL code', 'error');
             return;
         }
         printData = { zpl_raw: zplRaw };
-    } else if (method === 'url') {
+    } else if (activeTab.id === 'url-input') {
         const zplUrl = document.getElementById('zpl-url').value;
         if (!zplUrl) {
             showAlert('Please enter ZPL URL', 'error');
             return;
         }
         printData = { zpl_url: zplUrl };
-    } else if (method === 'file') {
+    } else if (activeTab.id === 'file-input') {
         const fileInput = document.getElementById('zpl-file');
         if (!fileInput.files[0]) {
             showAlert('Please select a ZPL file', 'error');
@@ -316,142 +307,41 @@ function readFileContent(file) {
     });
 }
 
-// Show details modal
-async function showDetailsModal(piId) {
-    selectedPiId = piId;
-    const pi = currentPis.find(p => p.id === piId);
-    
-    if (!pi) return;
-    
-    document.getElementById('details-pi-name').textContent = pi.friendly_name;
-    document.getElementById('details-modal').style.display = 'block';
-    
-    // Load detailed information
-    try {
-        const response = await fetch(`/api/pis/${piId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            renderPiDetails(data.data);
-        }
-        
-        // Load metrics
-        const metricsResponse = await fetch(`/api/pis/${piId}/metrics?hours=1`);
-        const metricsData = await metricsResponse.json();
-        
-        if (metricsData.success && metricsData.data.metrics.length > 0) {
-            const latestMetrics = metricsData.data.metrics[0];
-            renderMetrics(latestMetrics);
-        }
-    } catch (error) {
-        console.error('Error loading Pi details:', error);
-    }
-}
 
-// Close details modal
-function closeDetailsModal() {
-    document.getElementById('details-modal').style.display = 'none';
-    selectedPiId = null;
-}
-
-// Render Pi details
-function renderPiDetails(pi) {
-    const content = document.getElementById('pi-details-content');
-    
-    content.innerHTML = `
-        <div class="info-row">
-            <span class="info-label">Device ID:</span>
-            <span class="info-value" style="font-family: monospace;">${pi.id}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">API Key:</span>
-            <span class="info-value" style="font-family: monospace;">${pi.api_key}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Status:</span>
-            <span class="info-value">${pi.status}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">WebSocket:</span>
-            <span class="info-value">${pi.websocket_connected ? 'Connected' : 'Disconnected'}</span>
-        </div>
-        ${pi.config ? `
-        <h3 style="margin-top: 20px;">Configuration</h3>
-        <div class="info-row">
-            <span class="info-label">Printer Device:</span>
-            <span class="info-value">${pi.config.printer_device}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Queue Size:</span>
-            <span class="info-value">${pi.config.queue_size}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Log Level:</span>
-            <span class="info-value">${pi.config.log_level}</span>
-        </div>
-        ` : ''}
-        <div id="metrics-display"></div>
-    `;
-}
-
-// Render metrics
-function renderMetrics(metrics) {
-    const metricsDisplay = document.getElementById('metrics-display');
-    
-    metricsDisplay.innerHTML = `
-        <h3 style="margin-top: 20px;">Latest Metrics</h3>
-        <div class="metrics-grid">
-            <div class="metric-item">
-                <div class="metric-label">CPU Usage</div>
-                <div class="metric-value">${metrics.cpu_usage?.toFixed(1) || 0}%</div>
-            </div>
-            <div class="metric-item">
-                <div class="metric-label">Memory Usage</div>
-                <div class="metric-value">${metrics.memory_usage?.toFixed(1) || 0}%</div>
-            </div>
-            <div class="metric-item">
-                <div class="metric-label">Queue Size</div>
-                <div class="metric-value">${metrics.queue_size || 0}</div>
-            </div>
-            <div class="metric-item">
-                <div class="metric-label">Jobs Completed</div>
-                <div class="metric-value">${metrics.jobs_completed || 0}</div>
-            </div>
-        </div>
-    `;
-}
-
-// Show alert message
+// Show alert message (toast notification)
 function showAlert(message, type = 'info') {
-    // Remove any existing alerts first
-    const existingAlerts = document.querySelectorAll('.alert');
-    existingAlerts.forEach(alert => alert.remove());
+    const container = document.getElementById('toast-container');
     
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
     
     // Add icon based on type
-    let icon = '';
+    let iconName = '';
     switch(type) {
         case 'success':
-            icon = '<i class="ri-check-line"></i> ';
+            iconName = 'check-circle';
             break;
         case 'error':
-            icon = '<i class="ri-error-warning-line"></i> ';
+            iconName = 'alert-circle';
             break;
         case 'info':
-            icon = '<i class="ri-information-line"></i> ';
+            iconName = 'info';
             break;
     }
     
-    alert.innerHTML = icon + message;
-    document.body.appendChild(alert);
+    toast.innerHTML = `
+        <i data-lucide="${iconName}"></i>
+        <span>${message}</span>
+    `;
+    
+    container.appendChild(toast);
+    lucide.createIcons();
     
     // Auto-dismiss after 4 seconds
     setTimeout(() => {
-        alert.style.animation = 'slideInFromRight 0.3s reverse';
+        toast.style.animation = 'slideInRight 0.3s reverse';
         setTimeout(() => {
-            alert.remove();
+            toast.remove();
         }, 300);
     }, 4000);
 }
@@ -497,7 +387,6 @@ async function showEditModal(piId) {
     if (!pi) return;
     
     document.getElementById('edit-pi-id').value = pi.id;
-    document.getElementById('edit-pi-name').textContent = pi.friendly_name;
     document.getElementById('edit-friendly-name').value = pi.friendly_name;
     document.getElementById('edit-location').value = pi.location || '';
     document.getElementById('edit-printer-model').value = pi.printer_model || '';
@@ -618,6 +507,44 @@ function saveSettings(event) {
     // Close modal and show success message
     closeSettingsModal();
     showAlert('Settings saved successfully!', 'success');
+}
+
+// Search printers
+function searchPrinters(searchTerm) {
+    const filtered = currentPis.filter(pi => 
+        pi.friendly_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (pi.location && pi.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (pi.printer_model && pi.printer_model.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    renderPrinters(filtered);
+}
+
+// Switch print tab
+function switchPrintTab(tabName) {
+    // Update tab buttons
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Update tab content
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(content => content.classList.remove('active'));
+    document.getElementById(`${tabName}-input`).classList.add('active');
+}
+
+// Show broadcast modal
+function showBroadcastModal() {
+    showAlert('Broadcast print feature coming soon!', 'info');
+}
+
+// View logs
+function viewLogs() {
+    showAlert('Log viewer coming soon!', 'info');
+}
+
+// Show metrics
+function showMetrics() {
+    showAlert('Metrics dashboard coming soon!', 'info');
 }
 
 // Close modals when clicking outside
