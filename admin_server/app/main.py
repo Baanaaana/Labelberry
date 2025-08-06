@@ -71,6 +71,11 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "web" / "static"), name="static")
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "templates")
 
+# Add cache busting version for static files
+import time
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "1.0"
+templates.env.globals['static_version'] = STATIC_VERSION
+
 
 # Authentication dependencies
 async def require_login(request: Request):

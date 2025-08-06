@@ -18,17 +18,41 @@ function scrollToSection(sectionId, navItem) {
         return;
     }
     
-    // Simple approach: scroll into view then adjust
-    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Get the sidebar nav element for alignment reference
+    const sidebarNav = document.querySelector('.docs-nav');
+    if (!sidebarNav) {
+        // Fallback to simple scroll if sidebar not found
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+    }
     
-    // After scroll completes, adjust position
-    setTimeout(() => {
-        // Scroll up by 100 pixels to align better with sidebar
-        window.scrollBy({
-            top: -100,
-            behavior: 'smooth'
-        });
-    }, 500);
+    // Calculate positions
+    const sectionRect = section.getBoundingClientRect();
+    const sidebarRect = sidebarNav.getBoundingClientRect();
+    
+    // Current scroll position
+    const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+    
+    // Calculate where we need to scroll to
+    // We want the section top to align with the sidebar nav top
+    const sectionAbsoluteTop = sectionRect.top + currentScrollY;
+    const sidebarTop = sidebarRect.top; // This is relative to viewport
+    
+    // The sidebar is sticky at 24px from top, so when scrolled, it's at 24px
+    // We want to scroll so the section is at the same position as the sidebar
+    const targetScrollPosition = sectionAbsoluteTop - 24;
+    
+    console.log('Scrolling to align section with sidebar:', {
+        sectionTop: sectionAbsoluteTop,
+        targetScroll: targetScrollPosition,
+        currentScroll: currentScrollY
+    });
+    
+    // Smooth scroll to target position
+    window.scrollTo({
+        top: targetScrollPosition,
+        behavior: 'smooth'
+    });
 }
 
 // Copy code to clipboard

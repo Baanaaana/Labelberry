@@ -15,7 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class Database:
-    def __init__(self, db_path: str = "/var/lib/labelberry/db.sqlite"):
+    def __init__(self, db_path: str = None):
+        import os
+        if db_path is None:
+            db_path = os.getenv('LABELBERRY_DB_PATH', '/var/lib/labelberry/db.sqlite')
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.init_database()
