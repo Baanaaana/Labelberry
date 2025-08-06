@@ -239,6 +239,11 @@ header h1 i {
     to { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes slideInFromRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
 .close {
     color: #aaa;
     float: right;
@@ -342,28 +347,59 @@ header h1 i {
 
 /* Alert messages */
 .alert {
-    padding: 15px;
-    margin-bottom: 20px;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    min-width: 250px;
+    max-width: 400px;
     border-radius: 8px;
-    animation: slideIn 0.3s;
+    animation: slideInFromRight 0.3s;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    z-index: 2000;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.alert i {
+    margin-right: 8px;
+    font-size: 18px;
+    vertical-align: middle;
 }
 
 .alert-success {
-    background: #c6f6d5;
-    color: #22543d;
-    border: 1px solid #9ae6b4;
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    color: white;
+    border: 1px solid #2f855a;
 }
 
 .alert-error {
-    background: #fed7d7;
-    color: #742a2a;
-    border: 1px solid #fc8181;
+    background: linear-gradient(135deg, #f56565, #e53e3e);
+    color: white;
+    border: 1px solid #c53030;
 }
 
 .alert-info {
-    background: #bee3f8;
-    color: #2c5282;
-    border: 1px solid #90cdf4;
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    color: white;
+    border: 1px solid #2c5282;
+}
+
+/* Allow clicking through alert to elements below */
+.alert {
+    pointer-events: auto;
+}
+
+/* Close button for alerts (optional) */
+.alert-close {
+    float: right;
+    margin-left: 15px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.alert-close:hover {
+    opacity: 0.7;
 }
 
 /* Edit and delete button styles */

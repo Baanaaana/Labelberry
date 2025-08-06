@@ -384,15 +384,37 @@ function renderMetrics(metrics) {
 
 // Show alert message
 function showAlert(message, type = 'info') {
+    // Remove any existing alerts first
+    const existingAlerts = document.querySelectorAll('.alert');
+    existingAlerts.forEach(alert => alert.remove());
+    
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.textContent = message;
     
+    // Add icon based on type
+    let icon = '';
+    switch(type) {
+        case 'success':
+            icon = '<i class="ri-check-line"></i> ';
+            break;
+        case 'error':
+            icon = '<i class="ri-error-warning-line"></i> ';
+            break;
+        case 'info':
+            icon = '<i class="ri-information-line"></i> ';
+            break;
+    }
+    
+    alert.innerHTML = icon + message;
     document.body.appendChild(alert);
     
+    // Auto-dismiss after 4 seconds
     setTimeout(() => {
-        alert.remove();
-    }, 3000);
+        alert.style.animation = 'slideInFromRight 0.3s reverse';
+        setTimeout(() => {
+            alert.remove();
+        }, 300);
+    }, 4000);
 }
 
 // Format date time
