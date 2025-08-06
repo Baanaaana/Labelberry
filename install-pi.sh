@@ -118,7 +118,7 @@ device_id: $DEVICE_ID
 friendly_name: $FRIENDLY_NAME
 api_key: $API_KEY
 admin_server: $ADMIN_SERVER
-printer_device: /dev/usb/lp0
+printer_device: /dev/usblp0
 queue_size: 100
 retry_attempts: 3
 retry_delay: 5
