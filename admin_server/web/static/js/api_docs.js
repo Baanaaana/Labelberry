@@ -5,17 +5,19 @@ let userApiKeys = [];
 
 // Scroll to section
 function scrollToSection(sectionId, navItem) {
-    // Update active nav item
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    navItem.classList.add('active');
-    
     // Scroll to section
     const section = document.getElementById(sectionId);
     if (section) {
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Update active state after a short delay to let scroll finish
+        setTimeout(() => {
+            updateActiveSection();
+        }, 100);
     }
+    
+    // Prevent default link behavior
+    return false;
 }
 
 // Copy code to clipboard
@@ -360,51 +362,48 @@ function updateActiveSection() {
     const sections = document.querySelectorAll('.doc-section');
     const navItems = document.querySelectorAll('.nav-item');
     
+    if (!sections.length || !navItems.length) return;
+    
     // Get current scroll position
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     const windowHeight = window.innerHeight;
     const documentHeight = document.documentElement.scrollHeight;
     
     let currentSection = null;
-    let minDistance = Infinity;
     
     // Check if we're at the bottom of the page
     if (scrollTop + windowHeight >= documentHeight - 50) {
         // Highlight the last section (examples)
         currentSection = 'examples';
     } else {
-        // Find the section that is most visible in the viewport
-        sections.forEach(section => {
+        // Find which section is currently in view
+        for (let i = sections.length - 1; i >= 0; i--) {
+            const section = sections[i];
             const rect = section.getBoundingClientRect();
-            const sectionId = section.getAttribute('id');
+            const sectionTop = rect.top + scrollTop;
             
-            // Calculate how far the section top is from a point near the top of viewport
-            const targetPoint = 100; // Point to check against (100px from top)
-            const distance = Math.abs(rect.top - targetPoint);
-            
-            // If this section is closer to our target point, it's our new current section
-            if (rect.top <= targetPoint && rect.bottom > targetPoint) {
-                // Section is currently at our target point
-                currentSection = sectionId;
-                minDistance = 0;
-            } else if (distance < minDistance && rect.top < windowHeight) {
-                // Section is visible and closer to target than previous best
-                minDistance = distance;
-                currentSection = sectionId;
+            // If the section top is above the current scroll position (with offset for header)
+            if (sectionTop <= scrollTop + 80) {
+                currentSection = section.getAttribute('id');
+                break;
             }
-        });
+        }
         
-        // Fallback: if no section found and we're at the top, highlight overview
-        if (!currentSection && scrollTop < 100) {
+        // Default to first section if none found
+        if (!currentSection) {
             currentSection = 'overview';
         }
     }
     
-    // Update nav items
+    // Update nav items - remove all active classes first
     navItems.forEach(item => {
         item.classList.remove('active');
+    });
+    
+    // Then add active class to the current section
+    navItems.forEach(item => {
         const href = item.getAttribute('href');
-        if (href && href.substring(1) === currentSection) {
+        if (href === '#' + currentSection) {
             item.classList.add('active');
         }
     });
