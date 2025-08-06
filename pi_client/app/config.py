@@ -29,6 +29,9 @@ class ConfigManager:
                 if env_key in os.environ:
                     config_data[key] = os.environ[env_key]
             
+            # Remove friendly_name if it exists in old configs
+            config_data.pop('friendly_name', None)
+            
             self.config = PiConfig(**config_data)
             return self.config
         except Exception as e:
@@ -41,7 +44,6 @@ class ConfigManager:
         
         default_config = {
             "device_id": str(uuid.uuid4()),
-            "friendly_name": "raspberry-pi-" + str(uuid.uuid4())[:8],
             "api_key": str(uuid.uuid4()),
             "admin_server": "http://localhost:8080",
             "printer_device": "/dev/usb/lp0",

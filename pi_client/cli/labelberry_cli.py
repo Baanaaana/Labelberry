@@ -47,7 +47,6 @@ class LabelBerryCLI:
             
             print("\n=== LabelBerry Status ===\n")
             print(f"Device ID: {data['device_id']}")
-            print(f"Friendly Name: {data['friendly_name']}")
             print(f"WebSocket Connected: {data['websocket_connected']}")
             
             print("\n--- Printer Status ---")

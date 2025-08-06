@@ -230,7 +230,6 @@ async def get_status():
     try:
         status_data = {
             "device_id": config.device_id,
-            "friendly_name": config.friendly_name,
             "printer": printer.get_status(),
             "queue": print_queue.get_status(),
             "system": monitoring.get_system_info(),

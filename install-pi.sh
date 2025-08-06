@@ -110,12 +110,10 @@ else
         API_KEY=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
     fi
     
-    read -p "Enter a friendly name for this Pi: " FRIENDLY_NAME </dev/tty
     read -p "Enter the admin server URL (e.g., http://192.168.1.100:8080): " ADMIN_SERVER </dev/tty
     
     cat > /etc/labelberry/client.conf <<EOF
 device_id: $DEVICE_ID
-friendly_name: $FRIENDLY_NAME
 api_key: $API_KEY
 admin_server: $ADMIN_SERVER
 printer_device: /dev/usblp0

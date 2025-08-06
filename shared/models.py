@@ -50,7 +50,6 @@ class PrintJob(BaseModel):
 
 class PiConfig(BaseModel):
     device_id: str
-    friendly_name: str
     api_key: str
     admin_server: str
     printer_device: str = "/dev/usb/lp0"

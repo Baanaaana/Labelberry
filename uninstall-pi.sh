@@ -53,13 +53,11 @@ if [ -f "/etc/labelberry/client.conf" ]; then
     # Extract and display the device ID and API key for reference
     DEVICE_ID=$(grep device_id /etc/labelberry/client.conf | cut -d' ' -f2)
     API_KEY=$(grep api_key /etc/labelberry/client.conf | cut -d' ' -f2)
-    FRIENDLY_NAME=$(grep friendly_name /etc/labelberry/client.conf | cut -d' ' -f2)
     
     echo ""
     echo -e "${YELLOW}Save these values if you plan to reinstall:${NC}"
     echo "Device ID: $DEVICE_ID"
     echo "API Key: $API_KEY"
-    echo "Friendly Name: $FRIENDLY_NAME"
     echo ""
 else
     echo "No configuration found to backup"
