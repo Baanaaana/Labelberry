@@ -355,6 +355,37 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
+// Scroll spy functionality
+function updateActiveSection() {
+    const sections = document.querySelectorAll('.doc-section');
+    const navItems = document.querySelectorAll('.nav-item');
+    const scrollPosition = window.scrollY + 100; // Offset for header
+    
+    let currentSection = '';
+    
+    sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.offsetHeight;
+        
+        if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+            currentSection = section.getAttribute('id');
+        }
+    });
+    
+    // If we're near the top, highlight the first section
+    if (window.scrollY < 100) {
+        currentSection = 'overview';
+    }
+    
+    navItems.forEach(item => {
+        item.classList.remove('active');
+        const href = item.getAttribute('href');
+        if (href && href.substring(1) === currentSection) {
+            item.classList.add('active');
+        }
+    });
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize base URL immediately
@@ -383,6 +414,18 @@ document.addEventListener('DOMContentLoaded', () => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
         });
+    });
+    
+    // Set up scroll spy
+    updateActiveSection();
+    let scrollTimer = null;
+    window.addEventListener('scroll', () => {
+        if (scrollTimer !== null) {
+            clearTimeout(scrollTimer);
+        }
+        scrollTimer = setTimeout(() => {
+            updateActiveSection();
+        }, 50); // Debounce for performance
     });
     
     // Load printers and API keys
