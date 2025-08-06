@@ -11,38 +11,24 @@ function scrollToSection(sectionId, navItem) {
     });
     navItem.classList.add('active');
     
-    // Scroll to section
+    // Find the section
     const section = document.getElementById(sectionId);
-    if (section) {
-        console.log('Section found:', sectionId);
-        
-        // Get current scroll position
-        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-        console.log('Current scroll position:', currentScroll);
-        
-        // Get section position
-        const rect = section.getBoundingClientRect();
-        console.log('Section rect:', rect);
-        
-        const absoluteTop = currentScroll + rect.top;
-        console.log('Section absolute top:', absoluteTop);
-        
-        // Calculate target with offset
-        const targetPosition = absoluteTop - 100; // Increased offset
-        console.log('Target scroll position:', targetPosition);
-        
-        // Force scroll
-        window.scrollTo(0, targetPosition);
-        
-        // Also try with smooth scroll after a delay
-        setTimeout(() => {
-            window.scrollTo({
-                top: targetPosition,
-                behavior: 'smooth'
-            });
-        }, 100);
+    if (!section) {
+        console.error('Section not found:', sectionId);
+        return;
     }
-    return false;
+    
+    // Simple approach: scroll into view then adjust
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // After scroll completes, adjust position
+    setTimeout(() => {
+        // Scroll up by 100 pixels to align better with sidebar
+        window.scrollBy({
+            top: -100,
+            behavior: 'smooth'
+        });
+    }, 500);
 }
 
 // Copy code to clipboard
@@ -405,12 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Set up smooth scrolling for navigation
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-        });
-    });
+    // Remove any default click handlers that might interfere
+    // Navigation is handled by onclick attribute
     
     // Load printers and API keys
     loadPrinters();
