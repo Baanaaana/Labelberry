@@ -151,3 +151,11 @@ class WebSocketClient:
     
     async def ping(self):
         return await self.send_message("ping", {"timestamp": datetime.utcnow().isoformat()})
+    
+    async def send_job_update(self, job_id: str, status: str):
+        """Send job status update to admin server"""
+        return await self.send_message("job_complete", {
+            "job_id": job_id,
+            "status": status,
+            "timestamp": datetime.utcnow().isoformat()
+        })

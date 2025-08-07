@@ -119,7 +119,7 @@ async def process_queue(printer_instance: PrinterInstance):
     """Process print queue for a specific printer"""
     while True:
         try:
-            if not printer_instance.print_queue.processing and printer_instance.printer.is_connected:
+            if not printer_instance.print_queue.processing:
                 job = printer_instance.print_queue.get_next_job()
                 if job:
                     printer_instance.print_queue.processing = True
@@ -147,10 +147,14 @@ async def process_print_job(printer_instance: PrinterInstance, job: PrintJob) ->
         # Update status to processing
         await update_job_status(printer_instance, job.id, PrintJobStatus.PROCESSING)
         
-        # Download if URL
-        zpl_data = job.zpl_data
-        if job.zpl_url:
-            zpl_data = await download_zpl(job.zpl_url)
+        # Get ZPL data
+        zpl_data = ""
+        if job.zpl_source.startswith("http"):
+            # It's a URL, download it
+            zpl_data = await download_zpl(job.zpl_source)
+        else:
+            # It's raw ZPL
+            zpl_data = job.zpl_source
         
         # Send to printer
         success = printer_instance.printer.send_to_printer(zpl_data)
@@ -319,7 +323,7 @@ async def get_status():
             status = PiStatus(
                 id=printer_instance.device_id,
                 friendly_name=printer_instance.name,
-                status="online" if printer_instance.printer.is_connected else "offline",
+                status="online",  # Always online when service is running
                 last_seen=datetime.now(),
                 queue_count=printer_instance.print_queue.pending_count if printer_instance.print_queue else 0,
                 metrics=printer_instance.monitoring.get_current_metrics() if printer_instance.monitoring else None
@@ -360,7 +364,7 @@ async def get_printer_status(device_id: str):
     status = PiStatus(
         id=printer.device_id,
         friendly_name=printer.name,
-        status="online" if printer.printer.is_connected else "offline",
+        status="online",  # Always online when service is running
         last_seen=datetime.now(),
         queue_count=printer.print_queue.pending_count,
         metrics=printer.monitoring.get_current_metrics()
@@ -389,15 +393,20 @@ async def create_print_job(
     if not printer.enabled:
         raise HTTPException(status_code=503, detail="Printer is disabled")
     
-    if not printer.printer.is_connected:
-        raise HTTPException(status_code=503, detail="Printer not connected")
+    # Printer connection check removed - printer connects when needed
     
     # Create print job
+    # Determine the zpl_source from the request
+    if request.zpl_url:
+        zpl_source = request.zpl_url
+    elif request.zpl_raw:
+        zpl_source = request.zpl_raw
+    else:
+        raise HTTPException(status_code=400, detail="Either zpl_url or zpl_raw must be provided")
+    
     job = PrintJob(
         pi_id=device_id,
-        zpl_data=request.zpl_data,
-        zpl_url=request.zpl_url,
-        priority=request.priority
+        zpl_source=zpl_source
     )
     
     # Add to queue
