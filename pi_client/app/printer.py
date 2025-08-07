@@ -57,14 +57,32 @@ class ZebraPrinter:
     def _find_usb_printer(self):
         ZEBRA_VENDOR_ID = 0x0A5F
         
-        printers = usb.core.find(find_all=True, bDeviceClass=7)
-        
-        for printer in printers:
-            if printer.idVendor == ZEBRA_VENDOR_ID:
-                return printer
-        
-        for printer in printers:
-            return printer
+        try:
+            # First try to find Zebra printer specifically
+            zebra = usb.core.find(idVendor=ZEBRA_VENDOR_ID)
+            if zebra:
+                logger.info(f"Found Zebra printer: {zebra}")
+                return zebra
+            else:
+                logger.debug("No Zebra printer found by vendor ID")
+            
+            # Try finding printer class devices
+            printers = list(usb.core.find(find_all=True, bDeviceClass=7))
+            logger.debug(f"Found {len(printers)} printer class devices")
+            
+            for printer in printers:
+                if printer.idVendor == ZEBRA_VENDOR_ID:
+                    logger.info(f"Found Zebra in printer class devices: {printer}")
+                    return printer
+            
+            # Return first printer if any found
+            if printers:
+                logger.info(f"Using first available printer: {printers[0]}")
+                return printers[0]
+            
+            logger.warning("No USB printers found at all")
+        except Exception as e:
+            logger.error(f"Error finding USB printer: {e}")
         
         return None
     
@@ -85,8 +103,20 @@ class ZebraPrinter:
     
     def _print_via_usb(self, zpl_content: str) -> bool:
         try:
-            cfg = self.usb_device.get_active_configuration()
+            # Ensure device is configured
+            try:
+                cfg = self.usb_device.get_active_configuration()
+            except usb.core.USBError:
+                logger.info("Setting USB device configuration")
+                self.usb_device.set_configuration()
+                cfg = self.usb_device.get_active_configuration()
+            
             intf = cfg[(0, 0)]
+            
+            # Check if kernel driver needs to be detached
+            if self.usb_device.is_kernel_driver_active(intf.bInterfaceNumber):
+                logger.info("Detaching kernel driver")
+                self.usb_device.detach_kernel_driver(intf.bInterfaceNumber)
             
             ep_out = usb.util.find_descriptor(
                 intf,
@@ -97,10 +127,19 @@ class ZebraPrinter:
                 logger.error("No OUT endpoint found")
                 return False
             
-            ep_out.write(zpl_content.encode('utf-8'))
-            logger.info("ZPL sent via USB successfully")
+            data = zpl_content.encode('utf-8')
+            bytes_written = ep_out.write(data)
+            logger.info(f"ZPL sent via USB successfully ({bytes_written} bytes)")
             return True
             
+        except usb.core.USBError as e:
+            if e.errno == 13:
+                logger.error("USB permission denied - make sure running as root")
+            elif e.errno == 16:
+                logger.error("USB device busy")
+            else:
+                logger.error(f"USB print failed with error {e.errno}: {e}")
+            return False
         except Exception as e:
             logger.error(f"USB print failed: {e}")
             return False
