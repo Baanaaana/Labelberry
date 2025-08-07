@@ -196,11 +196,8 @@ async def start_printer_services():
         # Start queue processor for each printer
         tasks.append(asyncio.create_task(process_queue(printer_instance)))
         
-        # Start monitoring for each printer
-        tasks.append(asyncio.create_task(printer_instance.monitoring.start()))
-        
         # Connect websocket for each printer
-        tasks.append(asyncio.create_task(printer_instance.ws_client.connect()))
+        tasks.append(asyncio.create_task(printer_instance.ws_client.listen()))
     
     if tasks:
         await asyncio.gather(*tasks)
@@ -241,19 +238,19 @@ app = FastAPI(
 )
 
 
-def verify_api_key(x_api_key: Optional[str] = Header(None), device_id: Optional[str] = Header(None)):
-    """Verify API key for a specific printer"""
-    if not x_api_key or not device_id:
-        raise HTTPException(status_code=401, detail="Missing authentication headers")
-    
+def get_printer_by_id(device_id: str) -> PrinterInstance:
+    """Get a printer by device ID from path parameter"""
     printer = printer_manager.get_printer(device_id)
     if not printer:
         raise HTTPException(status_code=404, detail="Printer not found")
-    
-    if x_api_key != printer.api_key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    
     return printer
+
+
+def verify_api_key_header(x_api_key: Optional[str] = Header(None)):
+    """Verify API key from header"""
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="Missing API key")
+    return x_api_key
 
 
 @app.get("/status")
@@ -324,9 +321,15 @@ async def create_print_job(
     device_id: str,
     request: PrintRequest,
     background_tasks: BackgroundTasks,
-    printer: PrinterInstance = Depends(verify_api_key)
+    x_api_key: str = Depends(verify_api_key_header)
 ):
     """Create a print job for a specific printer"""
+    # Get printer and verify API key
+    printer = get_printer_by_id(device_id)
+    
+    if x_api_key != printer.api_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
     if not printer.enabled:
         raise HTTPException(status_code=503, detail="Printer is disabled")
     
