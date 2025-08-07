@@ -59,32 +59,10 @@ async function copyServerAddress() {
         const address = `http://${serverIpElement.textContent}`;
         try {
             await navigator.clipboard.writeText(address);
-            
-            // Show success feedback
-            const copyBtn = event.target.closest('button');
-            const originalIcon = copyBtn.innerHTML;
-            copyBtn.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px; color: #12b886;"></i>';
-            lucide.createIcons({
-        attrs: {
-            width: 20,
-            height: 20
-        }
-    });
-            
-            setTimeout(() => {
-                copyBtn.innerHTML = originalIcon;
-                lucide.createIcons({
-        attrs: {
-            width: 20,
-            height: 20
-        }
-    });
-            }, 2000);
-            
-            showToast('Server address copied to clipboard!', 'success');
+            showAlert('Server address copied to clipboard!', 'success');
         } catch (err) {
             console.error('Failed to copy:', err);
-            showToast('Failed to copy address', 'error');
+            showAlert('Failed to copy server address', 'error');
         }
     }
 }
@@ -193,6 +171,11 @@ function updateStats(stats) {
 function renderPrinters(pis) {
     const list = document.getElementById('printers-list');
     
+    if (!list) {
+        console.error('Printers list element not found');
+        return;
+    }
+    
     if (pis.length === 0) {
         list.innerHTML = `
             <div style="text-align: center; padding: 40px; color: #6c757d;">
@@ -221,11 +204,12 @@ function renderPrinters(pis) {
 
 // Create printer item HTML
 function createPrinterItem(pi) {
-    const isOnline = pi.status === 'online';
-    const statusClass = isOnline ? 'status-online' : 'status-offline';
-    const statusText = isOnline ? 'Online' : 'Offline';
-    
-    return `
+    try {
+        const isOnline = pi.status === 'online';
+        const statusClass = isOnline ? 'status-online' : 'status-offline';
+        const statusText = isOnline ? 'Online' : 'Offline';
+        
+        return `
         <div class="printer-item">
             <div class="printer-item-header">
                 <div class="printer-name">${pi.friendly_name}</div>
@@ -244,10 +228,12 @@ function createPrinterItem(pi) {
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">IP Address:</span>
-                    <span class="detail-value" style="font-family: monospace; font-size: 12px;">
-                        ${pi.ip_address || 'Not available'}
-                        ${pi.ip_address ? `<button class="copy-btn-inline" onclick="copyIpAddress('${pi.ip_address}')" title="Copy IP Address"><i data-lucide="copy"></i></button>` : ''}
-                    </span>
+                    ${pi.ip_address ? 
+                        `<span class="detail-value ip-address-clickable" onclick="copyIpAddress('${pi.ip_address}')" title="Click to copy">
+                            ${pi.ip_address}
+                        </span>` :
+                        `<span class="detail-value" style="color: var(--text-secondary);">Not available</span>`
+                    }
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Model:</span>
@@ -281,6 +267,10 @@ function createPrinterItem(pi) {
             </div>
         </div>
     `;
+    } catch (error) {
+        console.error('Error creating printer item:', error, pi);
+        return '';
+    }
 }
 
 // Show register Pi modal
