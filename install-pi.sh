@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.3"
+SCRIPT_VERSION="1.0.4"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -248,6 +248,19 @@ else
     read -p "Enter the admin server URL (e.g., http://192.168.1.100:8080): " ADMIN_SERVER </dev/tty
     echo ""
     
+    # Test connection to admin server
+    echo -e "${YELLOW}Testing connection to admin server...${NC}"
+    if curl -s -f -o /dev/null --connect-timeout 5 "$ADMIN_SERVER/api/health" 2>/dev/null || curl -s -f -o /dev/null --connect-timeout 5 "$ADMIN_SERVER" 2>/dev/null; then
+        echo -e "${GREEN}✓ Admin server is reachable${NC}"
+        ADMIN_SERVER_REACHABLE=true
+    else
+        echo -e "${YELLOW}⚠ Cannot reach admin server at $ADMIN_SERVER${NC}"
+        echo -e "${YELLOW}  Registration will be attempted but may fail${NC}"
+        echo -e "${YELLOW}  You can retry later with: sudo /opt/labelberry-client/scripts/retry_registration.sh${NC}"
+        ADMIN_SERVER_REACHABLE=false
+    fi
+    echo ""
+    
     # Check if we have multiple printers
     if [ $PRINTER_COUNT -gt 1 ]; then
         echo -e "${GREEN}===============================================${NC}"
@@ -329,7 +342,7 @@ EOF
             echo -e "${GREEN}✓ Generated credentials for Printer $PRINTER_NUM${NC}"
             
             # Try to register with admin server
-            if [ ! -z "$ADMIN_SERVER" ]; then
+            if [ ! -z "$ADMIN_SERVER" ] && [ "$ADMIN_SERVER_REACHABLE" = "true" ]; then
                 echo -e "${YELLOW}  Attempting to register with admin server...${NC}"
                 
                 # Create registration request
@@ -360,6 +373,10 @@ EOF
                 fi
                 
                 # Store credentials for manual registration if needed
+                echo "$DEVICE_ID:$API_KEY:$PRINTER_NAME:$PRINTER_MODEL" >> /tmp/labelberry_registration.txt
+            elif [ "$ADMIN_SERVER_REACHABLE" = "false" ]; then
+                echo -e "${YELLOW}  ⚠ Registration skipped - admin server not reachable${NC}"
+                MANUAL_REGISTRATION_NEEDED=true
                 echo "$DEVICE_ID:$API_KEY:$PRINTER_NAME:$PRINTER_MODEL" >> /tmp/labelberry_registration.txt
             fi
         done
@@ -402,7 +419,7 @@ EOF
         echo -e "${GREEN}Configuration created${NC}"
         
         # Try to register with admin server
-        if [ ! -z "$ADMIN_SERVER" ]; then
+        if [ ! -z "$ADMIN_SERVER" ] && [ "$ADMIN_SERVER_REACHABLE" = "true" ]; then
             echo -e "${YELLOW}Attempting to register with admin server...${NC}"
             
             # Create registration request
@@ -433,6 +450,10 @@ EOF
             fi
             
             # Store credentials for manual registration if needed
+            echo "$DEVICE_ID:$API_KEY:$FRIENDLY_NAME:$PRINTER_MODEL" >> /tmp/labelberry_registration.txt
+        elif [ "$ADMIN_SERVER_REACHABLE" = "false" ]; then
+            echo -e "${YELLOW}⚠ Registration skipped - admin server not reachable${NC}"
+            MANUAL_REGISTRATION_NEEDED=true
             echo "$DEVICE_ID:$API_KEY:$FRIENDLY_NAME:$PRINTER_MODEL" >> /tmp/labelberry_registration.txt
         fi
     fi

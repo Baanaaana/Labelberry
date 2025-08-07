@@ -261,9 +261,13 @@ class Database:
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
+                
+                # Convert enum to string if needed
+                status_value = device.status.value if hasattr(device.status, 'value') else str(device.status)
+                
                 cursor.execute("""
-                    INSERT OR REPLACE INTO pis (id, friendly_name, api_key, device_name, location, printer_model, label_size_id, status, last_seen)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO pis (id, friendly_name, api_key, device_name, location, printer_model, label_size_id, status, last_seen, queue_count)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     device.id,
                     device.friendly_name,
@@ -272,19 +276,25 @@ class Database:
                     device.location,
                     device.printer_model,
                     getattr(device, 'label_size_id', None),
-                    device.status,
-                    datetime.now(timezone.utc)
+                    status_value,
+                    datetime.now(timezone.utc),
+                    0  # queue_count
                 ))
+                conn.commit()
                 
                 if device.config:
                     cursor.execute("""
                         INSERT INTO configurations (pi_id, config_json)
                         VALUES (?, ?)
                     """, (device.id, json.dumps(device.config.model_dump())))
+                    conn.commit()
                 
+                logger.info(f"Successfully registered Pi {device.id} in database")
                 return True
         except Exception as e:
             logger.error(f"Failed to register Pi: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
     def get_pi_by_id(self, pi_id: str) -> Optional[PiDevice]:
