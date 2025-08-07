@@ -181,7 +181,7 @@ function renderPrinters(pis) {
             <div style="text-align: center; padding: 40px; color: #6c757d;">
                 <i data-lucide="printer" style="width: 48px; height: 48px; margin: 0 auto 16px;"></i>
                 <p style="margin: 0; font-size: 16px; font-weight: 500;">No printers registered yet</p>
-                <p style="margin: 8px 0 0; font-size: 14px;">Click "Register Printer" to add your first printer</p>
+                <p style="margin: 8px 0 0; font-size: 14px;">Click "Add Printer" to add your first printer</p>
             </div>
         `;
         lucide.createIcons({
