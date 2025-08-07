@@ -796,7 +796,7 @@ async function sendBroadcast(event) {
     
     for (const piId of selectedPis) {
         try {
-            const response = await fetch(`/api/pis/${piId}/print`, {
+            const response = await fetch(`/api/pis/${piId}/test-print`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
