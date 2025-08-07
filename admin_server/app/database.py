@@ -297,6 +297,7 @@ class Database:
                         location=row['location'],
                         printer_model=row['printer_model'],
                         label_size_id=row['label_size_id'],
+                        ip_address=row.get('ip_address'),
                         status=row['status'],
                         last_seen=datetime.fromisoformat(row['last_seen']) if row['last_seen'] else None
                     )
@@ -320,6 +321,7 @@ class Database:
                         location=row['location'],
                         printer_model=row['printer_model'],
                         label_size_id=row['label_size_id'],
+                        ip_address=row.get('ip_address'),
                         status=row['status'],
                         last_seen=datetime.fromisoformat(row['last_seen']) if row['last_seen'] else None
                     )

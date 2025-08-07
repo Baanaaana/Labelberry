@@ -245,7 +245,9 @@ function createPrinterItem(pi) {
                 <div class="detail-item">
                     <span class="detail-label">IP Address:</span>
                     <span class="detail-value" style="font-family: monospace; font-size: 12px;">
-                        ${pi.ip_address ? `${pi.ip_address} <button class="copy-btn-inline" onclick="copyIpAddress('${pi.ip_address}')" title="Copy IP Address"><i data-lucide="copy"></i></button>` : 'Not available'}
+                        ${pi.ip_address ? 
+                            `<span>${pi.ip_address}</span> <button class="copy-btn-inline" onclick="copyIpAddress('${pi.ip_address}')" title="Copy IP Address"><i data-lucide="copy"></i></button>` : 
+                            '<span style="color: var(--text-secondary);">Not available</span>'}
                     </span>
                 </div>
                 <div class="detail-item">
