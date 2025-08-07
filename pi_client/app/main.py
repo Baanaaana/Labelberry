@@ -105,6 +105,12 @@ async def process_print_job(job: PrintJob) -> bool:
         return False
 
 
+async def handle_ping(data: Dict[str, Any]):
+    """Handle ping message from server"""
+    logger.debug("Received ping from server")
+    # The ping response is handled automatically by the websocket client
+
+
 async def handle_config_update(data: Dict[str, Any]):
     logger.info(f"Received config update: {data}")
     for key, value in data.items():
@@ -139,10 +145,7 @@ async def handle_remote_print(print_data: Dict[str, Any]):
         
         if print_queue.add_job(job):
             logger.info(f"Remote print job {job.id} added to queue")
-            await ws_client.send_message("job_received", {
-                "job_id": job.id,
-                "status": "queued"
-            })
+            # Don't send job_received - server doesn't expect it
         else:
             logger.error("Failed to add remote print job - queue full")
             await ws_client.send_error("queue_full", "Print queue is full")
@@ -170,6 +173,7 @@ async def send_metrics_periodically():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    ws_client.register_handler("ping", handle_ping)
     ws_client.register_handler("config_update", handle_config_update)
     ws_client.register_handler("command", handle_command)
     
