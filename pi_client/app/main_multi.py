@@ -117,11 +117,13 @@ except Exception as e:
 
 async def process_queue(printer_instance: PrinterInstance):
     """Process print queue for a specific printer"""
+    logger.info(f"Starting queue processor for {printer_instance.name}")
     while True:
         try:
             if not printer_instance.print_queue.processing:
                 job = printer_instance.print_queue.get_next_job()
                 if job:
+                    logger.info(f"Processing job {job.id} for {printer_instance.name}")
                     printer_instance.print_queue.processing = True
                     success = await process_print_job(printer_instance, job)
                     printer_instance.print_queue.processing = False
@@ -132,8 +134,15 @@ async def process_queue(printer_instance: PrinterInstance):
                         job.id, 
                         PrintJobStatus.COMPLETED if success else PrintJobStatus.FAILED
                     )
+                    
+                    if success:
+                        logger.info(f"Job {job.id} completed successfully on {printer_instance.name}")
+                    else:
+                        logger.error(f"Job {job.id} failed on {printer_instance.name}")
         except Exception as e:
             logger.error(f"Error processing queue for {printer_instance.name}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             printer_instance.print_queue.processing = False
         
         await asyncio.sleep(1)
@@ -243,8 +252,12 @@ async def start_printer_services():
                         pi_id=printer.device_id,
                         zpl_source=zpl_data
                     )
-                    printer.print_queue.add_job(job)
-                    logger.info(f"Added test print job to {printer.name}")
+                    added = printer.print_queue.add_job(job)
+                    if added:
+                        logger.info(f"Added test print job {job.id} to {printer.name} queue")
+                        logger.info(f"Queue now has {printer.print_queue.pending_count} pending jobs")
+                    else:
+                        logger.error(f"Failed to add test print job to {printer.name} - queue may be full")
                 else:
                     logger.warning(f"Test print command for {printer.name} missing ZPL data")
         
@@ -380,14 +393,14 @@ async def get_printer_status(device_id: str):
 async def create_print_job(
     device_id: str,
     request: PrintRequest,
-    background_tasks: BackgroundTasks,
-    x_api_key: str = Depends(verify_api_key_header)
+    background_tasks: BackgroundTasks
 ):
     """Create a print job for a specific printer"""
     # Get printer and verify API key
     printer = get_printer_by_id(device_id)
     
-    if x_api_key != printer.api_key:
+    # Get API key from request body (PrintRequest model)
+    if request.api_key != printer.api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
     
     if not printer.enabled:
@@ -425,13 +438,13 @@ async def create_print_job(
 async def cancel_job(
     device_id: str,
     job_id: str,
-    x_api_key: str = Depends(verify_api_key_header)
+    x_api_key: Optional[str] = Header(None)
 ):
     """Cancel a print job for a specific printer"""
     # Get printer and verify API key
     printer = get_printer_by_id(device_id)
     
-    if x_api_key != printer.api_key:
+    if not x_api_key or x_api_key != printer.api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
     
     if not printer.enabled:
