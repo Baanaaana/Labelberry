@@ -386,11 +386,11 @@ a.icon-btn:hover i {
 .printer-details {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(3, auto);
     gap: 8px;
     margin-bottom: 12px;
     font-size: 12px;
-    grid-auto-flow: column;
-    grid-template-rows: repeat(3, auto);
+    grid-auto-flow: row;
 }
 
 .detail-item {

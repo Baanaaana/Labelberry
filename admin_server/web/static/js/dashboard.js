@@ -237,21 +237,18 @@ function createPrinterItem(pi) {
             <div class="printer-item-header">
                 <div class="printer-name">${pi.friendly_name}</div>
                 <div class="printer-status-container">
-                    <div class="printer-status ${statusClass}">${statusText}</div>
-                    <div class="queue-label">${pi.queue_count || 0} in queue</div>
                     <div class="label-size-badge ${labelSizeClass}">${labelDimensions}</div>
+                    <div class="queue-label">${pi.queue_count || 0} in queue</div>
+                    <div class="printer-status ${statusClass}">${statusText}</div>
                 </div>
             </div>
             <div class="printer-details">
+                <!-- Left column items -->
                 <div class="detail-item">
                     <span class="detail-label">Device ID:</span>
                     <span class="detail-value device-id-clickable" onclick="copyDeviceId('${pi.id}')" title="Click to copy">
                         ${pi.id}
                     </span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Location:</span>
-                    <span class="detail-value">${pi.location || 'Not specified'}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">IP Address:</span>
@@ -263,12 +260,17 @@ function createPrinterItem(pi) {
                     }
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Model:</span>
-                    <span class="detail-value">${pi.printer_model || 'Unknown'}</span>
-                </div>
-                <div class="detail-item">
                     <span class="detail-label">Device Name:</span>
                     <span class="detail-value">${pi.device_name || 'Not specified'}</span>
+                </div>
+                <!-- Right column items -->
+                <div class="detail-item">
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">${pi.location || 'Not specified'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Model:</span>
+                    <span class="detail-value">${pi.printer_model || 'Unknown'}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Last Seen:</span>
