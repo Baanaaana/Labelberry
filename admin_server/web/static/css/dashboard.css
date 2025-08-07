@@ -830,6 +830,15 @@ input[type="checkbox"]:hover {
     color: var(--text-primary);
 }
 
+.management-nav .nav-item.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.management-nav .nav-item.active i {
+    color: white;
+}
+
 .management-nav .nav-item:active {
     transform: translateY(1px);
 }

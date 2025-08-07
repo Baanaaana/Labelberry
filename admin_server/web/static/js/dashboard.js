@@ -298,15 +298,29 @@ function createPrinterItem(pi) {
     }
 }
 
+// Helper function to manage nav item active state
+function setNavActive(navId, active) {
+    const navItem = document.getElementById(navId);
+    if (navItem) {
+        if (active) {
+            navItem.classList.add('active');
+        } else {
+            navItem.classList.remove('active');
+        }
+    }
+}
+
 // Show register Pi modal
 function showRegisterModal() {
     document.getElementById('register-modal').style.display = 'block';
+    setNavActive('nav-add-printer', true);
 }
 
 // Close register modal
 function closeRegisterModal() {
     document.getElementById('register-modal').style.display = 'none';
     document.getElementById('register-form').reset();
+    setNavActive('nav-add-printer', false);
 }
 
 // Register new Pi
@@ -740,6 +754,7 @@ function switchPrintTab(tabName) {
 
 // Show broadcast modal
 function showBroadcastModal() {
+    setNavActive('nav-broadcast', true);
     // Populate printer checkboxes
     const list = document.getElementById('broadcast-printer-list');
     const onlinePrinters = currentPis.filter(pi => pi.status === 'online');
@@ -768,6 +783,7 @@ function showBroadcastModal() {
 function closeBroadcastModal() {
     document.getElementById('broadcast-modal').style.display = 'none';
     document.getElementById('broadcast-form').reset();
+    setNavActive('nav-broadcast', false);
 }
 
 // Switch broadcast tab
@@ -852,6 +868,7 @@ async function sendBroadcast(event) {
 
 // View logs
 function viewLogs() {
+    setNavActive('nav-logs', true);
     // Populate printer filter
     const filter = document.getElementById('log-pi-filter');
     filter.innerHTML = '<option value="">All Sources</option>' + 
@@ -867,6 +884,7 @@ function viewLogs() {
 // Close logs modal
 function closeLogsModal() {
     document.getElementById('logs-modal').style.display = 'none';
+    setNavActive('nav-logs', false);
 }
 
 // Format log details for display
@@ -997,6 +1015,7 @@ function refreshLogs() {
 
 // Show metrics
 function showMetrics() {
+    setNavActive('nav-metrics', true);
     // Populate printer filter
     const filter = document.getElementById('metrics-pi-filter');
     filter.innerHTML = '<option value="">All Printers</option>' + 
@@ -1011,6 +1030,7 @@ function showMetrics() {
 // Close metrics modal
 function closeMetricsModal() {
     document.getElementById('metrics-modal').style.display = 'none';
+    setNavActive('nav-metrics', false);
 }
 
 // Load metrics
@@ -1114,12 +1134,14 @@ let queueData = null;
 
 function showQueueModal() {
     document.getElementById('queue-modal').style.display = 'flex';
+    setNavActive('nav-queue', true);
     loadQueuePrinters();
     loadQueue();
 }
 
 function closeQueueModal() {
     document.getElementById('queue-modal').style.display = 'none';
+    setNavActive('nav-queue', false);
 }
 
 async function loadQueuePrinters() {
