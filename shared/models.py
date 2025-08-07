@@ -53,6 +53,7 @@ class PiConfig(BaseModel):
     api_key: str
     admin_server: str
     printer_device: str = "/dev/usb/lp0"
+    printer_model: Optional[str] = None
     queue_size: int = 100
     retry_attempts: int = 3
     retry_delay: int = 5

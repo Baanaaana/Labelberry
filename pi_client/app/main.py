@@ -38,7 +38,12 @@ config = config_manager.get_config()
 printer = ZebraPrinter(config.printer_device)
 print_queue = PrintQueue(max_size=config.queue_size)
 monitoring = MonitoringService(config.device_id)
-ws_client = WebSocketClient(config.admin_server, config.device_id, config.api_key)
+ws_client = WebSocketClient(
+    config.admin_server, 
+    config.device_id, 
+    config.api_key,
+    printer_model=config.printer_model
+)
 
 
 async def process_queue():

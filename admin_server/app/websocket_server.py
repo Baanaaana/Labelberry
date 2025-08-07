@@ -124,6 +124,11 @@ class ConnectionManager:
         self.database.update_pi_status(pi_id, PiStatus.ONLINE)
         logger.info(f"Pi {pi_id} sent connect message")
         
+        # Update printer model if provided
+        if "printer_model" in data and data["printer_model"]:
+            self.database.update_pi_printer_model(pi_id, data["printer_model"])
+            logger.info(f"Updated printer model for Pi {pi_id}: {data['printer_model']}")
+        
         # Start ping task after successful connect
         if pi_id not in self.ping_tasks:
             self.ping_tasks[pi_id] = asyncio.create_task(self.ping_loop(pi_id))

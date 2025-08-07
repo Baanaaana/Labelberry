@@ -70,10 +70,19 @@ if [ -z "$USB_DEVICES" ]; then
     echo "Continuing with manual configuration..."
     PRINTER_COUNT=1
     PRINTER_DEVICES=("/dev/usblp0")
+    PRINTER_MODELS=("Unknown")
 else
     echo -e "${GREEN}Found Zebra printer(s):${NC}"
     echo "$USB_DEVICES"
     echo ""
+    
+    # Extract printer models from lsusb output
+    PRINTER_MODELS=()
+    while IFS= read -r line; do
+        # Extract the model name from lsusb output (e.g., "Zebra Technologies ZTC ZD220-203dpi ZPL")
+        MODEL=$(echo "$line" | sed 's/.*Zebra Technologies //' | sed 's/  */ /g')
+        PRINTER_MODELS+=("$MODEL")
+    done <<< "$USB_DEVICES"
     
     # Find all USB printer devices
     FOUND_DEVICES=()
@@ -204,6 +213,13 @@ EOF
                 API_KEY=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
             fi
             
+            # Get printer model if available
+            if [ ${#PRINTER_MODELS[@]} -ge $PRINTER_NUM ]; then
+                PRINTER_MODEL="${PRINTER_MODELS[$((PRINTER_NUM-1))]}"
+            else
+                PRINTER_MODEL="Unknown"
+            fi
+            
             # Create individual printer config file
             cat > "/etc/labelberry/printers/printer_${i}.conf" <<EOF
 # Configuration for $PRINTER_NAME
@@ -211,6 +227,7 @@ name: $PRINTER_NAME
 device_id: $DEVICE_ID
 api_key: $API_KEY
 device_path: $DEVICE
+printer_model: $PRINTER_MODEL
 enabled: true
 EOF
             
@@ -240,11 +257,19 @@ EOF
             API_KEY=$(python3 -c 'import uuid; print(str(uuid.uuid4()))')
         fi
         
+        # Get printer model if available
+        if [ ${#PRINTER_MODELS[@]} -gt 0 ]; then
+            PRINTER_MODEL="${PRINTER_MODELS[0]}"
+        else
+            PRINTER_MODEL="Unknown"
+        fi
+        
         cat > /etc/labelberry/client.conf <<EOF
 device_id: $DEVICE_ID
 api_key: $API_KEY
 admin_server: $ADMIN_SERVER
 printer_device: ${PRINTER_DEVICES[0]}
+printer_model: $PRINTER_MODEL
 queue_size: 100
 retry_attempts: 3
 retry_delay: 5

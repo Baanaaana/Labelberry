@@ -15,10 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class WebSocketClient:
-    def __init__(self, admin_server: str, device_id: str, api_key: str):
+    def __init__(self, admin_server: str, device_id: str, api_key: str, printer_model: Optional[str] = None):
         self.admin_server = admin_server.replace("http://", "ws://").replace("https://", "wss://")
         self.device_id = device_id
         self.api_key = api_key
+        self.printer_model = printer_model
         self.ws: Optional[aiohttp.ClientWebSocketResponse] = None
         self.session: Optional[aiohttp.ClientSession] = None
         self.running = False
@@ -41,10 +42,14 @@ class WebSocketClient:
             self.ws = await self.session.ws_connect(url, headers=headers)
             self.reconnect_interval = 5
             
-            await self.send_message("connect", {
+            connect_data = {
                 "device_id": self.device_id,
                 "timestamp": datetime.utcnow().isoformat()
-            })
+            }
+            if self.printer_model:
+                connect_data["printer_model"] = self.printer_model
+            
+            await self.send_message("connect", connect_data)
             
             logger.info(f"Connected to admin server: {url}")
             return True

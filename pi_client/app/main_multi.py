@@ -44,13 +44,19 @@ class PrinterInstance:
         self.device_id = printer_config['device_id']
         self.api_key = printer_config['api_key']
         self.device_path = printer_config['device_path']
+        self.printer_model = printer_config.get('printer_model')
         self.enabled = printer_config.get('enabled', True)
         
         if self.enabled:
             self.printer = ZebraPrinter(self.device_path)
             self.print_queue = PrintQueue(max_size=100)  # Each printer gets its own queue
             self.monitoring = MonitoringService(self.device_id)
-            self.ws_client = WebSocketClient(admin_server, self.device_id, self.api_key)
+            self.ws_client = WebSocketClient(
+                admin_server, 
+                self.device_id, 
+                self.api_key,
+                printer_model=self.printer_model
+            )
         else:
             logger.info(f"Printer {self.name} is disabled")
             self.printer = None

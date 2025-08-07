@@ -368,6 +368,20 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to update Pi IP address: {e}")
     
+    def update_pi_printer_model(self, pi_id: str, printer_model: str):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE pis 
+                    SET printer_model = ?
+                    WHERE id = ?
+                """, (printer_model, pi_id))
+                conn.commit()
+                logger.info(f"Updated printer model for Pi {pi_id}: {printer_model}")
+        except Exception as e:
+            logger.error(f"Failed to update Pi printer model: {e}")
+    
     def update_pi_status(self, pi_id: str, status: str):
         try:
             with self.get_connection() as conn:
