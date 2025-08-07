@@ -250,8 +250,8 @@ function createPrinterItem(pi) {
                     </span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Last Seen:</span>
-                    <span class="detail-value">${formatDateTime(pi.last_seen)}</span>
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">${pi.location || 'Not specified'}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">IP Address:</span>
@@ -267,8 +267,12 @@ function createPrinterItem(pi) {
                     <span class="detail-value">${pi.printer_model || 'Unknown'}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Location:</span>
-                    <span class="detail-value">${pi.location || 'Not specified'}</span>
+                    <span class="detail-label">Device Name:</span>
+                    <span class="detail-value">${pi.device_name || 'Not specified'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Last Seen:</span>
+                    <span class="detail-value">${formatDateTime(pi.last_seen)}</span>
                 </div>
             </div>
             <div class="printer-actions">

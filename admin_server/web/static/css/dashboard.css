@@ -389,6 +389,8 @@ a.icon-btn:hover i {
     gap: 8px;
     margin-bottom: 12px;
     font-size: 12px;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(3, auto);
 }
 
 .detail-item {
