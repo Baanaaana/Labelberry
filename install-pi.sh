@@ -210,10 +210,8 @@ else
         echo -e "${GREEN}    Configuring $PRINTER_COUNT printer(s)              ${NC}"
         echo -e "${GREEN}===============================================${NC}"
         echo ""
-        echo -e "${YELLOW}For each printer, you'll need to:${NC}"
-        echo "  1. Give it a friendly name (e.g., 'Warehouse Printer 1')"
-        echo "  2. Note down the generated Device ID and API Key"
-        echo "  3. Register it in the admin dashboard"
+        echo -e "${YELLOW}Generating credentials for each printer...${NC}"
+        echo -e "${YELLOW}You'll need to register each printer in the admin dashboard${NC}"
         echo ""
         
         # Create main config file for multi-printer mode
@@ -238,9 +236,9 @@ EOF
             
             echo -e "${BLUE}------- Printer $PRINTER_NUM -------${NC}"
             echo -e "Device: ${YELLOW}$DEVICE${NC}"
-            echo ""
             
-            read -p "Enter a friendly name for this printer: " PRINTER_NAME </dev/tty
+            # Use a generic name for the config file
+            PRINTER_NAME="Printer $PRINTER_NUM"
             
             # Generate unique IDs for this printer
             if command -v uuidgen &> /dev/null; then
@@ -279,17 +277,13 @@ EOF
             echo "  printer_${i}: /etc/labelberry/printers/printer_${i}.conf" >> /etc/labelberry/client.conf
             
             # Store for summary
-            ALL_CONFIGS="${ALL_CONFIGS}\n${GREEN}$PRINTER_NAME:${NC}\n  Device ID: ${BLUE}$DEVICE_ID${NC}\n  API Key: ${BLUE}$API_KEY${NC}\n  Device: ${YELLOW}$DEVICE${NC}\n"
+            ALL_CONFIGS="${ALL_CONFIGS}\n${GREEN}Printer $PRINTER_NUM (${PRINTER_MODEL}):${NC}\n  Device ID: ${BLUE}$DEVICE_ID${NC}\n  API Key: ${BLUE}$API_KEY${NC}\n  Device: ${YELLOW}$DEVICE${NC}\n"
             
-            echo ""
-            echo -e "${GREEN}Printer $PRINTER_NUM configured successfully${NC}"
-            echo ""
+            echo -e "${GREEN}✓ Generated credentials for Printer $PRINTER_NUM${NC}"
         done
         
-        echo -e "${GREEN}All printers configured!${NC}"
         echo ""
-        echo -e "${YELLOW}⚠️  IMPORTANT: Save these credentials for registering in the admin dashboard:${NC}"
-        echo -e "$ALL_CONFIGS"
+        echo -e "${GREEN}All printers configured!${NC}"
         
     else
         # Single printer configuration (backward compatible)
@@ -324,9 +318,6 @@ multi_printer_mode: false
 EOF
         
         echo -e "${GREEN}Configuration created${NC}"
-        echo -e "${YELLOW}Device ID: ${BLUE}$DEVICE_ID${NC}"
-        echo -e "${YELLOW}API Key: ${BLUE}$API_KEY${NC}"
-        echo -e "${YELLOW}Please save these values for admin server registration${NC}"
     fi
 fi
 
@@ -399,16 +390,21 @@ echo "5. Use CLI: labelberry status"
 echo ""
 # Display configuration summary
 if [ -d "/etc/labelberry/printers" ] && [ "$(ls -A /etc/labelberry/printers)" ]; then
-    echo -e "${YELLOW}Register your printer(s) on the admin server:${NC}"
+    echo -e "${YELLOW}Register your printer(s) on the admin server dashboard:${NC}"
+    echo -e "${YELLOW}You can set friendly names for each printer in the dashboard${NC}"
     echo ""
     for config_file in /etc/labelberry/printers/*.conf; do
         if [ -f "$config_file" ]; then
-            NAME=$(grep "name:" "$config_file" | cut -d' ' -f2-)
             DEVICE_ID=$(grep "device_id:" "$config_file" | cut -d' ' -f2)
             API_KEY=$(grep "api_key:" "$config_file" | cut -d' ' -f2)
             DEVICE_PATH=$(grep "device_path:" "$config_file" | cut -d' ' -f2)
+            MODEL=$(grep "printer_model:" "$config_file" | cut -d' ' -f2-)
             
-            echo -e "${GREEN}$NAME:${NC}"
+            # Extract printer number from filename
+            PRINTER_NUM=$(echo "$config_file" | grep -o '[0-9]*' | tail -1)
+            PRINTER_NUM=$((PRINTER_NUM + 1))
+            
+            echo -e "${GREEN}Printer $PRINTER_NUM ($MODEL):${NC}"
             echo -e "  Device ID: ${BLUE}$DEVICE_ID${NC}"
             echo -e "  API Key: ${BLUE}$API_KEY${NC}"
             echo -e "  Device: ${YELLOW}$DEVICE_PATH${NC}"
@@ -416,9 +412,11 @@ if [ -d "/etc/labelberry/printers" ] && [ "$(ls -A /etc/labelberry/printers)" ];
         fi
     done
 else
-    echo -e "${YELLOW}Register this Pi on your admin server with:${NC}"
+    echo -e "${YELLOW}Register this Pi on your admin server dashboard:${NC}"
     echo -e "   Device ID: ${BLUE}$(grep device_id /etc/labelberry/client.conf | cut -d' ' -f2)${NC}"
     echo -e "   API Key: ${BLUE}$(grep api_key /etc/labelberry/client.conf | cut -d' ' -f2)${NC}"
+    echo ""
+    echo -e "${YELLOW}You can set a friendly name in the dashboard${NC}"
 fi
 echo ""
 
