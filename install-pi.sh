@@ -1,6 +1,12 @@
 #!/bin/bash
 
+# LabelBerry Pi Client Installation Script
+# Version: 1.0.0
+# Last Updated: 2025-08-07
+
 set -e
+
+SCRIPT_VERSION="1.0.0"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -10,6 +16,7 @@ NC='\033[0m'
 
 echo -e "${GREEN}===============================================${NC}"
 echo -e "${GREEN}    LabelBerry Pi Client Installation Script   ${NC}"
+echo -e "${GREEN}    Version: $SCRIPT_VERSION                   ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
 

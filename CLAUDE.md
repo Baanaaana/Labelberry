@@ -44,6 +44,13 @@ LabelBerry is a Raspberry Pi-based label printing system for Zebra printers with
 - **Raspberry Pi**: `curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-pi.sh | bash`
 - **Admin Server**: `curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-server.sh | bash`
 
+### Installation Script Versioning
+- **install-pi.sh**: Version 1.0.0 (Initial release with USB printer support)
+- **install-server.sh**: Version 1.0.0 (Initial release)
+- **Version Policy**: Increment by 0.0.1 for each change (e.g., 1.0.0 → 1.0.1 → 1.0.2)
+- **Version Location**: At the top of each script in header comments and SCRIPT_VERSION variable
+- **Version Format**: MAJOR.MINOR.PATCH following semantic versioning
+
 ## Project Structure
 ```
 LabelBerry/
