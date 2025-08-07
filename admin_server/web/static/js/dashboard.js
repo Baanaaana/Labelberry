@@ -213,7 +213,10 @@ function createPrinterItem(pi) {
         <div class="printer-item">
             <div class="printer-item-header">
                 <div class="printer-name">${pi.friendly_name}</div>
-                <div class="printer-status ${statusClass}">${statusText}</div>
+                <div class="printer-status-container">
+                    <div class="printer-status ${statusClass}">${statusText}</div>
+                    <div class="queue-label">${pi.queue_count || 0} in queue</div>
+                </div>
             </div>
             <div class="printer-details">
                 <div class="detail-item">
@@ -246,10 +249,6 @@ function createPrinterItem(pi) {
                 <div class="detail-item">
                     <span class="detail-label">Label Size:</span>
                     <span class="detail-value">${pi.label_size ? pi.label_size.display_name : 'Not specified'}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Queue:</span>
-                    <span class="detail-value">${pi.queue_count || 0} jobs</span>
                 </div>
             </div>
             <div class="printer-actions">
