@@ -71,13 +71,26 @@ class ZebraPrinter:
     def connect(self) -> bool:
         """Check if printer is available"""
         try:
+            # If a specific device path was provided, check if it exists
+            if self.device_path and self.device_path != "auto":
+                if Path(self.device_path).exists():
+                    self.is_connected = True
+                    logger.info(f"Printer device found at configured path: {self.device_path}")
+                    return True
+                else:
+                    logger.warning(f"Configured device path {self.device_path} does not exist")
+                    # Don't override the device_path - it was specifically configured
+                    self.is_connected = False
+                    return False
+            
+            # Only auto-detect if no specific path was configured or path is "auto"
             # Check device files first (fastest method if they exist)
             device_paths = ["/dev/usb/lp0", "/dev/usblp0", "/dev/lp0"]
             for path in device_paths:
                 if Path(path).exists():
                     self.device_path = path
                     self.is_connected = True
-                    logger.info(f"Printer device found at {path}")
+                    logger.info(f"Printer device auto-detected at {path}")
                     return True
             
             # Check if USB device exists
