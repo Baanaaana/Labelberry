@@ -100,6 +100,11 @@ LabelBerry/
 - Add docstrings for all public functions
 - No unnecessary comments in code
 
+### Git Commits
+- **NEVER commit changes unless explicitly asked by the user**
+- Always wait for user approval before creating any git commits
+- The user will explicitly say when they want changes committed
+
 ### Testing
 - Write unit tests for all modules
 - Test error conditions and edge cases
