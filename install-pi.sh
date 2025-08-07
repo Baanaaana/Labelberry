@@ -65,11 +65,17 @@ PRINTER_DEVICES=()
 # Check for USB Zebra devices
 USB_DEVICES=$(lsusb | grep -i "zebra" || true)
 
-# Also check if usblp module is loaded
+# Load usblp kernel module
 if ! lsmod | grep -q usblp; then
     echo -e "${YELLOW}Loading usblp kernel module...${NC}"
     modprobe usblp || true
     sleep 2
+fi
+
+# Ensure usblp module loads on boot
+if ! grep -q "^usblp$" /etc/modules 2>/dev/null; then
+    echo -e "${YELLOW}Adding usblp to auto-load on boot...${NC}"
+    echo "usblp" >> /etc/modules
 fi
 
 if [ -z "$USB_DEVICES" ]; then

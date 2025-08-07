@@ -46,7 +46,7 @@ class ConfigManager:
             "device_id": str(uuid.uuid4()),
             "api_key": str(uuid.uuid4()),
             "admin_server": "http://localhost:8080",
-            "printer_device": "/dev/usb/lp0",
+            "printer_device": "/dev/usblp0",
             "queue_size": 100,
             "retry_attempts": 3,
             "retry_delay": 5,
