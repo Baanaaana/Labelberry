@@ -41,8 +41,17 @@ function scrollToSection(sectionId, navItem) {
     // Scroll to section
     const section = document.getElementById(sectionId);
     if (section) {
-        const offset = 80; // Account for fixed header
-        const targetPosition = section.offsetTop - offset;
+        // Get the header height for offset
+        const header = document.querySelector('.docs-header');
+        const headerHeight = header ? header.offsetHeight : 0;
+        
+        // Add some padding so the section title isn't right at the top
+        const padding = 20;
+        const offset = headerHeight + padding;
+        
+        // Calculate the target scroll position
+        const sectionTop = section.getBoundingClientRect().top + window.pageYOffset;
+        const targetPosition = sectionTop - offset;
         
         window.scrollTo({
             top: targetPosition,
@@ -485,9 +494,14 @@ function updateActiveSection() {
     const sections = document.querySelectorAll('.doc-section');
     const navItems = document.querySelectorAll('.nav-item');
     
-    // Get current scroll position with the same offset as our scroll function (24px)
+    // Get header height for consistent offset
+    const header = document.querySelector('.docs-header');
+    const headerHeight = header ? header.offsetHeight : 0;
+    const offset = headerHeight + 20; // Same as scrollToSection
+    
+    // Get current scroll position
     const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-    const viewportTop = scrollY + 24; // Match the sticky nav position
+    const viewportTop = scrollY + offset;
     
     // Find which section is currently in view
     let currentSection = null;
@@ -521,7 +535,7 @@ function updateActiveSection() {
     
     // Special case: if we're at the very top, highlight the first section
     if (scrollY < 10) {
-        currentSection = 'overview';
+        currentSection = 'getting-started';
     }
     
     // Update active state in navigation
