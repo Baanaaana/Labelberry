@@ -93,18 +93,37 @@ class ZebraPrinter:
     
     def print_zpl(self, zpl_content: str) -> bool:
         """Print ZPL content"""
+        logger.info(f"print_zpl called for device {self.device_path}")
+        logger.debug(f"ZPL content length: {len(zpl_content)} bytes")
+        
         # Always clean up any stuck resources before printing
         self._emergency_cleanup()
         
         try:
-            # Try device file first (if it exists)
+            # First try the specific device path assigned to this printer
+            if self.device_path and self.device_path != "auto":
+                if Path(self.device_path).exists():
+                    try:
+                        logger.info(f"Attempting to print to assigned device: {self.device_path}")
+                        with open(self.device_path, 'wb') as printer:
+                            printer.write(zpl_content.encode('utf-8'))
+                        logger.info(f"Successfully sent {len(zpl_content)} bytes to {self.device_path}")
+                        return True
+                    except Exception as e:
+                        logger.warning(f"Failed to print to assigned device {self.device_path}: {e}")
+                        # Continue to fallback methods
+                else:
+                    logger.warning(f"Assigned device {self.device_path} does not exist")
+            
+            # Try common device paths as fallback
             device_paths = ["/dev/usb/lp0", "/dev/usblp0", "/dev/lp0"]
             for path in device_paths:
-                if Path(path).exists():
+                if path != self.device_path and Path(path).exists():  # Don't retry the same path
                     try:
+                        logger.info(f"Trying fallback device: {path}")
                         with open(path, 'wb') as printer:
                             printer.write(zpl_content.encode('utf-8'))
-                        logger.info(f"Sent {len(zpl_content)} bytes to {path}")
+                        logger.info(f"Successfully sent {len(zpl_content)} bytes to {path}")
                         return True
                     except Exception as e:
                         logger.debug(f"Failed to print to {path}: {e}")
@@ -127,8 +146,37 @@ class ZebraPrinter:
         try:
             ZEBRA_VENDOR_ID = 0x0A5F
             
-            # Find the device
-            device = usb.core.find(idVendor=ZEBRA_VENDOR_ID)
+            # Extract printer index from device path if available (e.g., /dev/usblp1 -> index 1)
+            printer_index = 0
+            if self.device_path and 'usblp' in self.device_path:
+                try:
+                    # Extract number from path like /dev/usblp1
+                    import re
+                    match = re.search(r'usblp(\d+)', self.device_path)
+                    if match:
+                        printer_index = int(match.group(1))
+                        logger.info(f"Looking for USB printer at index {printer_index}")
+                except:
+                    pass
+            
+            # Find all Zebra devices
+            devices = list(usb.core.find(find_all=True, idVendor=ZEBRA_VENDOR_ID))
+            
+            if not devices:
+                logger.error("No Zebra printers found via USB")
+                return False
+            
+            if len(devices) > 1:
+                logger.info(f"Found {len(devices)} Zebra printers via USB")
+            
+            # Select the device based on index
+            if printer_index < len(devices):
+                device = devices[printer_index]
+                logger.info(f"Using USB printer at index {printer_index}")
+            else:
+                logger.warning(f"Printer index {printer_index} not found, using first available")
+                device = devices[0]
+            
             if not device:
                 logger.error("No Zebra printer found via USB")
                 return False
