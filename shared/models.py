@@ -77,6 +77,7 @@ class PiDevice(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     friendly_name: str
     api_key: str
+    device_name: Optional[str] = None
     location: Optional[str] = None
     printer_model: Optional[str] = None
     label_size_id: Optional[int] = None

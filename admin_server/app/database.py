@@ -128,6 +128,10 @@ class Database:
             if 'ip_address' not in columns:
                 cursor.execute("ALTER TABLE pis ADD COLUMN ip_address TEXT")
             
+            # Check if device_name column exists in pis table, add if missing (for migration)
+            if 'device_name' not in columns:
+                cursor.execute("ALTER TABLE pis ADD COLUMN device_name TEXT")
+            
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS configurations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -258,12 +262,13 @@ class Database:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT OR REPLACE INTO pis (id, friendly_name, api_key, location, printer_model, label_size_id, status, last_seen)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO pis (id, friendly_name, api_key, device_name, location, printer_model, label_size_id, status, last_seen)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     device.id,
                     device.friendly_name,
                     device.api_key,
+                    device.device_name,
                     device.location,
                     device.printer_model,
                     getattr(device, 'label_size_id', None),
@@ -294,6 +299,7 @@ class Database:
                         id=row['id'],
                         friendly_name=row['friendly_name'],
                         api_key=row['api_key'],
+                        device_name=row['device_name'] if 'device_name' in row.keys() else None,
                         location=row['location'],
                         printer_model=row['printer_model'],
                         label_size_id=row['label_size_id'],
@@ -318,6 +324,7 @@ class Database:
                         id=row['id'],
                         friendly_name=row['friendly_name'],
                         api_key=row['api_key'],
+                        device_name=row['device_name'] if 'device_name' in row.keys() else None,
                         location=row['location'],
                         printer_model=row['printer_model'],
                         label_size_id=row['label_size_id'],
@@ -343,6 +350,7 @@ class Database:
                         id=row['id'],
                         friendly_name=row['friendly_name'],
                         api_key=row['api_key'],
+                        device_name=row['device_name'] if 'device_name' in row.keys() else None,
                         location=row['location'],
                         printer_model=row['printer_model'],
                         label_size_id=row['label_size_id'],

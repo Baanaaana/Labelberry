@@ -291,16 +291,16 @@ async function registerPi(event) {
     const deviceId = document.getElementById('device-id').value;
     const apiKey = document.getElementById('api-key').value;
     const friendlyName = document.getElementById('friendly-name').value;
+    const deviceName = document.getElementById('device-name').value;
     const location = document.getElementById('location').value;
-    const printerModel = document.getElementById('printer-model').value;
     const labelSizeId = document.getElementById('label-size').value;
     
     const piData = {
         id: deviceId,
         api_key: apiKey,
         friendly_name: friendlyName,
+        device_name: deviceName || null,
         location: location || null,
-        printer_model: printerModel || null,
         label_size_id: labelSizeId ? parseInt(labelSizeId) : null,
         status: 'offline'
     };
@@ -603,8 +603,8 @@ async function showEditModal(piId) {
     
     document.getElementById('edit-pi-id').value = pi.id;
     document.getElementById('edit-friendly-name').value = pi.friendly_name;
+    document.getElementById('edit-device-name').value = pi.device_name || '';
     document.getElementById('edit-location').value = pi.location || '';
-    document.getElementById('edit-printer-model').value = pi.printer_model || '';
     document.getElementById('edit-label-size').value = pi.label_size_id || '';
     
     document.getElementById('edit-modal').style.display = 'block';
@@ -624,8 +624,8 @@ async function updatePi(event) {
     const labelSizeId = document.getElementById('edit-label-size').value;
     const updates = {
         friendly_name: document.getElementById('edit-friendly-name').value,
+        device_name: document.getElementById('edit-device-name').value || null,
         location: document.getElementById('edit-location').value || null,
-        printer_model: document.getElementById('edit-printer-model').value || null,
         label_size_id: labelSizeId ? parseInt(labelSizeId) : null
     };
     
