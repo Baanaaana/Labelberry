@@ -1107,3 +1107,281 @@ window.onclick = function(event) {
         event.target.style.display = 'none';
     }
 }
+
+// Queue Management Functions
+let currentJobId = null;
+let queueData = null;
+
+function showQueueModal() {
+    document.getElementById('queue-modal').style.display = 'flex';
+    loadQueuePrinters();
+    loadQueue();
+}
+
+function closeQueueModal() {
+    document.getElementById('queue-modal').style.display = 'none';
+}
+
+async function loadQueuePrinters() {
+    try {
+        const response = await fetch('/api/pis');
+        const result = await response.json();
+        
+        if (result.success) {
+            const select = document.getElementById('queue-pi-filter');
+            const currentValue = select.value;
+            
+            select.innerHTML = '<option value="">All Printers</option>';
+            result.data.pis.forEach(pi => {
+                select.innerHTML += `<option value="${pi.id}">${pi.friendly_name}</option>`;
+            });
+            
+            select.value = currentValue;
+        }
+    } catch (error) {
+        console.error('Error loading printers for queue:', error);
+    }
+}
+
+async function loadQueue() {
+    try {
+        const piId = document.getElementById('queue-pi-filter').value;
+        const endpoint = piId ? `/api/queue/${piId}` : '/api/queue';
+        
+        const response = await fetch(endpoint);
+        const result = await response.json();
+        
+        if (result.success) {
+            queueData = result.data;
+            renderQueueStats(result.data.stats);
+            renderQueueTable(result.data.jobs);
+        }
+    } catch (error) {
+        console.error('Error loading queue:', error);
+        showAlert('Failed to load queue', 'error');
+    }
+}
+
+function renderQueueStats(stats) {
+    document.getElementById('queue-total').textContent = stats.total || 0;
+    document.getElementById('queue-queued').textContent = stats.queued || 0;
+    document.getElementById('queue-processing').textContent = (stats.processing || 0) + (stats.sent || 0);
+    document.getElementById('queue-completed').textContent = stats.completed || 0;
+    document.getElementById('queue-failed').textContent = stats.failed || 0;
+}
+
+function renderQueueTable(jobs) {
+    const tbody = document.getElementById('queue-tbody');
+    const emptyDiv = document.getElementById('queue-empty');
+    
+    if (!jobs || jobs.length === 0) {
+        tbody.style.display = 'none';
+        emptyDiv.style.display = 'block';
+        return;
+    }
+    
+    tbody.style.display = '';
+    emptyDiv.style.display = 'none';
+    
+    tbody.innerHTML = jobs.map((job, index) => {
+        const statusColor = {
+            'queued': '#fbbf24',
+            'sent': '#3b82f6',
+            'processing': '#3b82f6',
+            'completed': '#10b981',
+            'failed': '#ef4444',
+            'cancelled': '#6b7280',
+            'expired': '#6b7280'
+        }[job.status] || '#6b7280';
+        
+        const canCancel = ['queued', 'sent', 'pending'].includes(job.status);
+        const canRetry = job.status === 'failed';
+        
+        return `
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 12px;">${job.status === 'queued' ? index + 1 : '-'}</td>
+                <td style="padding: 12px; font-family: monospace; font-size: 12px;">
+                    ${job.id.substring(0, 8)}...
+                </td>
+                <td style="padding: 12px;">${job.pi_name || 'Unknown'}</td>
+                <td style="padding: 12px;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; background: ${statusColor}20; color: ${statusColor}; border-radius: 4px; font-size: 12px; font-weight: 500;">
+                        ${job.status.toUpperCase()}
+                    </span>
+                </td>
+                <td style="padding: 12px; text-align: center;">${job.priority || 5}</td>
+                <td style="padding: 12px; font-size: 13px;">${formatDateTime(job.created_at)}</td>
+                <td style="padding: 12px;">
+                    <div style="display: flex; gap: 8px;">
+                        <button class="icon-btn" onclick="showJobDetails('${job.id}')" title="View Details" style="padding: 4px;">
+                            <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                        </button>
+                        ${canRetry ? `
+                            <button class="icon-btn" onclick="retryJobFromQueue('${job.id}')" title="Retry" style="padding: 4px; color: #fbbf24;">
+                                <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        ` : ''}
+                        ${canCancel ? `
+                            <button class="icon-btn" onclick="cancelJobFromQueue('${job.id}')" title="Cancel" style="padding: 4px; color: #ef4444;">
+                                <i data-lucide="x-circle" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Re-initialize Lucide icons
+    lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    });
+}
+
+function refreshQueue() {
+    loadQueue();
+    showAlert('Queue refreshed', 'success');
+}
+
+async function clearQueue() {
+    const piId = document.getElementById('queue-pi-filter').value;
+    
+    if (!confirm('Are you sure you want to clear all queued jobs? This cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const endpoint = piId ? `/api/queue/${piId}/clear` : '/api/queue/clear';
+        const response = await fetch(endpoint, { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(`Cleared ${result.data.cancelled_count} jobs`, 'success');
+            loadQueue();
+        } else {
+            showAlert('Failed to clear queue', 'error');
+        }
+    } catch (error) {
+        console.error('Error clearing queue:', error);
+        showAlert('Failed to clear queue', 'error');
+    }
+}
+
+async function showJobDetails(jobId) {
+    currentJobId = jobId;
+    
+    // Find job in current data
+    const job = queueData.jobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    const modal = document.getElementById('job-details-modal');
+    const content = document.getElementById('job-details-content');
+    const retryBtn = document.getElementById('job-retry-btn');
+    const cancelBtn = document.getElementById('job-cancel-btn');
+    
+    // Show/hide action buttons based on status
+    retryBtn.style.display = job.status === 'failed' ? 'inline-flex' : 'none';
+    cancelBtn.style.display = ['queued', 'sent', 'pending'].includes(job.status) ? 'inline-flex' : 'none';
+    
+    // Render job details
+    content.innerHTML = `
+        <div style="display: grid; gap: 16px;">
+            <div>
+                <label style="color: var(--text-secondary); font-size: 12px;">Job ID</label>
+                <div style="font-family: monospace; margin-top: 4px;">${job.id}</div>
+            </div>
+            <div>
+                <label style="color: var(--text-secondary); font-size: 12px;">Printer</label>
+                <div style="margin-top: 4px;">${job.pi_name || 'Unknown'}</div>
+            </div>
+            <div>
+                <label style="color: var(--text-secondary); font-size: 12px;">Status</label>
+                <div style="margin-top: 4px;">${job.status.toUpperCase()}</div>
+            </div>
+            <div>
+                <label style="color: var(--text-secondary); font-size: 12px;">Priority</label>
+                <div style="margin-top: 4px;">${job.priority || 5}</div>
+            </div>
+            <div>
+                <label style="color: var(--text-secondary); font-size: 12px;">Created</label>
+                <div style="margin-top: 4px;">${formatDateTime(job.created_at)}</div>
+            </div>
+            ${job.error_message ? `
+                <div>
+                    <label style="color: var(--text-secondary); font-size: 12px;">Error</label>
+                    <div style="margin-top: 4px; color: #ef4444;">${job.error_message}</div>
+                </div>
+            ` : ''}
+            ${job.retry_count > 0 ? `
+                <div>
+                    <label style="color: var(--text-secondary); font-size: 12px;">Retry Count</label>
+                    <div style="margin-top: 4px;">${job.retry_count} / ${job.max_retries || 3}</div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+}
+
+function closeJobDetailsModal() {
+    document.getElementById('job-details-modal').style.display = 'none';
+    currentJobId = null;
+}
+
+async function retryJob() {
+    if (!currentJobId) return;
+    
+    try {
+        const response = await fetch(`/api/queue/job/${currentJobId}/retry`, { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('Job queued for retry', 'success');
+            closeJobDetailsModal();
+            loadQueue();
+        } else {
+            showAlert(result.message || 'Failed to retry job', 'error');
+        }
+    } catch (error) {
+        console.error('Error retrying job:', error);
+        showAlert('Failed to retry job', 'error');
+    }
+}
+
+async function cancelJob() {
+    if (!currentJobId) return;
+    
+    if (!confirm('Are you sure you want to cancel this job?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/queue/job/${currentJobId}`, { method: 'DELETE' });
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('Job cancelled', 'success');
+            closeJobDetailsModal();
+            loadQueue();
+        } else {
+            showAlert(result.message || 'Failed to cancel job', 'error');
+        }
+    } catch (error) {
+        console.error('Error cancelling job:', error);
+        showAlert('Failed to cancel job', 'error');
+    }
+}
+
+async function retryJobFromQueue(jobId) {
+    currentJobId = jobId;
+    await retryJob();
+}
+
+async function cancelJobFromQueue(jobId) {
+    currentJobId = jobId;
+    await cancelJob();
+}

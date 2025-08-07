@@ -6,11 +6,24 @@ import uuid
 
 
 class PrintJobStatus(str, Enum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+    QUEUED = "queued"  # Job waiting to be sent (Pi offline or rate-limited)
+    SENT = "sent"  # Job sent to Pi, awaiting acknowledgment
+    PENDING = "pending"  # Job acknowledged by Pi, in Pi's local queue
+    PROCESSING = "processing"  # Pi is actively printing
+    COMPLETED = "completed"  # Successfully printed
+    FAILED = "failed"  # Pi reported failure
+    CANCELLED = "cancelled"  # Manually cancelled
+    EXPIRED = "expired"  # Exceeded 24-hour limit
+
+
+class PrintErrorType(str, Enum):
+    PRINTER_DISCONNECTED = "printer_disconnected"  # USB printer disconnected from Pi
+    OUT_OF_PAPER = "out_of_paper"  # Printer out of paper
+    OUT_OF_RIBBON = "out_of_ribbon"  # Printer out of ribbon
+    INVALID_ZPL = "invalid_zpl"  # ZPL format error
+    NETWORK_ERROR = "network_error"  # Failed to download ZPL from URL
+    GENERIC_ERROR = "generic_error"  # Unknown printer error
+    QUEUE_FULL = "queue_full"  # Pi's local queue is full
 
 
 class PiStatus(str, Enum):
@@ -39,13 +52,19 @@ class PrintRequest(BaseModel):
 class PrintJob(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     pi_id: str
-    status: PrintJobStatus = PrintJobStatus.PENDING
+    status: PrintJobStatus = PrintJobStatus.QUEUED
     zpl_source: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    queued_at: Optional[datetime] = None  # When job entered queue
+    sent_at: Optional[datetime] = None  # When job was sent to Pi
+    started_at: Optional[datetime] = None  # When Pi started processing
+    completed_at: Optional[datetime] = None  # When job completed
     error_message: Optional[str] = None
+    error_type: Optional[PrintErrorType] = None
     retry_count: int = 0
+    max_retries: int = 3  # Maximum retry attempts
+    priority: int = 5  # 1-10, higher = more urgent
+    source: str = "api"  # api, dashboard, retry
 
 
 class PiConfig(BaseModel):

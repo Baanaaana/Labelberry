@@ -163,10 +163,16 @@ class Database:
                     status TEXT NOT NULL,
                     zpl_source TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    queued_at TIMESTAMP,
+                    sent_at TIMESTAMP,
                     started_at TIMESTAMP,
                     completed_at TIMESTAMP,
                     error_message TEXT,
+                    error_type TEXT,
                     retry_count INTEGER DEFAULT 0,
+                    max_retries INTEGER DEFAULT 3,
+                    priority INTEGER DEFAULT 5,
+                    source TEXT DEFAULT 'api',
                     FOREIGN KEY (pi_id) REFERENCES pis (id) ON DELETE CASCADE
                 )
             """)
@@ -213,8 +219,38 @@ class Database:
                 cursor.execute("ALTER TABLE error_logs ADD COLUMN details TEXT")
                 logger.info("Added details column to error_logs table")
             
+            # Add missing columns to print_jobs if they don't exist (migration)
+            cursor.execute("PRAGMA table_info(print_jobs)")
+            print_jobs_columns = [col[1] for col in cursor.fetchall()]
+            
+            if 'queued_at' not in print_jobs_columns:
+                cursor.execute("ALTER TABLE print_jobs ADD COLUMN queued_at TIMESTAMP")
+                logger.info("Added queued_at column to print_jobs table")
+            
+            if 'sent_at' not in print_jobs_columns:
+                cursor.execute("ALTER TABLE print_jobs ADD COLUMN sent_at TIMESTAMP")
+                logger.info("Added sent_at column to print_jobs table")
+            
+            if 'error_type' not in print_jobs_columns:
+                cursor.execute("ALTER TABLE print_jobs ADD COLUMN error_type TEXT")
+                logger.info("Added error_type column to print_jobs table")
+            
+            if 'max_retries' not in print_jobs_columns:
+                cursor.execute("ALTER TABLE print_jobs ADD COLUMN max_retries INTEGER DEFAULT 3")
+                logger.info("Added max_retries column to print_jobs table")
+            
+            if 'priority' not in print_jobs_columns:
+                cursor.execute("ALTER TABLE print_jobs ADD COLUMN priority INTEGER DEFAULT 5")
+                logger.info("Added priority column to print_jobs table")
+            
+            if 'source' not in print_jobs_columns:
+                cursor.execute("ALTER TABLE print_jobs ADD COLUMN source TEXT DEFAULT 'api'")
+                logger.info("Added source column to print_jobs table")
+            
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pis_api_key ON pis (api_key)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_pi_id ON print_jobs (pi_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_status ON print_jobs (status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_priority ON print_jobs (priority DESC)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_pi_id ON metrics (pi_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_error_logs_pi_id ON error_logs (pi_id)")
             
@@ -926,3 +962,254 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to delete API key: {e}")
             return False
+    
+    # Queue Management Methods
+    
+    def queue_print_job(self, job: PrintJob) -> bool:
+        """Add a print job to the queue"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO print_jobs 
+                    (id, pi_id, status, zpl_source, created_at, queued_at, priority, source, retry_count, max_retries)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    job.id,
+                    job.pi_id,
+                    'queued',
+                    job.zpl_source,
+                    job.created_at,
+                    datetime.utcnow(),  # queued_at
+                    job.priority,
+                    job.source,
+                    0,  # retry_count
+                    job.max_retries
+                ))
+                return True
+        except Exception as e:
+            logger.error(f"Failed to queue print job: {e}")
+            return False
+    
+    def get_queued_jobs(self, pi_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get queued jobs for a specific Pi, ordered by priority and creation time"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT * FROM print_jobs 
+                    WHERE pi_id = ? AND status = 'queued'
+                    ORDER BY priority DESC, created_at ASC
+                    LIMIT ?
+                """, (pi_id, limit))
+                
+                jobs = []
+                for row in cursor.fetchall():
+                    job = dict(row)
+                    # Convert timestamps to datetime objects if they're strings
+                    for field in ['created_at', 'queued_at', 'sent_at', 'started_at', 'completed_at']:
+                        if job.get(field) and isinstance(job[field], str):
+                            job[field] = datetime.fromisoformat(job[field])
+                    jobs.append(job)
+                return jobs
+        except Exception as e:
+            logger.error(f"Failed to get queued jobs: {e}")
+            return []
+    
+    def get_all_queued_jobs(self) -> List[Dict[str, Any]]:
+        """Get all queued jobs across all Pis"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT j.*, p.friendly_name as pi_name
+                    FROM print_jobs j
+                    JOIN pis p ON j.pi_id = p.id
+                    WHERE j.status = 'queued'
+                    ORDER BY j.priority DESC, j.created_at ASC
+                """)
+                
+                jobs = []
+                for row in cursor.fetchall():
+                    job = dict(row)
+                    for field in ['created_at', 'queued_at', 'sent_at', 'started_at', 'completed_at']:
+                        if job.get(field) and isinstance(job[field], str):
+                            job[field] = datetime.fromisoformat(job[field])
+                    jobs.append(job)
+                return jobs
+        except Exception as e:
+            logger.error(f"Failed to get all queued jobs: {e}")
+            return []
+    
+    def update_job_status(self, job_id: str, status: str, error_message: str = None, error_type: str = None) -> bool:
+        """Update job status and related timestamps"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                now = datetime.utcnow()
+                
+                # Build dynamic update query based on status
+                update_fields = ["status = ?"]
+                params = [status]
+                
+                if status == 'sent':
+                    update_fields.append("sent_at = ?")
+                    params.append(now)
+                elif status == 'processing':
+                    update_fields.append("started_at = ?")
+                    params.append(now)
+                elif status in ['completed', 'failed', 'cancelled', 'expired']:
+                    update_fields.append("completed_at = ?")
+                    params.append(now)
+                
+                if error_message:
+                    update_fields.append("error_message = ?")
+                    params.append(error_message)
+                
+                if error_type:
+                    update_fields.append("error_type = ?")
+                    params.append(error_type)
+                
+                params.append(job_id)
+                
+                cursor.execute(f"""
+                    UPDATE print_jobs 
+                    SET {', '.join(update_fields)}
+                    WHERE id = ?
+                """, params)
+                
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Failed to update job status: {e}")
+            return False
+    
+    def increment_job_retry(self, job_id: str) -> bool:
+        """Increment retry count for a job"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE print_jobs 
+                    SET retry_count = retry_count + 1
+                    WHERE id = ?
+                """, (job_id,))
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Failed to increment job retry: {e}")
+            return False
+    
+    def get_job_by_id(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific job by ID"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM print_jobs WHERE id = ?", (job_id,))
+                row = cursor.fetchone()
+                if row:
+                    job = dict(row)
+                    for field in ['created_at', 'queued_at', 'sent_at', 'started_at', 'completed_at']:
+                        if job.get(field) and isinstance(job[field], str):
+                            job[field] = datetime.fromisoformat(job[field])
+                    return job
+                return None
+        except Exception as e:
+            logger.error(f"Failed to get job by ID: {e}")
+            return None
+    
+    def cancel_job(self, job_id: str) -> bool:
+        """Cancel a queued or pending job"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE print_jobs 
+                    SET status = 'cancelled', completed_at = ?
+                    WHERE id = ? AND status IN ('queued', 'pending', 'sent')
+                """, (datetime.utcnow(), job_id))
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Failed to cancel job: {e}")
+            return False
+    
+    def expire_old_jobs(self, hours: int = 24) -> int:
+        """Mark jobs older than specified hours as expired"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cutoff_time = datetime.utcnow().timestamp() - (hours * 3600)
+                cursor.execute("""
+                    UPDATE print_jobs 
+                    SET status = 'expired', completed_at = CURRENT_TIMESTAMP
+                    WHERE status = 'queued' 
+                    AND CAST(strftime('%s', created_at) AS INTEGER) < ?
+                """, (cutoff_time,))
+                return cursor.rowcount
+        except Exception as e:
+            logger.error(f"Failed to expire old jobs: {e}")
+            return 0
+    
+    def clear_queue(self, pi_id: str = None) -> int:
+        """Clear all queued jobs for a Pi (or all if pi_id is None)"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                if pi_id:
+                    cursor.execute("""
+                        UPDATE print_jobs 
+                        SET status = 'cancelled', completed_at = CURRENT_TIMESTAMP
+                        WHERE pi_id = ? AND status = 'queued'
+                    """, (pi_id,))
+                else:
+                    cursor.execute("""
+                        UPDATE print_jobs 
+                        SET status = 'cancelled', completed_at = CURRENT_TIMESTAMP
+                        WHERE status = 'queued'
+                    """)
+                return cursor.rowcount
+        except Exception as e:
+            logger.error(f"Failed to clear queue: {e}")
+            return 0
+    
+    def get_queue_stats(self, pi_id: str = None) -> Dict[str, Any]:
+        """Get queue statistics for a Pi or all Pis"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                if pi_id:
+                    where_clause = "WHERE pi_id = ?"
+                    params = (pi_id,)
+                else:
+                    where_clause = ""
+                    params = ()
+                
+                # Get counts by status
+                cursor.execute(f"""
+                    SELECT status, COUNT(*) as count
+                    FROM print_jobs
+                    {where_clause}
+                    GROUP BY status
+                """, params)
+                
+                stats = {'total': 0}
+                for row in cursor.fetchall():
+                    stats[row['status']] = row['count']
+                    stats['total'] += row['count']
+                
+                # Get oldest queued job
+                cursor.execute(f"""
+                    SELECT MIN(created_at) as oldest
+                    FROM print_jobs
+                    {where_clause + (' AND' if where_clause else 'WHERE')} status = 'queued'
+                """, params)
+                
+                result = cursor.fetchone()
+                if result and result['oldest']:
+                    stats['oldest_queued'] = datetime.fromisoformat(result['oldest'])
+                else:
+                    stats['oldest_queued'] = None
+                
+                return stats
+        except Exception as e:
+            logger.error(f"Failed to get queue stats: {e}")
+            return {}

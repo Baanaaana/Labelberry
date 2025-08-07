@@ -114,6 +114,10 @@
                         <i data-lucide="bar-chart-2"></i>
                         <span>Performance Metrics</span>
                     </button>
+                    <button class="action-btn" onclick="showQueueModal()">
+                        <i data-lucide="list-ordered"></i>
+                        <span>Queue Management</span>
+                    </button>
                 </div>
             </div>
 
@@ -453,6 +457,111 @@
         </div>
     </div>
 
+    <!-- Queue Management Modal -->
+    <div id="queue-modal" class="modal">
+        <div class="modal-content" style="max-width: 1200px;">
+            <div class="modal-header">
+                <h2>Queue Management</h2>
+                <button class="modal-close" onclick="closeQueueModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="padding: 0;">
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <select id="queue-pi-filter" onchange="loadQueue()" class="form-control" style="flex: 1;">
+                            <option value="">All Printers</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="refreshQueue()">
+                            <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                            Refresh
+                        </button>
+                        <button class="btn btn-danger" onclick="clearQueue()">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                            Clear Queue
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Queue Stats -->
+                <div class="stats-grid" style="margin-bottom: 24px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-total">0</div>
+                        <div class="stat-label">Total Jobs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-queued">0</div>
+                        <div class="stat-label">Queued</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-processing">0</div>
+                        <div class="stat-label">Processing</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-completed">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-failed">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                </div>
+                
+                <!-- Queue Table -->
+                <div style="background: var(--bg-primary); border-radius: 8px; padding: 16px;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 16px;">Print Jobs Queue</h3>
+                    <div style="overflow-x: auto;">
+                        <table id="queue-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 12px;">Position</th>
+                                    <th style="text-align: left; padding: 12px;">Job ID</th>
+                                    <th style="text-align: left; padding: 12px;">Printer</th>
+                                    <th style="text-align: left; padding: 12px;">Status</th>
+                                    <th style="text-align: left; padding: 12px;">Priority</th>
+                                    <th style="text-align: left; padding: 12px;">Created</th>
+                                    <th style="text-align: left; padding: 12px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queue-tbody">
+                                <!-- Queue items will be added here -->
+                            </tbody>
+                        </table>
+                        <div id="queue-empty" style="text-align: center; padding: 40px; color: var(--text-secondary); display: none;">
+                            <i data-lucide="inbox" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                            <p>No jobs in queue</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Details Modal -->
+    <div id="job-details-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Job Details</h2>
+                <button class="modal-close" onclick="closeJobDetailsModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="job-details-content">
+                <!-- Job details will be populated here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeJobDetailsModal()">Close</button>
+                <button id="job-retry-btn" class="btn btn-warning" onclick="retryJob()" style="display: none;">
+                    <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                    Retry Job
+                </button>
+                <button id="job-cancel-btn" class="btn btn-danger" onclick="cancelJob()" style="display: none;">
+                    <i data-lucide="x-circle" style="width: 16px; height: 16px;"></i>
+                    Cancel Job
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast Container -->
     <div id="toast-container"></div>

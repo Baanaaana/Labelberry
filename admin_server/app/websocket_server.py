@@ -21,6 +21,7 @@ class ConnectionManager:
         self.database = database
         self.ping_interval = 30
         self.ping_tasks: Dict[str, asyncio.Task] = {}
+        self.queue_manager = None  # Will be set after initialization
     
     async def connect(self, pi_id: str, websocket: WebSocket):
         await websocket.accept()
@@ -31,6 +32,10 @@ class ConnectionManager:
         # self.ping_tasks[pi_id] = asyncio.create_task(self.ping_loop(pi_id))
         
         logger.info(f"Pi {pi_id} connected via WebSocket - Total connected: {len(self.active_connections)}")
+        
+        # Notify queue manager that Pi is online
+        if self.queue_manager:
+            self.queue_manager.handle_pi_connected(pi_id)
     
     def disconnect(self, pi_id: str):
         if pi_id in self.active_connections:
@@ -42,6 +47,10 @@ class ConnectionManager:
         
         self.database.update_pi_status(pi_id, PiStatus.OFFLINE)
         logger.info(f"Pi {pi_id} disconnected")
+        
+        # Notify queue manager that Pi is offline
+        if self.queue_manager:
+            self.queue_manager.handle_pi_disconnected(pi_id)
     
     async def send_to_pi(self, pi_id: str, message: Dict) -> bool:
         if pi_id not in self.active_connections:
@@ -110,6 +119,9 @@ class ConnectionManager:
             
             elif msg_type == "job_complete":
                 await self.handle_job_complete(pi_id, data)
+            
+            elif msg_type == "job_status":
+                await self.handle_job_status(pi_id, data)
             
             elif msg_type == "config_request":
                 await self.handle_config_request(pi_id)
@@ -203,11 +215,45 @@ class ConnectionManager:
         except Exception as e:
             logger.error(f"Failed to handle log from Pi {pi_id}: {e}")
     
+    async def handle_job_status(self, pi_id: str, data: Dict):
+        """Handle job status update from Pi"""
+        job_id = data.get("job_id")
+        status = data.get("status")
+        
+        # Update job status in database
+        if status in ["pending", "processing"]:
+            self.database.update_job_status(job_id, status)
+        
+        await self.broadcast_admin_update("job_status", {
+            "pi_id": pi_id,
+            "job_id": job_id,
+            "status": status
+        })
+    
     async def handle_job_complete(self, pi_id: str, data: Dict):
+        """Handle job completion notification from Pi"""
+        job_id = data.get("job_id")
+        status = data.get("status")
+        error_message = data.get("error_message")
+        error_type = data.get("error_type")
+        
+        # Update job status in database
+        if status == "completed":
+            self.database.update_job_status(job_id, "completed")
+        elif status == "failed":
+            # Let queue manager handle retry logic
+            if self.queue_manager:
+                await self.queue_manager.handle_job_result(
+                    pi_id, job_id, "failed", error_message, error_type
+                )
+            else:
+                self.database.update_job_status(job_id, "failed", error_message, error_type)
+        
         await self.broadcast_admin_update("job_complete", {
             "pi_id": pi_id,
-            "job_id": data.get("job_id"),
-            "status": data.get("status")
+            "job_id": job_id,
+            "status": status,
+            "error_message": error_message
         })
     
     async def handle_config_request(self, pi_id: str):

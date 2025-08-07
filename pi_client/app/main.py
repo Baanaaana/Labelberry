@@ -71,14 +71,48 @@ async def process_print_job(job: PrintJob) -> bool:
     try:
         logger.info(f"Processing job {job.id}")
         
-        zpl_content = ""
+        # Notify server that job is being processed
+        await ws_client.send_message("job_status", {
+            "job_id": job.id,
+            "status": "processing"
+        })
         
-        if job.zpl_source.startswith("http"):
-            response = requests.get(job.zpl_source, timeout=30)
-            response.raise_for_status()
-            zpl_content = response.text
-        else:
-            zpl_content = job.zpl_source
+        zpl_content = ""
+        error_type = None
+        error_message = None
+        
+        try:
+            if job.zpl_source.startswith("http"):
+                response = requests.get(job.zpl_source, timeout=30)
+                response.raise_for_status()
+                zpl_content = response.text
+            else:
+                zpl_content = job.zpl_source
+        except Exception as e:
+            error_type = "network_error"
+            error_message = f"Failed to download ZPL: {str(e)}"
+            logger.error(error_message)
+            
+            await ws_client.send_message("job_complete", {
+                "job_id": job.id,
+                "status": "failed",
+                "error_type": error_type,
+                "error_message": error_message
+            })
+            return False
+        
+        # Check printer connection
+        if not printer.is_connected:
+            error_type = "printer_disconnected"
+            error_message = "Printer is not connected"
+            
+            await ws_client.send_message("job_complete", {
+                "job_id": job.id,
+                "status": "failed",
+                "error_type": error_type,
+                "error_message": error_message
+            })
+            return False
         
         success = printer.print_zpl(zpl_content)
         
@@ -90,12 +124,19 @@ async def process_print_job(job: PrintJob) -> bool:
             })
             return True
         else:
-            if job.retry_count < config.retry_attempts:
-                print_queue.requeue_job(job)
-                await asyncio.sleep(config.retry_delay)
-            else:
-                print_queue.complete_job(job.id, success=False, error_message="Print failed after retries")
-                await ws_client.send_error("print_failed", f"Job {job.id} failed")
+            # Determine error type
+            error_type = "generic_error"
+            error_message = "Print failed"
+            
+            # Send failure status to server
+            await ws_client.send_message("job_complete", {
+                "job_id": job.id,
+                "status": "failed",
+                "error_type": error_type,
+                "error_message": error_message
+            })
+            
+            print_queue.complete_job(job.id, success=False, error_message=error_message)
             return False
             
     except Exception as e:
@@ -137,21 +178,54 @@ async def handle_command(data: Dict[str, Any]):
 async def handle_remote_print(print_data: Dict[str, Any]):
     """Handle print job sent from admin server"""
     try:
+        # Get job details from server
+        job_id = print_data.get("job_id")
+        zpl_url = print_data.get("zpl_url")
+        zpl_raw = print_data.get("zpl_raw")
+        priority = print_data.get("priority", 5)
+        
         # Create a print job from the data
         job = PrintJob(
+            id=job_id if job_id else None,  # Use server job ID if provided
             pi_id=config.device_id,
-            zpl_source=print_data.get("zpl_url") or print_data.get("zpl_raw", "")
+            zpl_source=zpl_url or zpl_raw or "",
+            priority=priority
         )
         
+        # If this is a queued job from server, acknowledge receipt
+        if job_id:
+            await ws_client.send_message("job_status", {
+                "job_id": job_id,
+                "status": "pending"
+            })
+        
         if print_queue.add_job(job):
-            logger.info(f"Remote print job {job.id} added to queue")
-            # Don't send job_received - server doesn't expect it
+            logger.info(f"Remote print job {job.id} added to queue (from server queue: {bool(job_id)})")
+            await ws_client.send_log("print_queued", f"Remote print job queued", {
+                "job_id": job.id,
+                "source": "server_queue" if job_id else "direct"
+            })
         else:
             logger.error("Failed to add remote print job - queue full")
+            if job_id:
+                # Report failure back to server for queued job
+                await ws_client.send_message("job_complete", {
+                    "job_id": job_id,
+                    "status": "failed",
+                    "error_type": "queue_full",
+                    "error_message": "Pi local queue is full"
+                })
             await ws_client.send_error("queue_full", "Print queue is full")
             
     except Exception as e:
         logger.error(f"Error handling remote print: {e}")
+        if print_data.get("job_id"):
+            await ws_client.send_message("job_complete", {
+                "job_id": print_data.get("job_id"),
+                "status": "failed",
+                "error_type": "generic_error",
+                "error_message": str(e)
+            })
         await ws_client.send_error("print_error", str(e))
 
 

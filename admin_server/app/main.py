@@ -21,10 +21,11 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from shared.models import (
     PiDevice, PrintJob, PiMetrics, ErrorLog,
-    ApiResponse, PiStatus, PiConfig
+    ApiResponse, PiStatus, PiConfig, PrintJobStatus
 )
 from .database import Database
 from .websocket_server import ConnectionManager
+from .queue_manager import QueueManager
 
 
 logging.basicConfig(
@@ -36,13 +37,25 @@ logger = logging.getLogger(__name__)
 
 database = Database()
 connection_manager = ConnectionManager(database)
+queue_manager = QueueManager(database, connection_manager)
+
+# Set the queue manager reference in connection manager
+connection_manager.queue_manager = queue_manager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("LabelBerry Admin Server started")
     database.save_server_log("server_started", "Admin Server started", "INFO")
+    
+    # Start queue manager
+    await queue_manager.start()
+    
     yield
+    
+    # Stop queue manager
+    await queue_manager.stop()
+    
     database.save_server_log("server_stopped", "Admin Server stopped", "INFO")
     logger.info("LabelBerry Admin Server stopped")
 
@@ -75,7 +88,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "6.1"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "7.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -588,30 +601,75 @@ async def send_print_to_pi(
     print_data: Dict[str, Any],
     api_key: str = Depends(require_api_key)
 ):
-    """Send print job to Pi - Requires API key"""
+    """Send print job to Pi - Smart routing: direct send if online, queue if offline"""
     try:
         pi = database.get_pi_by_id(pi_id)
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
-        # Send print command through WebSocket if connected
+        # Create print job object
+        job = PrintJob(
+            pi_id=pi_id,
+            zpl_source=print_data.get("zpl_raw") or print_data.get("zpl_url", ""),
+            priority=print_data.get("priority", 5),
+            source="api"
+        )
+        
+        # Smart routing: Check if Pi is connected
         if connection_manager.is_connected(pi_id):
+            # Pi is online - try to send directly
             success = await connection_manager.send_command(
                 pi_id,
                 "print",
-                print_data
+                {
+                    "job_id": job.id,
+                    "zpl_raw": print_data.get("zpl_raw"),
+                    "zpl_url": print_data.get("zpl_url"),
+                    "priority": job.priority
+                }
             )
             
             if success:
+                # Save job with 'sent' status
+                job.status = "sent"
+                job.sent_at = datetime.utcnow()
+                database.save_print_job(job)
+                
                 return ApiResponse(
                     success=True,
-                    message="Print job sent via WebSocket",
-                    data={"pi_id": pi_id}
+                    message="Print job sent directly to Pi",
+                    data={
+                        "job_id": job.id,
+                        "pi_id": pi_id,
+                        "status": "sent"
+                    }
                 )
         
-        # If WebSocket not connected, show error
-        # In production, you might want to queue the job or use HTTP fallback
-        raise HTTPException(status_code=503, detail="Pi is not connected via WebSocket")
+        # Pi is offline or send failed - queue the job
+        if queue_manager.add_job_to_queue(job):
+            database.save_server_log(
+                "job_queued",
+                f"Print job queued for offline Pi '{pi.friendly_name}'",
+                "INFO",
+                f"Job ID: {job.id}"
+            )
+            
+            # Get queue position
+            queued_jobs = database.get_queued_jobs(pi_id)
+            queue_position = next((i for i, j in enumerate(queued_jobs) if j['id'] == job.id), 0) + 1
+            
+            return ApiResponse(
+                success=True,
+                message="Print job queued (Pi offline)",
+                data={
+                    "job_id": job.id,
+                    "pi_id": pi_id,
+                    "status": "queued",
+                    "queue_position": queue_position
+                }
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Failed to queue print job")
         
     except HTTPException:
         raise
@@ -801,6 +859,168 @@ async def revoke_api_key(
         raise
     except Exception as e:
         logger.error(f"Failed to revoke API key: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Queue Management Endpoints
+
+@app.get("/api/queue", response_model=ApiResponse)
+async def get_all_queued_jobs(current_user: str = Depends(require_login)):
+    """Get all queued jobs across all Pis"""
+    try:
+        jobs = database.get_all_queued_jobs()
+        stats = database.get_queue_stats()
+        
+        return ApiResponse(
+            success=True,
+            message="Queue retrieved",
+            data={
+                "jobs": jobs,
+                "stats": stats
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to get queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/queue/{pi_id}", response_model=ApiResponse)
+async def get_pi_queue(pi_id: str, current_user: str = Depends(require_login)):
+    """Get queued jobs for a specific Pi"""
+    try:
+        pi = database.get_pi_by_id(pi_id)
+        if not pi:
+            raise HTTPException(status_code=404, detail="Pi not found")
+        
+        jobs = database.get_queued_jobs(pi_id, limit=100)
+        stats = database.get_queue_stats(pi_id)
+        
+        return ApiResponse(
+            success=True,
+            message="Pi queue retrieved",
+            data={
+                "jobs": jobs,
+                "stats": stats
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get Pi queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/queue/job/{job_id}", response_model=ApiResponse)
+async def cancel_job(job_id: str, current_user: str = Depends(require_login)):
+    """Cancel a queued job"""
+    try:
+        if database.cancel_job(job_id):
+            database.save_server_log("job_cancelled", f"Job {job_id} cancelled by user", "INFO")
+            return ApiResponse(
+                success=True,
+                message="Job cancelled",
+                data={"job_id": job_id}
+            )
+        else:
+            raise HTTPException(status_code=404, detail="Job not found or not cancellable")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cancel job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/queue/job/{job_id}/retry", response_model=ApiResponse)
+async def retry_job(job_id: str, current_user: str = Depends(require_login)):
+    """Retry a failed job"""
+    try:
+        job = database.get_job_by_id(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        if job['status'] != 'failed':
+            raise HTTPException(status_code=400, detail="Only failed jobs can be retried")
+        
+        # Reset job to queued status
+        database.update_job_status(job_id, 'queued')
+        database.save_server_log("job_retry", f"Job {job_id} manually retried", "INFO")
+        
+        return ApiResponse(
+            success=True,
+            message="Job queued for retry",
+            data={"job_id": job_id}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retry job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/queue/{pi_id}/clear", response_model=ApiResponse)
+async def clear_pi_queue(pi_id: str, current_user: str = Depends(require_login)):
+    """Clear all queued jobs for a Pi"""
+    try:
+        pi = database.get_pi_by_id(pi_id)
+        if not pi:
+            raise HTTPException(status_code=404, detail="Pi not found")
+        
+        cancelled_count = database.clear_queue(pi_id)
+        database.save_server_log(
+            "queue_cleared",
+            f"Cleared {cancelled_count} jobs from '{pi.friendly_name}' queue",
+            "WARNING"
+        )
+        
+        return ApiResponse(
+            success=True,
+            message=f"Cancelled {cancelled_count} jobs",
+            data={
+                "pi_id": pi_id,
+                "cancelled_count": cancelled_count
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to clear queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/queue/job/{job_id}/priority", response_model=ApiResponse)
+async def update_job_priority(
+    job_id: str,
+    request: Request,
+    current_user: str = Depends(require_login)
+):
+    """Update job priority (for reordering queue)"""
+    try:
+        data = await request.json()
+        priority = data.get("priority")
+        
+        if priority is None or not (1 <= priority <= 10):
+            raise HTTPException(status_code=400, detail="Priority must be between 1 and 10")
+        
+        with database.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE print_jobs SET priority = ? WHERE id = ? AND status = 'queued'",
+                (priority, job_id)
+            )
+            
+            if cursor.rowcount > 0:
+                return ApiResponse(
+                    success=True,
+                    message="Job priority updated",
+                    data={"job_id": job_id, "priority": priority}
+                )
+            else:
+                raise HTTPException(status_code=404, detail="Job not found or not queued")
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update job priority: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

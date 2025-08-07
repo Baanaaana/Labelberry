@@ -202,12 +202,15 @@ async def process_print_job(printer_instance: PrinterInstance, job: PrintJob) ->
                 )
         else:
             logger.error(f"✗ Job {job.id} failed on {printer_instance.name} ({printer_instance.device_path})")
-            # Log failed print
+            # Log failed print with error type
+            error_type = "printer_disconnected" if not printer_instance.printer.is_connected else "generic_error"
             if printer_instance.ws_client:
-                await printer_instance.ws_client.send_error(
-                    "print_failed",
-                    f"Print job failed on {printer_instance.name}"
-                )
+                await printer_instance.ws_client.send_message("job_complete", {
+                    "job_id": job.id,
+                    "status": "failed",
+                    "error_type": error_type,
+                    "error_message": f"Print job failed on {printer_instance.name}"
+                })
         
         return success
         
@@ -222,7 +225,17 @@ async def update_job_status(printer_instance: PrinterInstance, job_id: str, stat
     """Update job status in admin server for a specific printer"""
     try:
         if printer_instance.ws_client and printer_instance.ws_client.connected:
-            await printer_instance.ws_client.send_job_update(job_id, status)
+            # Use job_status for processing, job_complete for final states
+            if status in [PrintJobStatus.PROCESSING, PrintJobStatus.PENDING]:
+                await printer_instance.ws_client.send_message("job_status", {
+                    "job_id": job_id,
+                    "status": status.value
+                })
+            else:
+                await printer_instance.ws_client.send_message("job_complete", {
+                    "job_id": job_id,
+                    "status": status.value
+                })
     except Exception as e:
         logger.error(f"Failed to update job status for {printer_instance.name}: {e}")
 
@@ -302,21 +315,53 @@ async def start_printer_services():
             if command == "test_print" or command == "print":
                 params = data.get("params", {})
                 
+                # Get job details
+                job_id = params.get("job_id")  # Server-provided job ID for queued jobs
+                priority = params.get("priority", 5)
+                
                 # Handle both formats - test_print uses zpl_data, print uses zpl_url or zpl_raw
                 zpl_data = params.get("zpl_data") or params.get("zpl_raw") or params.get("zpl_url", "")
                 
                 if zpl_data:
                     # Create a print job
                     job = PrintJob(
+                        id=job_id if job_id else None,  # Use server job ID if provided
                         pi_id=printer.device_id,
-                        zpl_source=zpl_data
+                        zpl_source=zpl_data,
+                        priority=priority
                     )
+                    
+                    # If this is a queued job from server, acknowledge receipt
+                    if job_id and printer.ws_client:
+                        await printer.ws_client.send_message("job_status", {
+                            "job_id": job_id,
+                            "status": "pending"
+                        })
+                    
                     added = printer.print_queue.add_job(job)
                     if added:
-                        logger.info(f"Added print job {job.id} to {printer.name} queue")
+                        logger.info(f"Added print job {job.id} to {printer.name} queue (from server: {bool(job_id)})")
                         logger.info(f"Queue now has {len(printer.print_queue.queue)} pending jobs")
+                        
+                        if printer.ws_client:
+                            await printer.ws_client.send_log(
+                                "print_queued",
+                                f"Print job queued on {printer.name}",
+                                {
+                                    "job_id": job.id,
+                                    "source": "server_queue" if job_id else "direct"
+                                }
+                            )
                     else:
                         logger.error(f"Failed to add print job to {printer.name} - queue may be full")
+                        if job_id and printer.ws_client:
+                            # Report failure back to server for queued job
+                            await printer.ws_client.send_message("job_complete", {
+                                "job_id": job_id,
+                                "status": "failed",
+                                "error_type": "queue_full",
+                                "error_message": f"Pi queue full on {printer.name}"
+                            })
                 else:
                     logger.warning(f"Print command for {printer.name} missing ZPL data")
         
