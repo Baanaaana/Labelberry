@@ -461,7 +461,7 @@ async function sendPrint(event) {
         // 1. Have the admin server forward the request
         // 2. Get the Pi's IP and send directly
         
-        const response = await fetch(`/api/pis/${selectedPiId}/print`, {
+        const response = await fetch(`/api/pis/${selectedPiId}/test-print`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

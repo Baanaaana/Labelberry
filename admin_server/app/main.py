@@ -73,7 +73,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "2.6"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "2.7"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -456,6 +456,59 @@ async def send_command(pi_id: str, command: Dict[str, Any]):
         raise
     except Exception as e:
         logger.error(f"Failed to send command: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/pis/{pi_id}/test-print", response_model=ApiResponse)
+async def send_test_print_to_pi(
+    pi_id: str, 
+    print_data: Dict[str, Any],
+    _: dict = Depends(require_login)  # Require dashboard login instead of API key
+):
+    """Send test print job to Pi - Requires dashboard login"""
+    try:
+        pi = database.get_pi_by_id(pi_id)
+        if not pi:
+            raise HTTPException(status_code=404, detail="Pi not found")
+        
+        # Send print command through WebSocket if connected
+        if connection_manager.is_connected(pi_id):
+            success = await connection_manager.send_command(
+                pi_id,
+                "print",
+                print_data
+            )
+            
+            if success:
+                return ApiResponse(
+                    success=True,
+                    message="Test print job sent via WebSocket",
+                    data={"pi_id": pi_id}
+                )
+        
+        # If WebSocket not connected, try HTTP
+        if hasattr(pi, 'local_ip') and pi.local_ip:
+            try:
+                response = requests.post(
+                    f"http://{pi.local_ip}:5000/print",
+                    json=print_data,
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    return ApiResponse(
+                        success=True,
+                        message="Test print job sent via HTTP",
+                        data={"pi_id": pi_id}
+                    )
+            except:
+                pass
+        
+        raise HTTPException(status_code=503, detail="Printer not connected")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to send test print: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
