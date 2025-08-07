@@ -23,19 +23,29 @@ class ZebraPrinter:
     
     def connect(self) -> bool:
         try:
-            if self.device_path.startswith("/dev/usb/"):
-                self.usb_device = self._find_usb_printer()
-                if self.usb_device:
-                    self.is_connected = True
-                    logger.info(f"Connected to USB printer: {self.usb_device}")
-                    return True
-            
+            # Check if device file exists first
             if Path(self.device_path).exists():
                 self.is_connected = True
                 logger.info(f"Printer device found at {self.device_path}")
                 return True
             
-            logger.error(f"Printer device not found at {self.device_path}")
+            # Check common USB printer paths
+            common_paths = ["/dev/usb/lp0", "/dev/usblp0", "/dev/lp0"]
+            for path in common_paths:
+                if Path(path).exists():
+                    self.device_path = path
+                    self.is_connected = True
+                    logger.info(f"Printer device found at {path}")
+                    return True
+            
+            # Try USB library as fallback
+            self.usb_device = self._find_usb_printer()
+            if self.usb_device:
+                self.is_connected = True
+                logger.info(f"Connected to USB printer via pyusb: {self.usb_device}")
+                return True
+            
+            logger.error(f"Printer device not found at {self.device_path} or common paths")
             self.is_connected = False
             return False
             
