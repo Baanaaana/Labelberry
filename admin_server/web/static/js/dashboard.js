@@ -854,7 +854,8 @@ async function sendBroadcast(event) {
 function viewLogs() {
     // Populate printer filter
     const filter = document.getElementById('log-pi-filter');
-    filter.innerHTML = '<option value="">All Printers</option>' + 
+    filter.innerHTML = '<option value="">All Sources</option>' + 
+        '<option value="__server__">Admin Server</option>' +
         currentPis.map(pi => `<option value="${pi.id}">${pi.friendly_name}</option>`).join('');
     
     // Load logs
@@ -880,20 +881,36 @@ async function loadLogs() {
         let logs = [];
         
         if (piFilter) {
-            // Get logs for specific Pi
-            const response = await fetch(`/api/pis/${piFilter}/logs?limit=200`);
-            const data = await response.json();
-            if (data.success) {
-                logs = data.data.logs;
+            if (piFilter === '__server__') {
+                // Get server logs
+                const response = await fetch(`/api/pis/__server__/logs?limit=200`);
+                const data = await response.json();
+                if (data.success) {
+                    logs = data.data.logs.map(log => ({...log, pi_name: 'Admin Server'}));
+                }
+            } else {
+                // Get logs for specific Pi
+                const response = await fetch(`/api/pis/${piFilter}/logs?limit=200`);
+                const data = await response.json();
+                if (data.success) {
+                    logs = data.data.logs;
+                }
             }
         } else {
-            // Get logs for all Pis
+            // Get logs for all Pis and server
             for (const pi of currentPis) {
                 const response = await fetch(`/api/pis/${pi.id}/logs?limit=50`);
                 const data = await response.json();
                 if (data.success) {
                     logs = logs.concat(data.data.logs.map(log => ({...log, pi_name: pi.friendly_name})));
                 }
+            }
+            
+            // Also get server logs
+            const serverResponse = await fetch(`/api/pis/__server__/logs?limit=50`);
+            const serverData = await serverResponse.json();
+            if (serverData.success) {
+                logs = logs.concat(serverData.data.logs.map(log => ({...log, pi_name: 'Admin Server'})));
             }
         }
         

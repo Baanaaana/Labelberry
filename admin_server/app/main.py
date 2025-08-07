@@ -41,7 +41,9 @@ connection_manager = ConnectionManager(database)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("LabelBerry Admin Server started")
+    database.save_server_log("server_started", "Admin Server started", "INFO")
     yield
+    database.save_server_log("server_stopped", "Admin Server stopped", "INFO")
     logger.info("LabelBerry Admin Server stopped")
 
 
@@ -73,7 +75,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.9"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "6.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -117,9 +119,13 @@ async def login(request: Request):
         
         if database.verify_user(username, password):
             request.session["user"] = username
+            # Log successful login
+            database.save_server_log("login_success", f"User '{username}' logged in successfully")
             # If remember me, extend session (this would need more implementation)
             return JSONResponse({"success": True, "message": "Login successful"})
         else:
+            # Log failed login
+            database.save_server_log("login_failed", f"Failed login attempt for user '{username}'", "WARNING")
             return JSONResponse({"success": False, "message": "Invalid username or password"}, status_code=401)
     except Exception as e:
         logger.error(f"Login error: {e}")
@@ -321,6 +327,8 @@ async def register_pi_install(registration_data: Dict[str, Any]):
             })
             if success:
                 logger.info(f"  ✓ Successfully updated device {device.id}")
+                database.save_server_log("printer_updated", f"Printer '{device.friendly_name}' updated", "INFO", 
+                                        f"ID: {device.id}")
                 return ApiResponse(
                     success=True,
                     message="Pi updated successfully",
@@ -334,6 +342,8 @@ async def register_pi_install(registration_data: Dict[str, Any]):
             # Register new Pi
             if database.register_pi(device):
                 logger.info(f"  ✓ Successfully registered device {device.id}")
+                database.save_server_log("printer_registered", f"New printer '{device.friendly_name}' registered", "INFO",
+                                        f"ID: {device.id}, Model: {device.printer_model}")
                 return ApiResponse(
                     success=True,
                     message="Pi registered successfully",
@@ -376,6 +386,8 @@ async def update_pi(pi_id: str, updates: Dict[str, Any]):
         
         # Use the update_pi method that only updates specified fields
         if database.update_pi(pi_id, updates):
+            database.save_server_log("printer_config_updated", f"Configuration updated for '{pi.friendly_name}'", "INFO",
+                                    f"Updates: {list(updates.keys())}")
             return ApiResponse(
                 success=True,
                 message="Pi updated successfully",
@@ -403,6 +415,7 @@ async def delete_pi(pi_id: str):
         
         # Delete from database
         if database.delete_pi(pi_id):
+            database.save_server_log("printer_deleted", f"Printer '{pi.friendly_name}' deleted", "WARNING")
             return ApiResponse(
                 success=True,
                 message="Pi deleted successfully",
@@ -536,6 +549,7 @@ async def send_test_print_to_pi(
             )
             
             if success:
+                database.save_server_log("test_print", f"Test print sent to '{pi.friendly_name}'", "INFO")
                 return ApiResponse(
                     success=True,
                     message="Test print job sent via WebSocket",

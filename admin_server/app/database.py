@@ -673,6 +673,10 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to save log: {e}")
     
+    def save_server_log(self, log_type: str, message: str, level: str = "INFO", details: Optional[str] = None):
+        """Save a server log entry"""
+        self.save_log("__server__", log_type, message, level, details)
+    
     def get_error_logs(self, pi_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         """Get logs for a specific Pi (including both errors and general logs)"""
         try:
