@@ -804,6 +804,46 @@ input[type="checkbox"]:hover {
     margin-top: 8px;
 }
 
+/* Management Navigation - Settings Style */
+.management-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.management-nav .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.management-nav .nav-item:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.management-nav .nav-item:active {
+    transform: translateY(1px);
+}
+
+.management-nav .nav-item i {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.management-nav .nav-item span {
+    flex: 1;
+}
+
 /* Floating GitHub Button */
 .github-float {
     position: fixed;

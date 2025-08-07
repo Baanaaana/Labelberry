@@ -91,35 +91,37 @@
                 <div class="panel-header">
                     <h2>Management Tools</h2>
                 </div>
-                <div class="panel-content">
-                    <button class="action-btn" onclick="showRegisterModal()">
-                        <i data-lucide="plus-circle"></i>
-                        <span>Add Printer</span>
-                    </button>
-                    <button class="action-btn" onclick="showBroadcastModal()">
-                        <i data-lucide="send"></i>
-                        <span>Broadcast Print</span>
-                    </button>
-                    <button class="action-btn" onclick="showQueueModal()">
-                        <i data-lucide="list-ordered"></i>
-                        <span>Queue Management</span>
-                    </button>
-                    <button class="action-btn" onclick="viewLogs()">
-                        <i data-lucide="file-text"></i>
-                        <span>System Logs</span>
-                    </button>
-                    <button class="action-btn" onclick="showMetrics()">
-                        <i data-lucide="bar-chart-2"></i>
-                        <span>Performance Metrics</span>
-                    </button>
-                    <a href="/api-docs" class="action-btn" style="text-decoration: none;">
-                        <i data-lucide="book-open"></i>
-                        <span>API Documentation</span>
-                    </a>
-                    <a href="/settings" class="action-btn" style="text-decoration: none;">
-                        <i data-lucide="settings"></i>
-                        <span>Settings</span>
-                    </a>
+                <div class="panel-content" style="padding: 12px;">
+                    <nav class="management-nav">
+                        <a href="#" class="nav-item" onclick="showRegisterModal(); return false;">
+                            <i data-lucide="plus-circle"></i>
+                            <span>Add Printer</span>
+                        </a>
+                        <a href="#" class="nav-item" onclick="showBroadcastModal(); return false;">
+                            <i data-lucide="send"></i>
+                            <span>Broadcast Print</span>
+                        </a>
+                        <a href="#" class="nav-item" onclick="showQueueModal(); return false;">
+                            <i data-lucide="list-ordered"></i>
+                            <span>Queue Management</span>
+                        </a>
+                        <a href="#" class="nav-item" onclick="viewLogs(); return false;">
+                            <i data-lucide="file-text"></i>
+                            <span>System Logs</span>
+                        </a>
+                        <a href="#" class="nav-item" onclick="showMetrics(); return false;">
+                            <i data-lucide="bar-chart-2"></i>
+                            <span>Performance Metrics</span>
+                        </a>
+                        <a href="/api-docs" class="nav-item">
+                            <i data-lucide="book-open"></i>
+                            <span>API Documentation</span>
+                        </a>
+                        <a href="/settings" class="nav-item">
+                            <i data-lucide="settings"></i>
+                            <span>Settings</span>
+                        </a>
+                    </nav>
                 </div>
             </div>
 
