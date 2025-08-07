@@ -23,14 +23,7 @@ class ZebraPrinter:
     
     def connect(self) -> bool:
         try:
-            # First try to find via USB library (most reliable for Zebra printers)
-            self.usb_device = self._find_usb_printer()
-            if self.usb_device:
-                self.is_connected = True
-                logger.info(f"Connected to USB printer via pyusb: {self.usb_device}")
-                return True
-            
-            # Then check if the device path exists
+            # First check if the device path exists (most reliable when available)
             if Path(self.device_path).exists():
                 self.is_connected = True
                 logger.info(f"Printer device found at {self.device_path}")
@@ -45,12 +38,14 @@ class ZebraPrinter:
                     logger.info(f"Printer device found at {path}")
                     return True
             
-            logger.warning(f"Printer device not found at {self.device_path} or common paths, but may still work via USB")
-            # Even if device file doesn't exist, we might have USB connection
+            # If no device file, try to find via USB library as fallback
+            self.usb_device = self._find_usb_printer()
             if self.usb_device:
                 self.is_connected = True
+                logger.info(f"No device file found, using USB library fallback: {self.usb_device}")
                 return True
             
+            logger.error(f"Printer not found at {self.device_path}, common paths, or via USB")
             self.is_connected = False
             return False
             
@@ -108,14 +103,32 @@ class ZebraPrinter:
                 return False
         
         try:
-            if self.usb_device:
+            # Try device file first if it exists
+            if Path(self.device_path).exists():
+                return self._print_via_device(zpl_content)
+            elif self.usb_device:
                 return self._print_via_usb(zpl_content)
             else:
-                return self._print_via_device(zpl_content)
+                logger.error("No printing method available")
+                return False
         except Exception as e:
             logger.error(f"Print failed: {e}")
-            self.is_connected = False
-            return False
+            # Try fallback method on failure
+            try:
+                if self.usb_device and Path(self.device_path).exists():
+                    # If device file failed, try USB
+                    logger.info("Device file failed, trying USB library")
+                    return self._print_via_usb(zpl_content)
+                elif self.usb_device:
+                    # Already failed with USB, can't fallback
+                    return False
+                else:
+                    # No fallback available
+                    return False
+            except Exception as fallback_error:
+                logger.error(f"Fallback print also failed: {fallback_error}")
+                self.is_connected = False
+                return False
     
     def _print_via_usb(self, zpl_content: str) -> bool:
         try:
@@ -128,6 +141,11 @@ class ZebraPrinter:
             
             # Find the first interface
             intf = cfg[(0, 0)]
+            
+            # Claim the interface if needed
+            if self.usb_device.is_kernel_driver_active(intf.bInterfaceNumber):
+                logger.info("Detaching kernel driver")
+                self.usb_device.detach_kernel_driver(intf.bInterfaceNumber)
             
             # Find the OUT endpoint
             ep_out = usb.util.find_descriptor(
