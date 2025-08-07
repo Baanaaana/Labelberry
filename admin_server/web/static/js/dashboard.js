@@ -303,6 +303,10 @@ function setNavActive(navId, active) {
     const navItem = document.getElementById(navId);
     if (navItem) {
         if (active) {
+            // Remove active from all nav items first
+            document.querySelectorAll('.management-nav .nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
             navItem.classList.add('active');
         } else {
             navItem.classList.remove('active');
@@ -1124,7 +1128,39 @@ async function loadMetrics() {
 // Close modals when clicking outside
 window.onclick = function(event) {
     if (event.target.className === 'modal') {
-        event.target.style.display = 'none';
+        // Find which modal was clicked and call the appropriate close function
+        const modalId = event.target.id;
+        switch(modalId) {
+            case 'register-modal':
+                closeRegisterModal();
+                break;
+            case 'broadcast-modal':
+                closeBroadcastModal();
+                break;
+            case 'logs-modal':
+                closeLogsModal();
+                break;
+            case 'metrics-modal':
+                closeMetricsModal();
+                break;
+            case 'queue-modal':
+                closeQueueModal();
+                break;
+            case 'print-modal':
+                closePrintModal();
+                break;
+            case 'edit-modal':
+                closeEditModal();
+                break;
+            case 'delete-modal':
+                closeDeleteModal();
+                break;
+            case 'job-details-modal':
+                closeJobDetailsModal();
+                break;
+            default:
+                event.target.style.display = 'none';
+        }
     }
 }
 
