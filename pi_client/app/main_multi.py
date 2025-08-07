@@ -67,6 +67,7 @@ class PrinterInstance:
                 printer_model=self.printer_model
             )
             logger.info(f"✓ Printer {self.name} initialized with device {self.device_path}")
+            # Note: Connection log will be sent once WebSocket connects
         else:
             logger.info(f"Printer {self.name} is disabled")
             self.printer = None
@@ -188,8 +189,21 @@ async def process_print_job(printer_instance: PrinterInstance, job: PrintJob) ->
         
         if success:
             logger.info(f"✓ Job {job.id} completed successfully on {printer_instance.name} ({printer_instance.device_path})")
+            # Log successful print
+            if printer_instance.ws_client:
+                await printer_instance.ws_client.send_log(
+                    "print_success",
+                    f"Print job completed on {printer_instance.name}",
+                    {"job_id": job.id, "printer": printer_instance.name}
+                )
         else:
             logger.error(f"✗ Job {job.id} failed on {printer_instance.name} ({printer_instance.device_path})")
+            # Log failed print
+            if printer_instance.ws_client:
+                await printer_instance.ws_client.send_error(
+                    "print_failed",
+                    f"Print job failed on {printer_instance.name}"
+                )
         
         return success
         
@@ -468,9 +482,24 @@ async def create_print_job(
     
     # Add to queue
     if not printer.print_queue.add_job(job):
+        # Log failed queue addition
+        if printer.ws_client:
+            asyncio.create_task(printer.ws_client.send_log(
+                "queue_full",
+                f"Print queue full for {printer.name}",
+                {"printer": printer.name, "device_id": device_id}
+            ))
         raise HTTPException(status_code=503, detail="Print queue is full")
     
     logger.info(f"Added job {job.id} to {printer.name} queue")
+    
+    # Log successful print request
+    if printer.ws_client:
+        asyncio.create_task(printer.ws_client.send_log(
+            "print_request",
+            f"Print job queued for {printer.name}",
+            {"job_id": job.id, "printer": printer.name, "queue_position": len(printer.print_queue.queue)}
+        ))
     
     return ApiResponse(
         success=True,

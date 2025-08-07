@@ -195,9 +195,23 @@ class Database:
                     message TEXT,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     traceback TEXT,
+                    log_level TEXT DEFAULT 'ERROR',
+                    details TEXT,
                     FOREIGN KEY (pi_id) REFERENCES pis (id) ON DELETE CASCADE
                 )
             """)
+            
+            # Add missing columns to error_logs if they don't exist (migration)
+            cursor.execute("PRAGMA table_info(error_logs)")
+            error_log_columns = [col[1] for col in cursor.fetchall()]
+            
+            if 'log_level' not in error_log_columns:
+                cursor.execute("ALTER TABLE error_logs ADD COLUMN log_level TEXT DEFAULT 'ERROR'")
+                logger.info("Added log_level column to error_logs table")
+            
+            if 'details' not in error_log_columns:
+                cursor.execute("ALTER TABLE error_logs ADD COLUMN details TEXT")
+                logger.info("Added details column to error_logs table")
             
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pis_api_key ON pis (api_key)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_pi_id ON print_jobs (pi_id)")
@@ -623,18 +637,41 @@ class Database:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT INTO error_logs (id, pi_id, error_type, message, timestamp, traceback)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO error_logs (id, pi_id, error_type, message, timestamp, traceback, log_level, details)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     error.id,
                     error.pi_id,
                     error.error_type,
                     error.message,
                     error.timestamp,
-                    error.traceback
+                    error.traceback,
+                    'ERROR',
+                    None
                 ))
         except Exception as e:
             logger.error(f"Failed to save error log: {e}")
+    
+    def save_log(self, pi_id: str, log_type: str, message: str, level: str = "INFO", details: Optional[str] = None):
+        """Save a general log entry (not just errors)"""
+        try:
+            import uuid
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO error_logs (id, pi_id, error_type, message, timestamp, log_level, details)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(uuid.uuid4()),
+                    pi_id,
+                    log_type,
+                    message,
+                    datetime.now(timezone.utc),
+                    level,
+                    details
+                ))
+        except Exception as e:
+            logger.error(f"Failed to save log: {e}")
     
     def get_error_logs(self, pi_id: str, limit: int = 100) -> List[ErrorLog]:
         try:

@@ -105,6 +105,9 @@ class ConnectionManager:
             elif msg_type == "error":
                 await self.handle_error(pi_id, data)
             
+            elif msg_type == "log":
+                await self.handle_log(pi_id, data)
+            
             elif msg_type == "job_complete":
                 await self.handle_job_complete(pi_id, data)
             
@@ -177,6 +180,28 @@ class ConnectionManager:
             })
         except Exception as e:
             logger.error(f"Failed to handle error from Pi {pi_id}: {e}")
+    
+    async def handle_log(self, pi_id: str, data: Dict):
+        """Handle general log messages from Pi"""
+        try:
+            log_type = data.get("log_type", "general")
+            message = data.get("message", "")
+            details = data.get("details", {})
+            
+            # Save to database
+            import json
+            self.database.save_log(
+                pi_id=pi_id,
+                log_type=log_type,
+                message=message,
+                level="INFO",
+                details=json.dumps(details) if details else None
+            )
+            
+            logger.info(f"Received log from Pi {pi_id}: [{log_type}] {message}")
+            
+        except Exception as e:
+            logger.error(f"Failed to handle log from Pi {pi_id}: {e}")
     
     async def handle_job_complete(self, pi_id: str, data: Dict):
         await self.broadcast_admin_update("job_complete", {

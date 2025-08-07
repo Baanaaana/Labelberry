@@ -57,6 +57,14 @@ class WebSocketClient:
             await self.send_message("connect", connect_data)
             
             logger.info(f"Connected to admin server: {url}")
+            
+            # Log the connection
+            await self.send_log("connection", f"Connected to admin server", {
+                "url": url,
+                "device_id": self.device_id,
+                "printer_model": self.printer_model or "Unknown"
+            })
+            
             return True
             
         except aiohttp.ClientError as e:
@@ -103,6 +111,14 @@ class WebSocketClient:
         return await self.send_message("error", {
             "error_type": error_type,
             "message": message
+        })
+    
+    async def send_log(self, log_type: str, message: str, details: Optional[Dict] = None):
+        """Send a general log entry to the admin server"""
+        return await self.send_message("log", {
+            "log_type": log_type,
+            "message": message,
+            "details": details or {}
         })
     
     async def handle_message(self, message: Dict[str, Any]):
