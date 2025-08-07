@@ -912,14 +912,15 @@ async function loadLogs() {
             container.innerHTML = logs.map(log => {
                 const levelColor = log.level === 'ERROR' ? '#dc3545' : 
                                    log.level === 'WARNING' ? '#ffc107' : '#6c757d';
+                const logType = log.error_type || 'info';
                 return `
                     <div style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 4px; border-left: 3px solid ${levelColor};">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span style="color: ${levelColor}; font-weight: 600;">[${log.level}]</span>
+                            <span style="color: ${levelColor}; font-weight: 600;">[${logType}]</span>
                             <span style="color: #999; font-size: 11px;">${log.pi_name || ''} - ${formatDateTime(log.timestamp)}</span>
                         </div>
                         <div style="color: #333; word-wrap: break-word;">${log.message}</div>
-                        ${log.details ? `<div style="color: #666; font-size: 11px; margin-top: 4px;">${log.details}</div>` : ''}
+                        ${log.details ? `<div style="color: #666; font-size: 11px; margin-top: 4px;">Details: ${log.details}</div>` : ''}
                     </div>
                 `;
             }).join('');

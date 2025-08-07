@@ -73,7 +73,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.8"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.9"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -454,7 +454,7 @@ async def get_pi_logs(pi_id: str, limit: int = 100):
         return ApiResponse(
             success=True,
             message="Logs retrieved",
-            data={"logs": [log.model_dump() for log in logs], "total": len(logs)}
+            data={"logs": logs, "total": len(logs)}
         )
     except HTTPException:
         raise

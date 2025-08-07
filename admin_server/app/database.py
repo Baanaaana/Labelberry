@@ -673,29 +673,34 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to save log: {e}")
     
-    def get_error_logs(self, pi_id: str, limit: int = 100) -> List[ErrorLog]:
+    def get_error_logs(self, pi_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get logs for a specific Pi (including both errors and general logs)"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT * FROM error_logs 
+                    SELECT id, pi_id, error_type, message, timestamp, traceback, log_level, details
+                    FROM error_logs 
                     WHERE pi_id = ? 
                     ORDER BY timestamp DESC 
                     LIMIT ?
                 """, (pi_id, limit))
                 rows = cursor.fetchall()
                 
-                errors = []
+                logs = []
                 for row in rows:
-                    errors.append(ErrorLog(
-                        id=row['id'],
-                        pi_id=row['pi_id'],
-                        error_type=row['error_type'],
-                        message=row['message'],
-                        timestamp=datetime.fromisoformat(row['timestamp']),
-                        traceback=row['traceback']
-                    ))
-                return errors
+                    log_entry = {
+                        'id': row['id'],
+                        'pi_id': row['pi_id'],
+                        'error_type': row['error_type'],
+                        'message': row['message'],
+                        'timestamp': row['timestamp'],
+                        'traceback': row['traceback'],
+                        'level': row['log_level'] if row['log_level'] else 'INFO',
+                        'details': row['details']
+                    }
+                    logs.append(log_entry)
+                return logs
         except Exception as e:
             logger.error(f"Failed to get error logs: {e}")
             return []
