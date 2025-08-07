@@ -246,6 +246,12 @@ function createPrinterItem(pi) {
                     <span class="detail-value">${formatDateTime(pi.last_seen)}</span>
                 </div>
                 <div class="detail-item">
+                    <span class="detail-label">IP Address:</span>
+                    <span class="detail-value" style="font-family: monospace; font-size: 12px;">
+                        ${pi.ip_address ? `${pi.ip_address} <button class="copy-btn-inline" onclick="copyIpAddress('${pi.ip_address}')" title="Copy IP Address"><i data-lucide="copy"></i></button>` : 'Not available'}
+                    </span>
+                </div>
+                <div class="detail-item">
                     <span class="detail-label">Model:</span>
                     <span class="detail-value">${pi.printer_model || 'Unknown'}</span>
                 </div>
@@ -507,6 +513,17 @@ async function copyDeviceId(deviceId) {
     } catch (err) {
         console.error('Failed to copy:', err);
         showAlert('Failed to copy Device ID', 'error');
+    }
+}
+
+// Copy IP address to clipboard
+async function copyIpAddress(ipAddress) {
+    try {
+        await navigator.clipboard.writeText(ipAddress);
+        showAlert('IP address copied to clipboard', 'success');
+    } catch (err) {
+        console.error('Failed to copy:', err);
+        showAlert('Failed to copy IP address', 'error');
     }
 }
 

@@ -73,7 +73,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "3.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "3.1"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -604,6 +604,14 @@ async def websocket_endpoint(websocket: WebSocket, pi_id: str):
         logger.warning(f"Pi {pi_id} WebSocket rejected - invalid credentials")
         await websocket.close(code=1008, reason="Invalid credentials")
         return
+    
+    # Get client IP address
+    client_ip = None
+    if websocket.client:
+        client_ip = websocket.client.host
+        logger.info(f"Pi {pi_id} connecting from IP: {client_ip}")
+        # Update the IP address in the database
+        database.update_pi_ip_address(pi_id, client_ip)
     
     logger.info(f"Pi {pi_id} WebSocket authenticated - connecting...")
     await connection_manager.connect(pi_id, websocket)

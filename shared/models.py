@@ -79,6 +79,7 @@ class PiDevice(BaseModel):
     location: Optional[str] = None
     printer_model: Optional[str] = None
     label_size_id: Optional[int] = None
+    ip_address: Optional[str] = None
     status: PiStatus = PiStatus.OFFLINE
     last_seen: Optional[datetime] = None
     config: Optional[PiConfig] = None

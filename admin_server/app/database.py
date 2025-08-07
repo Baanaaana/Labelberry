@@ -124,6 +124,10 @@ class Database:
             if 'label_size_id' not in columns:
                 cursor.execute("ALTER TABLE pis ADD COLUMN label_size_id INTEGER")
             
+            # Check if ip_address column exists in pis table, add if missing (for migration)
+            if 'ip_address' not in columns:
+                cursor.execute("ALTER TABLE pis ADD COLUMN ip_address TEXT")
+            
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS configurations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -340,6 +344,7 @@ class Database:
                         location=row['location'],
                         printer_model=row['printer_model'],
                         label_size_id=row['label_size_id'],
+                        ip_address=row.get('ip_address'),
                         status=row['status'],
                         last_seen=datetime.fromisoformat(row['last_seen']) if row['last_seen'] else None
                     ))
@@ -347,6 +352,19 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to get all Pis: {e}")
             return []
+    
+    def update_pi_ip_address(self, pi_id: str, ip_address: str):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE pis 
+                    SET ip_address = ?
+                    WHERE id = ?
+                """, (ip_address, pi_id))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to update Pi IP address: {e}")
     
     def update_pi_status(self, pi_id: str, status: str):
         try:
