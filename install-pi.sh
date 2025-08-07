@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.2"
+SCRIPT_VERSION="1.0.3"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -220,6 +220,13 @@ touch pi_client/__init__.py
 touch pi_client/app/__init__.py
 touch shared/__init__.py
 
+# Copy retry registration script
+mkdir -p pi_client/scripts
+if [ -f "pi_client/scripts/retry_registration.sh" ]; then
+    chmod +x pi_client/scripts/retry_registration.sh
+    echo -e "${GREEN}✓ Retry registration script installed${NC}"
+fi
+
 echo -e "${YELLOW}[9/11] Creating configuration...${NC}"
 mkdir -p /etc/labelberry
 mkdir -p /etc/labelberry/printers
@@ -328,16 +335,32 @@ EOF
                 # Create registration request
                 REGISTER_DATA="{\"id\":\"$DEVICE_ID\",\"friendly_name\":\"$PRINTER_NAME\",\"api_key\":\"$API_KEY\",\"printer_model\":\"$PRINTER_MODEL\"}"
                 
-                # Try to register (will fail silently if endpoint doesn't exist)
-                if curl -s -X POST "$ADMIN_SERVER/api/pis/register" \
+                # Try to register with proper error handling
+                RESPONSE=$(curl -s -X POST "$ADMIN_SERVER/api/pis/register" \
                     -H "Content-Type: application/json" \
                     -d "$REGISTER_DATA" \
-                    -o /dev/null 2>&1; then
+                    -w "\nHTTP_STATUS:%{http_code}" \
+                    2>/dev/null)
+                
+                HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+                BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+                
+                if [ "$HTTP_STATUS" = "200" ]; then
                     echo -e "${GREEN}  ✓ Registered with admin server${NC}"
+                elif [ "$HTTP_STATUS" = "000" ]; then
+                    echo -e "${RED}  ✗ Cannot connect to admin server at $ADMIN_SERVER${NC}"
+                    echo -e "${YELLOW}  Please ensure the admin server is running and accessible${NC}"
+                    MANUAL_REGISTRATION_NEEDED=true
                 else
-                    echo -e "${YELLOW}  ⚠ Manual registration required in admin dashboard${NC}"
+                    echo -e "${RED}  ✗ Registration failed (HTTP $HTTP_STATUS)${NC}"
+                    if [ ! -z "$BODY" ]; then
+                        echo -e "${YELLOW}  Response: $BODY${NC}"
+                    fi
                     MANUAL_REGISTRATION_NEEDED=true
                 fi
+                
+                # Store credentials for manual registration if needed
+                echo "$DEVICE_ID:$API_KEY:$PRINTER_NAME:$PRINTER_MODEL" >> /tmp/labelberry_registration.txt
             fi
         done
         
@@ -385,16 +408,32 @@ EOF
             # Create registration request
             REGISTER_DATA="{\"id\":\"$DEVICE_ID\",\"friendly_name\":\"$FRIENDLY_NAME\",\"api_key\":\"$API_KEY\",\"printer_model\":\"$PRINTER_MODEL\"}"
             
-            # Try to register (will fail silently if endpoint doesn't exist)
-            if curl -s -X POST "$ADMIN_SERVER/api/pis/register" \
+            # Try to register with proper error handling
+            RESPONSE=$(curl -s -X POST "$ADMIN_SERVER/api/pis/register" \
                 -H "Content-Type: application/json" \
                 -d "$REGISTER_DATA" \
-                -o /dev/null 2>&1; then
+                -w "\nHTTP_STATUS:%{http_code}" \
+                2>/dev/null)
+            
+            HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+            BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+            
+            if [ "$HTTP_STATUS" = "200" ]; then
                 echo -e "${GREEN}✓ Registered with admin server${NC}"
+            elif [ "$HTTP_STATUS" = "000" ]; then
+                echo -e "${RED}✗ Cannot connect to admin server at $ADMIN_SERVER${NC}"
+                echo -e "${YELLOW}Please ensure the admin server is running and accessible${NC}"
+                MANUAL_REGISTRATION_NEEDED=true
             else
-                echo -e "${YELLOW}⚠ Manual registration required in admin dashboard${NC}"
+                echo -e "${RED}✗ Registration failed (HTTP $HTTP_STATUS)${NC}"
+                if [ ! -z "$BODY" ]; then
+                    echo -e "${YELLOW}Response: $BODY${NC}"
+                fi
                 MANUAL_REGISTRATION_NEEDED=true
             fi
+            
+            # Store credentials for manual registration if needed
+            echo "$DEVICE_ID:$API_KEY:$FRIENDLY_NAME:$PRINTER_MODEL" >> /tmp/labelberry_registration.txt
         fi
     fi
 fi
@@ -459,6 +498,23 @@ echo -e "${GREEN}===============================================${NC}"
 echo -e "${GREEN}    Installation Complete!                     ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
+
+# Check if there were registration failures
+if [ "$MANUAL_REGISTRATION_NEEDED" = "true" ] && [ -f "/tmp/labelberry_registration.txt" ]; then
+    echo -e "${RED}⚠ WARNING: Some printers could not be automatically registered${NC}"
+    echo -e "${YELLOW}This usually means the admin server is not accessible from this Pi${NC}"
+    echo ""
+    echo -e "${YELLOW}To fix this:${NC}"
+    echo "1. Ensure the admin server is running:"
+    echo "   On admin server: sudo systemctl status labelberry-admin"
+    echo ""
+    echo "2. Retry registration by running:"
+    echo "   sudo /opt/labelberry-client/scripts/retry_registration.sh"
+    echo ""
+    echo "3. Or manually add in the admin dashboard with these credentials:"
+    echo ""
+fi
+
 echo -e "${YELLOW}Next steps:${NC}"
 echo "1. Connect your Zebra printer via USB"
 echo "2. Start the service: sudo systemctl start labelberry-client"
@@ -468,8 +524,12 @@ echo "5. Use CLI: labelberry status"
 echo ""
 # Display configuration summary
 if [ -d "/etc/labelberry/printers" ] && [ "$(ls -A /etc/labelberry/printers)" ]; then
-    echo -e "${YELLOW}Register your printer(s) on the admin server dashboard:${NC}"
-    echo -e "${YELLOW}You can set friendly names for each printer in the dashboard${NC}"
+    if [ "$MANUAL_REGISTRATION_NEEDED" = "true" ]; then
+        echo -e "${YELLOW}Manual registration required for your printer(s):${NC}"
+        echo -e "${YELLOW}Add these in the admin server dashboard:${NC}"
+    else
+        echo -e "${GREEN}Your printer(s) have been registered with the admin server:${NC}"
+    fi
     echo ""
     for config_file in /etc/labelberry/printers/*.conf; do
         if [ -f "$config_file" ]; then

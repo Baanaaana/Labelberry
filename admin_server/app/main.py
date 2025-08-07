@@ -73,7 +73,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.1"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.3"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -304,32 +304,50 @@ async def register_pi_install(registration_data: Dict[str, Any]):
             printer_model=registration_data.get("printer_model")
         )
         
+        logger.info(f"Registration request for device {device.id}")
+        logger.info(f"  Name: {device.friendly_name}")
+        logger.info(f"  Model: {device.printer_model}")
+        logger.info(f"  API Key: {device.api_key[:20]}..." if len(device.api_key) > 20 else f"  API Key: {device.api_key}")
+        
         # Check if Pi already exists
         existing = database.get_pi_by_id(device.id)
         if existing:
+            logger.info(f"  Device {device.id} already exists, updating...")
             # Update existing Pi
-            database.update_pi(device.id, {
+            success = database.update_pi(device.id, {
                 "api_key": device.api_key,
                 "friendly_name": device.friendly_name,
                 "printer_model": device.printer_model
             })
-            return ApiResponse(
-                success=True,
-                message="Pi updated successfully",
-                data={"pi_id": device.id}
-            )
+            if success:
+                logger.info(f"  ✓ Successfully updated device {device.id}")
+                return ApiResponse(
+                    success=True,
+                    message="Pi updated successfully",
+                    data={"pi_id": device.id}
+                )
+            else:
+                logger.error(f"  ✗ Failed to update device {device.id}")
+                raise HTTPException(status_code=400, detail="Failed to update Pi")
         else:
+            logger.info(f"  Device {device.id} is new, registering...")
             # Register new Pi
             if database.register_pi(device):
+                logger.info(f"  ✓ Successfully registered device {device.id}")
                 return ApiResponse(
                     success=True,
                     message="Pi registered successfully",
                     data={"pi_id": device.id}
                 )
             else:
+                logger.error(f"  ✗ Failed to register device {device.id}")
                 raise HTTPException(status_code=400, detail="Failed to register Pi")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to register Pi during installation: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -641,9 +659,24 @@ async def websocket_endpoint(websocket: WebSocket, pi_id: str):
     api_key = auth_header.replace("Bearer ", "")
     pi = database.get_pi_by_api_key(api_key)
     
-    if not pi or pi.id != pi_id:
-        logger.warning(f"Pi {pi_id} WebSocket rejected - invalid credentials")
-        await websocket.close(code=1008, reason="Invalid credentials")
+    if not pi:
+        logger.warning(f"Pi {pi_id} WebSocket rejected - API key not found in database")
+        logger.warning(f"  Provided API key: {api_key[:20]}..." if len(api_key) > 20 else f"  Provided API key: {api_key}")
+        # Also check if this device ID exists with a different API key
+        existing_pi = database.get_pi_by_id(pi_id)
+        if existing_pi:
+            logger.warning(f"  Device {pi_id} exists in database but with different API key")
+            logger.warning(f"  Expected API key: {existing_pi.api_key[:20]}..." if len(existing_pi.api_key) > 20 else f"  Expected API key: {existing_pi.api_key}")
+        else:
+            logger.warning(f"  Device {pi_id} not found in database at all")
+        await websocket.close(code=1008, reason="Invalid API key")
+        return
+    
+    if pi.id != pi_id:
+        logger.warning(f"Pi {pi_id} WebSocket rejected - API key belongs to different device")
+        logger.warning(f"  API key belongs to device: {pi.id}")
+        logger.warning(f"  Requested device: {pi_id}")
+        await websocket.close(code=1008, reason="Device ID mismatch")
         return
     
     # Get client IP address
