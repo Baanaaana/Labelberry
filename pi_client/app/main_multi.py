@@ -386,12 +386,11 @@ async def get_printer_metrics(device_id: str):
     )
 
 
+def start_server():
+    """Start the multi-printer server"""
+    logger.info("Starting LabelBerry multi-printer service")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
 if __name__ == "__main__":
-    # Check if running in multi-printer mode
-    if os.getenv("LABELBERRY_MULTI_PRINTER", "false").lower() == "true":
-        logger.info("Starting in multi-printer mode")
-        uvicorn.run(app, host="0.0.0.0", port=8000)
-    else:
-        logger.info("Multi-printer mode not enabled. Use standard main.py")
-        from . import main
-        uvicorn.run(main.app, host="0.0.0.0", port=8000)
+    start_server()

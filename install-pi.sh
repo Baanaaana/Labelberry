@@ -340,7 +340,7 @@ WorkingDirectory=$INSTALL_DIR
 Environment="PATH=$INSTALL_DIR/venv/bin"
 Environment="PYTHONPATH=$INSTALL_DIR"
 Environment="LABELBERRY_MULTI_PRINTER=true"
-ExecStart=$INSTALL_DIR/venv/bin/python -m pi_client.app.main_multi
+ExecStart=$INSTALL_DIR/venv/bin/python -m pi_client.app
 Restart=always
 RestartSec=10
 
@@ -359,7 +359,7 @@ User=root
 WorkingDirectory=$INSTALL_DIR
 Environment="PATH=$INSTALL_DIR/venv/bin"
 Environment="PYTHONPATH=$INSTALL_DIR"
-ExecStart=$INSTALL_DIR/venv/bin/python -m uvicorn pi_client.app.main:app --host 0.0.0.0 --port 8000
+ExecStart=$INSTALL_DIR/venv/bin/python -m pi_client.app
 Restart=always
 RestartSec=10
 

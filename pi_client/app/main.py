@@ -315,11 +315,11 @@ async def cancel_job(job_id: str, api_key: str = Depends(verify_api_key)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def start_server():
+    """Start the single-printer server"""
+    logger.info("Starting LabelBerry single-printer service")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
 if __name__ == "__main__":
-    # Check if running in multi-printer mode
-    if os.getenv("LABELBERRY_MULTI_PRINTER", "false").lower() == "true":
-        logger.info("Starting in multi-printer mode")
-        from . import main_multi
-        uvicorn.run(main_multi.app, host="0.0.0.0", port=8000)
-    else:
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+    start_server()
