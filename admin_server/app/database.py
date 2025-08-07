@@ -280,8 +280,8 @@ class Database:
                 status_value = device.status.value if hasattr(device.status, 'value') else str(device.status)
                 
                 cursor.execute("""
-                    INSERT OR REPLACE INTO pis (id, friendly_name, api_key, device_name, location, printer_model, label_size_id, status, last_seen, queue_count)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO pis (id, friendly_name, api_key, device_name, location, printer_model, label_size_id, status, last_seen)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     device.id,
                     device.friendly_name,
@@ -291,8 +291,7 @@ class Database:
                     device.printer_model,
                     getattr(device, 'label_size_id', None),
                     status_value,
-                    datetime.now(timezone.utc),
-                    0  # queue_count
+                    datetime.now(timezone.utc)
                 ))
                 conn.commit()
                 
