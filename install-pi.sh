@@ -217,7 +217,10 @@ else
         # Create main config file for multi-printer mode
         cat > /etc/labelberry/client.conf <<EOF
 # LabelBerry Multi-Printer Configuration
+device_id: multi-printer-mode
+api_key: multi-printer-mode
 admin_server: $ADMIN_SERVER
+printer_device: /dev/usblp0
 queue_size: 100
 retry_attempts: 3
 retry_delay: 5
