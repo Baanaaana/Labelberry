@@ -15,16 +15,16 @@ class ZebraPrinter:
         self.device_path = device_path
         self.usb_device = None
         self.is_connected = False
-        self.connect()
+        # Don't auto-connect on init - connect only when printing
     
     def send_to_printer(self, zpl_data: str) -> bool:
         """Send ZPL data to the printer"""
         return self.print_zpl(zpl_data)
     
     def connect(self) -> bool:
-        """Connect to printer - try device files first, then USB"""
+        """Check if printer is available"""
         try:
-            # Try all common device paths
+            # Check device files first
             device_paths = [self.device_path, "/dev/usb/lp0", "/dev/usblp0", "/dev/lp0"]
             for path in device_paths:
                 if Path(path).exists():
@@ -33,23 +33,13 @@ class ZebraPrinter:
                     logger.info(f"Printer device found at {path}")
                     return True
             
-            # No device file found, try USB directly
-            logger.info("No device files found, trying USB direct connection...")
-            
+            # Check if USB device exists (but don't hold it)
             ZEBRA_VENDOR_ID = 0x0A5F
-            
-            # Try to find Zebra printer
-            self.usb_device = usb.core.find(idVendor=ZEBRA_VENDOR_ID)
-            if self.usb_device:
+            device = usb.core.find(idVendor=ZEBRA_VENDOR_ID)
+            if device:
                 self.is_connected = True
-                logger.info(f"Connected to Zebra printer via USB: {self.usb_device}")
-                return True
-            
-            # Try any printer
-            self.usb_device = usb.core.find(bDeviceClass=7)
-            if self.usb_device:
-                self.is_connected = True
-                logger.info(f"Connected to generic printer via USB: {self.usb_device}")
+                logger.info(f"Zebra printer found via USB")
+                # Important: Don't store the device, just check it exists
                 return True
             
             logger.error("No printer found via device files or USB")
@@ -63,45 +53,55 @@ class ZebraPrinter:
     
     def print_zpl(self, zpl_content: str) -> bool:
         """Print ZPL content"""
-        if not self.is_connected:
-            if not self.connect():
-                return False
-        
         try:
-            if self.usb_device:
-                return self._print_via_usb(zpl_content)
-            else:
-                return self._print_via_device(zpl_content)
+            # Try device file first
+            device_paths = [self.device_path, "/dev/usb/lp0", "/dev/usblp0", "/dev/lp0"]
+            for path in device_paths:
+                if Path(path).exists():
+                    try:
+                        with open(path, 'wb') as printer:
+                            printer.write(zpl_content.encode('utf-8'))
+                        logger.info(f"Sent {len(zpl_content)} bytes to {path}")
+                        return True
+                    except Exception as e:
+                        logger.debug(f"Failed to print to {path}: {e}")
+                        continue
+            
+            # No device file worked, try USB
+            logger.info("No device files available, trying USB direct")
+            return self._print_via_usb_direct(zpl_content)
+            
         except Exception as e:
             logger.error(f"Print failed: {e}")
-            self.is_connected = False
-            # Try to reconnect and retry once
-            if self.connect():
-                try:
-                    if self.usb_device:
-                        return self._print_via_usb(zpl_content)
-                    else:
-                        return self._print_via_device(zpl_content)
-                except:
-                    pass
             return False
     
-    def _print_via_usb(self, zpl_content: str) -> bool:
-        """Print via USB using pyusb"""
+    def _print_via_usb_direct(self, zpl_content: str) -> bool:
+        """Print via USB - connect, print, disconnect immediately"""
+        device = None
         try:
-            # Set configuration if needed
-            try:
-                cfg = self.usb_device.get_active_configuration()
-            except usb.core.USBError:
-                self.usb_device.set_configuration()
-                cfg = self.usb_device.get_active_configuration()
+            ZEBRA_VENDOR_ID = 0x0A5F
             
-            # Get first interface
+            # Find the device
+            device = usb.core.find(idVendor=ZEBRA_VENDOR_ID)
+            if not device:
+                logger.error("No Zebra printer found via USB")
+                return False
+            
+            # Configure device
+            try:
+                cfg = device.get_active_configuration()
+            except usb.core.USBError:
+                device.set_configuration()
+                cfg = device.get_active_configuration()
+            
+            # Get interface
             intf = cfg[(0, 0)]
             
-            # Detach kernel driver if active
-            if self.usb_device.is_kernel_driver_active(intf.bInterfaceNumber):
-                self.usb_device.detach_kernel_driver(intf.bInterfaceNumber)
+            # Detach kernel driver if needed
+            reattach = False
+            if device.is_kernel_driver_active(intf.bInterfaceNumber):
+                device.detach_kernel_driver(intf.bInterfaceNumber)
+                reattach = True
             
             # Find OUT endpoint
             ep_out = usb.util.find_descriptor(
@@ -115,30 +115,34 @@ class ZebraPrinter:
             
             # Send data
             data = zpl_content.encode('utf-8')
-            ep_out.write(data)
-            logger.info(f"Sent {len(data)} bytes via USB")
+            bytes_written = ep_out.write(data)
+            logger.info(f"Sent {bytes_written} bytes via USB")
+            
+            # Reattach kernel driver if we detached it
+            if reattach:
+                usb.util.dispose_resources(device)
+                device.attach_kernel_driver(intf.bInterfaceNumber)
+            
             return True
             
         except Exception as e:
             logger.error(f"USB print failed: {e}")
             return False
-    
-    def _print_via_device(self, zpl_content: str) -> bool:
-        """Print via device file"""
-        try:
-            with open(self.device_path, 'wb') as printer:
-                printer.write(zpl_content.encode('utf-8'))
-            logger.info(f"Sent {len(zpl_content)} bytes to {self.device_path}")
-            return True
-        except Exception as e:
-            logger.error(f"Device print failed: {e}")
-            return False
+        finally:
+            # Always release the USB device
+            if device:
+                try:
+                    usb.util.dispose_resources(device)
+                except:
+                    pass
     
     def get_status(self) -> dict:
+        # Quick check without holding resources
+        self.connect()
         return {
             "connected": self.is_connected,
             "device_path": self.device_path,
-            "type": "USB" if self.usb_device else "Device"
+            "type": "USB/Device"
         }
     
     def test_print(self) -> bool:
@@ -150,7 +154,6 @@ class ZebraPrinter:
         return self.print_zpl(test_zpl)
     
     def disconnect(self):
-        if self.usb_device:
-            usb.util.dispose_resources(self.usb_device)
+        # Nothing to disconnect since we don't hold resources
         self.is_connected = False
         logger.info("Printer disconnected")
