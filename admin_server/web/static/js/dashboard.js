@@ -209,6 +209,29 @@ function createPrinterItem(pi) {
         const statusClass = isOnline ? 'status-online' : 'status-offline';
         const statusText = isOnline ? 'Online' : 'Offline';
         
+        // Extract dimensions from label size display name
+        let labelDimensions = 'Not specified';
+        let labelSizeClass = 'label-size-default';
+        if (pi.label_size && pi.label_size.display_name) {
+            const match = pi.label_size.display_name.match(/\(([^)]+)\)/);
+            if (match) {
+                labelDimensions = match[1];
+            } else {
+                labelDimensions = pi.label_size.display_name;
+            }
+            
+            // Assign color class based on size
+            if (labelDimensions.includes('57mm') || labelDimensions.includes('2.25"')) {
+                labelSizeClass = 'label-size-small';
+            } else if (labelDimensions.includes('102mm') || labelDimensions.includes('4"')) {
+                labelSizeClass = 'label-size-large';
+            } else if (labelDimensions.includes('76mm') || labelDimensions.includes('3"')) {
+                labelSizeClass = 'label-size-medium';
+            } else {
+                labelSizeClass = 'label-size-custom';
+            }
+        }
+        
         return `
         <div class="printer-item">
             <div class="printer-item-header">
@@ -216,6 +239,7 @@ function createPrinterItem(pi) {
                 <div class="printer-status-container">
                     <div class="printer-status ${statusClass}">${statusText}</div>
                     <div class="queue-label">${pi.queue_count || 0} in queue</div>
+                    <div class="label-size-badge ${labelSizeClass}">${labelDimensions}</div>
                 </div>
             </div>
             <div class="printer-details">
@@ -245,10 +269,6 @@ function createPrinterItem(pi) {
                 <div class="detail-item">
                     <span class="detail-label">Location:</span>
                     <span class="detail-value">${pi.location || 'Not specified'}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Label Size:</span>
-                    <span class="detail-value">${pi.label_size ? pi.label_size.display_name : 'Not specified'}</span>
                 </div>
             </div>
             <div class="printer-actions">
