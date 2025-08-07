@@ -242,24 +242,26 @@ async def start_printer_services():
             command = data.get("command")
             logger.info(f"Received command '{command}' for printer {printer.name}")
             
-            if command == "test_print":
+            if command == "test_print" or command == "print":
                 params = data.get("params", {})
-                zpl_data = params.get("zpl_data")
+                
+                # Handle both formats - test_print uses zpl_data, print uses zpl_url or zpl_raw
+                zpl_data = params.get("zpl_data") or params.get("zpl_raw") or params.get("zpl_url", "")
                 
                 if zpl_data:
-                    # Create a test print job
+                    # Create a print job
                     job = PrintJob(
                         pi_id=printer.device_id,
                         zpl_source=zpl_data
                     )
                     added = printer.print_queue.add_job(job)
                     if added:
-                        logger.info(f"Added test print job {job.id} to {printer.name} queue")
-                        logger.info(f"Queue now has {printer.print_queue.pending_count} pending jobs")
+                        logger.info(f"Added print job {job.id} to {printer.name} queue")
+                        logger.info(f"Queue now has {len(printer.print_queue.queue)} pending jobs")
                     else:
-                        logger.error(f"Failed to add test print job to {printer.name} - queue may be full")
+                        logger.error(f"Failed to add print job to {printer.name} - queue may be full")
                 else:
-                    logger.warning(f"Test print command for {printer.name} missing ZPL data")
+                    logger.warning(f"Print command for {printer.name} missing ZPL data")
         
         # Register handlers for this printer's websocket
         printer_instance.ws_client.register_handler("ping", handle_ping)
@@ -338,7 +340,7 @@ async def get_status():
                 friendly_name=printer_instance.name,
                 status="online",  # Always online when service is running
                 last_seen=datetime.now(),
-                queue_count=printer_instance.print_queue.pending_count if printer_instance.print_queue else 0,
+                queue_count=len(printer_instance.print_queue.queue) if printer_instance.print_queue else 0,
                 metrics=printer_instance.monitoring.get_current_metrics() if printer_instance.monitoring else None
             )
             statuses[printer_instance.device_id] = status.dict()
@@ -379,7 +381,7 @@ async def get_printer_status(device_id: str):
         friendly_name=printer.name,
         status="online",  # Always online when service is running
         last_seen=datetime.now(),
-        queue_count=printer.print_queue.pending_count,
+        queue_count=len(printer.print_queue.queue),
         metrics=printer.monitoring.get_current_metrics()
     )
     
@@ -430,7 +432,7 @@ async def create_print_job(
     
     return ApiResponse(
         success=True,
-        data={"job_id": job.id, "queue_position": printer.print_queue.pending_count}
+        data={"job_id": job.id, "queue_position": len(printer.print_queue.queue)}
     )
 
 
