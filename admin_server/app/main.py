@@ -73,7 +73,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.6"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.7"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -374,11 +374,8 @@ async def update_pi(pi_id: str, updates: Dict[str, Any]):
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
-        for key, value in updates.items():
-            if hasattr(pi, key):
-                setattr(pi, key, value)
-        
-        if database.register_pi(pi):
+        # Use the update_pi method that only updates specified fields
+        if database.update_pi(pi_id, updates):
             return ApiResponse(
                 success=True,
                 message="Pi updated successfully",
