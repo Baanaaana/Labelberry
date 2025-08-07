@@ -63,6 +63,7 @@
     border-radius: 8px;
     padding: 0;
     transition: all 0.2s;
+    height: 44px;
 }
 
 .search-box:focus-within {
@@ -74,7 +75,7 @@
 .search-box i {
     width: 20px;
     height: 20px;
-    margin-left: 12px;
+    margin: 0 12px;
     color: var(--text-secondary);
     flex-shrink: 0;
 }
@@ -83,10 +84,11 @@
     flex: 1;
     border: none;
     background: transparent;
-    padding: 12px 12px 12px 8px;
+    padding: 12px 12px 12px 4px;
     font-size: 14px;
     color: var(--text-primary);
     outline: none;
+    height: 100%;
 }
 
 .search-box input::placeholder {
