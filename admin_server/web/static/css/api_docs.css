@@ -88,7 +88,9 @@
     padding: 12px;
     box-shadow: var(--shadow-sm);
     position: sticky;
-    top: 24px;
+    top: 100px; /* Position below the header height (80px header + 20px gap) */
+    max-height: calc(100vh - 120px); /* Ensure it doesn't exceed viewport */
+    overflow-y: auto; /* Add scroll if content is too long */
 }
 
 .nav-item {
