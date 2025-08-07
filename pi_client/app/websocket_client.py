@@ -58,9 +58,8 @@ class WebSocketClient:
             
             logger.info(f"Connected to admin server: {url}")
             
-            # Log the connection
+            # Log the connection (note: we don't have printer name here, just model)
             await self.send_log("connection", f"Connected to admin server", {
-                "url": url,
                 "device_id": self.device_id,
                 "printer_model": self.printer_model or "Unknown"
             })

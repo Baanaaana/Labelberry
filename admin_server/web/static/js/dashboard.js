@@ -869,6 +869,42 @@ function closeLogsModal() {
     document.getElementById('logs-modal').style.display = 'none';
 }
 
+// Format log details for display
+function formatLogDetails(details) {
+    if (!details) return '';
+    
+    try {
+        // Try to parse as JSON
+        const parsed = typeof details === 'string' ? JSON.parse(details) : details;
+        
+        // Format the details nicely
+        const items = [];
+        for (const [key, value] of Object.entries(parsed)) {
+            // Format key nicely (convert snake_case to Title Case)
+            const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            
+            // Format value based on type
+            let formattedValue = value;
+            if (typeof value === 'object' && value !== null) {
+                formattedValue = JSON.stringify(value, null, 2);
+            }
+            
+            items.push(`<span style="color: #666; font-weight: 500;">${formattedKey}:</span> ${formattedValue}`);
+        }
+        
+        if (items.length > 0) {
+            return `<div style="color: #666; font-size: 11px; margin-top: 4px; padding-left: 12px; border-left: 2px solid #e0e0e0;">
+                ${items.join('<br>')}
+            </div>`;
+        }
+    } catch (e) {
+        // If it's not JSON, just display as text
+        return `<div style="color: #666; font-size: 11px; margin-top: 4px;">${details}</div>`;
+    }
+    
+    return '';
+}
+
 // Load logs
 async function loadLogs() {
     const piFilter = document.getElementById('log-pi-filter').value;
@@ -937,7 +973,7 @@ async function loadLogs() {
                             <span style="color: #999; font-size: 11px;">${log.pi_name || ''} - ${formatDateTime(log.timestamp)}</span>
                         </div>
                         <div style="color: #333; word-wrap: break-word;">${log.message}</div>
-                        ${log.details ? `<div style="color: #666; font-size: 11px; margin-top: 4px;">Details: ${log.details}</div>` : ''}
+                        ${log.details ? formatLogDetails(log.details) : ''}
                     </div>
                 `;
             }).join('');

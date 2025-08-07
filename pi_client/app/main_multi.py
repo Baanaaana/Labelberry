@@ -194,7 +194,11 @@ async def process_print_job(printer_instance: PrinterInstance, job: PrintJob) ->
                 await printer_instance.ws_client.send_log(
                     "print_success",
                     f"Print job completed on {printer_instance.name}",
-                    {"job_id": job.id, "printer": printer_instance.name}
+                    {
+                        "job_id": job.id, 
+                        "printer": printer_instance.name,
+                        "device_path": printer_instance.device_path
+                    }
                 )
         else:
             logger.error(f"✗ Job {job.id} failed on {printer_instance.name} ({printer_instance.device_path})")
@@ -498,7 +502,13 @@ async def create_print_job(
         asyncio.create_task(printer.ws_client.send_log(
             "print_request",
             f"Print job queued for {printer.name}",
-            {"job_id": job.id, "printer": printer.name, "queue_position": len(printer.print_queue.queue)}
+            {
+                "job_id": job.id, 
+                "printer": printer.name,
+                "device_path": printer.device_path,
+                "queue_position": len(printer.print_queue.queue),
+                "source": "API"
+            }
         ))
     
     return ApiResponse(
