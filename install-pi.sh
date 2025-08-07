@@ -70,6 +70,23 @@ if ! lsmod | grep -q usblp; then
     echo -e "${YELLOW}Loading usblp kernel module...${NC}"
     modprobe usblp || true
     sleep 2
+    
+    # Sometimes the module needs a trigger to create the device
+    if [ -n "$USB_DEVICES" ]; then
+        echo -e "${YELLOW}Triggering USB device detection...${NC}"
+        # Unbind and rebind USB devices to trigger usblp device creation
+        for device in /sys/bus/usb/devices/*/idVendor; do
+            if grep -q "0a5f" "$device" 2>/dev/null; then
+                DEV_PATH=$(dirname "$device")
+                DEV_NAME=$(basename "$DEV_PATH")
+                echo -e "${YELLOW}Rebinding USB device $DEV_NAME...${NC}"
+                echo "$DEV_NAME" > /sys/bus/usb/drivers/usb/unbind 2>/dev/null || true
+                sleep 1
+                echo "$DEV_NAME" > /sys/bus/usb/drivers/usb/bind 2>/dev/null || true
+                sleep 2
+            fi
+        done
+    fi
 fi
 
 # Ensure usblp module loads on boot
@@ -121,6 +138,13 @@ else
                 FOUND_DEVICES+=("$device")
             fi
         done
+    fi
+    
+    # If still no devices found, inform user about pyusb fallback
+    if [ ${#FOUND_DEVICES[@]} -eq 0 ] && [ -n "$USB_DEVICES" ]; then
+        echo -e "${YELLOW}Note: /dev/usblp* devices not found, but printer was detected via USB.${NC}"
+        echo -e "${YELLOW}LabelBerry will use direct USB communication (pyusb) as fallback.${NC}"
+        echo -e "${YELLOW}This is normal and printing should still work.${NC}"
     fi
     
     # Determine printer count and devices
