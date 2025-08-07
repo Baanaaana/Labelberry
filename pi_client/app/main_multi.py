@@ -37,6 +37,7 @@ class PrinterInstance:
     
     def __init__(self, config_file: str, admin_server: str):
         """Initialize a printer instance from config file"""
+        logger.info(f"===== Initializing printer from {config_file} =====")
         with open(config_file, 'r') as f:
             printer_config = yaml.safe_load(f)
         
@@ -47,7 +48,15 @@ class PrinterInstance:
         self.printer_model = printer_config.get('printer_model')
         self.enabled = printer_config.get('enabled', True)
         
+        logger.info(f"Printer Configuration:")
+        logger.info(f"  Name: {self.name}")
+        logger.info(f"  Device ID: {self.device_id}")
+        logger.info(f"  Device Path: {self.device_path}")
+        logger.info(f"  Model: {self.printer_model}")
+        logger.info(f"  Enabled: {self.enabled}")
+        
         if self.enabled:
+            logger.info(f"Creating ZebraPrinter instance with device path: {self.device_path}")
             self.printer = ZebraPrinter(self.device_path)
             self.print_queue = PrintQueue(max_size=100)  # Each printer gets its own queue
             self.monitoring = MonitoringService(self.device_id)
@@ -57,6 +66,7 @@ class PrinterInstance:
                 self.api_key,
                 printer_model=self.printer_model
             )
+            logger.info(f"✓ Printer {self.name} initialized with device {self.device_path}")
         else:
             logger.info(f"Printer {self.name} is disabled")
             self.printer = None
@@ -151,7 +161,12 @@ async def process_queue(printer_instance: PrinterInstance):
 async def process_print_job(printer_instance: PrinterInstance, job: PrintJob) -> bool:
     """Process a single print job on a specific printer"""
     try:
-        logger.info(f"Processing job {job.id} on printer {printer_instance.name}")
+        logger.info(f"===============================================")
+        logger.info(f"Processing job {job.id}")
+        logger.info(f"  Printer Name: {printer_instance.name}")
+        logger.info(f"  Printer ID: {printer_instance.device_id}")
+        logger.info(f"  Device Path: {printer_instance.device_path}")
+        logger.info(f"===============================================")
         
         # Update status to processing
         await update_job_status(printer_instance, job.id, PrintJobStatus.PROCESSING)
@@ -160,23 +175,28 @@ async def process_print_job(printer_instance: PrinterInstance, job: PrintJob) ->
         zpl_data = ""
         if job.zpl_source.startswith("http"):
             # It's a URL, download it
+            logger.info(f"Downloading ZPL from URL: {job.zpl_source}")
             zpl_data = await download_zpl(job.zpl_source)
         else:
             # It's raw ZPL
+            logger.info(f"Using raw ZPL data")
             zpl_data = job.zpl_source
         
         # Send to printer
+        logger.info(f"Sending job to printer via device: {printer_instance.device_path}")
         success = printer_instance.printer.send_to_printer(zpl_data)
         
         if success:
-            logger.info(f"Job {job.id} completed successfully on {printer_instance.name}")
+            logger.info(f"✓ Job {job.id} completed successfully on {printer_instance.name} ({printer_instance.device_path})")
         else:
-            logger.error(f"Job {job.id} failed on {printer_instance.name}")
+            logger.error(f"✗ Job {job.id} failed on {printer_instance.name} ({printer_instance.device_path})")
         
         return success
         
     except Exception as e:
         logger.error(f"Error processing job {job.id} on {printer_instance.name}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return False
 
 

@@ -59,7 +59,14 @@ class ZebraPrinter:
     
     def send_to_printer(self, zpl_data: str) -> bool:
         """Send ZPL data to the printer"""
-        return self.print_zpl(zpl_data)
+        logger.info(f"=== PRINT JOB START ===")
+        logger.info(f"Printer instance device path: {self.device_path}")
+        logger.info(f"ZPL data length: {len(zpl_data)} bytes")
+        
+        result = self.print_zpl(zpl_data)
+        
+        logger.info(f"=== PRINT JOB END (Success: {result}) ===")
+        return result
     
     def connect(self) -> bool:
         """Check if printer is available"""
