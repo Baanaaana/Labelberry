@@ -285,7 +285,10 @@
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
-                    window.location.href = '/';
+                    // Check for 'next' parameter in URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const nextUrl = urlParams.get('next');
+                    window.location.href = nextUrl || '/';
                 } else {
                     errorDiv.textContent = data.message || 'Invalid username or password';
                     errorDiv.classList.add('show');

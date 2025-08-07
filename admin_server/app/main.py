@@ -217,7 +217,7 @@ async def root(request: Request):
     """Main page - serves the dashboard"""
     # Check if user is logged in
     if "user" not in request.session:
-        return RedirectResponse(url="/login", status_code=302)
+        return RedirectResponse(url="/login?next=/", status_code=302)
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
@@ -226,7 +226,7 @@ async def settings_page(request: Request):
     """Settings page"""
     # Check if user is logged in
     if "user" not in request.session:
-        return RedirectResponse(url="/login", status_code=302)
+        return RedirectResponse(url="/login?next=/settings", status_code=302)
     return templates.TemplateResponse("settings.html", {"request": request})
 
 
@@ -1095,7 +1095,12 @@ async def delete_label_size(
 
 @app.get("/api-docs", response_class=HTMLResponse)
 async def api_documentation(request: Request):
-    """Interactive API documentation page"""
+    """Interactive API documentation page - requires authentication"""
+    # Check if user is logged in
+    if "user" not in request.session:
+        # Redirect to login page
+        return RedirectResponse(url="/login?next=/api-docs", status_code=302)
+    
     return templates.TemplateResponse("api_docs.html", {"request": request})
 
 
