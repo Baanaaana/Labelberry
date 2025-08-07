@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.1"
+SCRIPT_VERSION="1.0.2"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'

@@ -95,15 +95,29 @@ class Database:
                     id TEXT PRIMARY KEY,
                     friendly_name TEXT NOT NULL,
                     api_key TEXT UNIQUE NOT NULL,
+                    device_name TEXT,
                     location TEXT,
                     printer_model TEXT,
                     label_size_id INTEGER,
+                    ip_address TEXT,
                     status TEXT DEFAULT 'offline',
                     last_seen TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (label_size_id) REFERENCES label_sizes (id)
                 )
             """)
+            
+            # Add missing columns if they don't exist (migration)
+            cursor.execute("PRAGMA table_info(pis)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            if 'ip_address' not in columns:
+                cursor.execute("ALTER TABLE pis ADD COLUMN ip_address TEXT")
+                logger.info("Added ip_address column to pis table")
+            
+            if 'device_name' not in columns:
+                cursor.execute("ALTER TABLE pis ADD COLUMN device_name TEXT")
+                logger.info("Added device_name column to pis table")
             
             # Insert default label sizes if not exist
             default_sizes = [
@@ -412,8 +426,11 @@ class Database:
                     WHERE id = ?
                 """, (ip_address, pi_id))
                 conn.commit()
+                logger.info(f"Successfully updated IP address for Pi {pi_id} to {ip_address}")
         except Exception as e:
-            logger.error(f"Failed to update Pi IP address: {e}")
+            logger.error(f"Failed to update Pi IP address for {pi_id}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
     
     def update_pi_printer_model(self, pi_id: str, printer_model: str):
         try:

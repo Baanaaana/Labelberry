@@ -73,7 +73,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.4"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.5"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -686,6 +686,9 @@ async def websocket_endpoint(websocket: WebSocket, pi_id: str):
         logger.info(f"Pi {pi_id} connecting from IP: {client_ip}")
         # Update the IP address in the database
         database.update_pi_ip_address(pi_id, client_ip)
+        logger.info(f"Updated IP address for Pi {pi_id} to {client_ip}")
+    else:
+        logger.warning(f"Could not determine IP address for Pi {pi_id}")
     
     logger.info(f"Pi {pi_id} WebSocket authenticated - connecting...")
     await connection_manager.connect(pi_id, websocket)
