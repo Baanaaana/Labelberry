@@ -104,7 +104,15 @@ class MultiPrinterManager:
 
 
 # Global printer manager instance
-printer_manager = MultiPrinterManager()
+try:
+    printer_manager = MultiPrinterManager()
+    logger.info(f"Loaded {len(printer_manager.printers)} printer(s)")
+except Exception as e:
+    logger.error(f"Failed to initialize MultiPrinterManager: {e}")
+    import traceback
+    traceback.print_exc()
+    # Create empty manager so the app can at least start
+    printer_manager = None
 
 
 async def process_queue(printer_instance: PrinterInstance):
@@ -178,6 +186,10 @@ async def download_zpl(url: str) -> str:
 
 async def start_printer_services():
     """Start all services for all enabled printers"""
+    if printer_manager is None:
+        logger.error("Printer manager not initialized, cannot start services")
+        return
+    
     tasks = []
     
     for printer_instance in printer_manager.get_enabled_printers():
@@ -198,6 +210,9 @@ async def start_printer_services():
 
 async def stop_printer_services():
     """Stop all services for all printers"""
+    if printer_manager is None:
+        return
+    
     for printer_instance in printer_manager.get_enabled_printers():
         if printer_instance.ws_client:
             await printer_instance.ws_client.disconnect()
@@ -389,6 +404,14 @@ async def get_printer_metrics(device_id: str):
 def start_server():
     """Start the multi-printer server"""
     logger.info("Starting LabelBerry multi-printer service")
+    
+    if printer_manager is None:
+        logger.error("Failed to initialize printer manager, cannot start service")
+        sys.exit(1)
+    
+    if len(printer_manager.printers) == 0:
+        logger.warning("No printers configured, service will start but won't be able to print")
+    
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
