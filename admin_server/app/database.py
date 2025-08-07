@@ -397,7 +397,7 @@ class Database:
                 fields = []
                 values = []
                 for key, value in updates.items():
-                    if key in ['friendly_name', 'api_key', 'printer_model', 'label_size_id', 'location']:
+                    if key in ['friendly_name', 'api_key', 'device_name', 'printer_model', 'label_size_id', 'location']:
                         fields.append(f"{key} = ?")
                         values.append(value)
                 
