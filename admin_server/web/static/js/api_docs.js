@@ -2,64 +2,55 @@
 
 let availablePrinters = [];
 let userApiKeys = [];
+let labelSizes = [];
 
 // Flag to prevent scroll spy during programmatic scrolling
 let isScrolling = false;
 
-// Scroll to section
+// Initialize page on load
+window.addEventListener('DOMContentLoaded', async () => {
+    // Set base URL
+    const baseUrl = window.location.origin;
+    document.getElementById('base-url').textContent = baseUrl;
+    
+    // Load data
+    await loadPrinters();
+    await loadApiKeys();
+    await loadLabelSizes();
+    
+    // Update dynamic content
+    updateDynamicContent();
+    
+    // Initialize Lucide icons
+    lucide.createIcons();
+    
+    // Setup scroll spy
+    setupScrollSpy();
+});
+
+// Scroll to section smoothly
 function scrollToSection(sectionId, navItem) {
-    // Set flag to prevent scroll spy interference
     isScrolling = true;
     
-    // Update active nav item immediately
+    // Update active nav item
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
-    navItem.classList.add('active');
+    if (navItem) navItem.classList.add('active');
     
-    // Find the section
+    // Scroll to section
     const section = document.getElementById(sectionId);
-    if (!section) {
-        console.error('Section not found:', sectionId);
-        isScrolling = false;
-        return;
+    if (section) {
+        const offset = 80; // Account for fixed header
+        const targetPosition = section.offsetTop - offset;
+        
+        window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+        });
     }
     
-    // Get the sidebar nav element for alignment reference
-    const sidebarNav = document.querySelector('.docs-nav');
-    if (!sidebarNav) {
-        // Fallback to simple scroll if sidebar not found
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        setTimeout(() => { isScrolling = false; }, 500);
-        return;
-    }
-    
-    // Calculate positions
-    const sectionRect = section.getBoundingClientRect();
-    const sidebarRect = sidebarNav.getBoundingClientRect();
-    
-    // Current scroll position
-    const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
-    
-    // Calculate where we need to scroll to
-    // We want the section top to align with the sidebar nav top
-    const sectionAbsoluteTop = sectionRect.top + currentScrollY;
-    const sidebarTop = sidebarRect.top; // This is relative to viewport
-    
-    // The sidebar is sticky at 24px from top, so when scrolled, it's at 24px
-    // We want to scroll so the section is at the same position as the sidebar
-    const targetScrollPosition = sectionAbsoluteTop - 24;
-    
-    // Smooth scroll to target position
-    window.scrollTo({
-        top: targetScrollPosition,
-        behavior: 'smooth'
-    });
-    
-    // Reset flag after scrolling is done
-    setTimeout(() => {
-        isScrolling = false;
-    }, 500);
+    setTimeout(() => { isScrolling = false; }, 500);
 }
 
 // Copy code to clipboard
@@ -111,11 +102,42 @@ async function loadPrinters() {
         
         if (data.success) {
             availablePrinters = data.data.pis;
-            updatePrinterSelect();
-            updateDynamicCommands();
+            updatePrinterSelects();
         }
     } catch (error) {
         console.error('Failed to load printers:', error);
+    }
+}
+
+// Load API keys
+async function loadApiKeys() {
+    try {
+        const response = await fetch('/api/keys');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                userApiKeys = data.data.keys || [];
+                updateApiKeySelects();
+                displayUserApiKeys();
+            }
+        }
+    } catch (error) {
+        // User might not be logged in
+        console.log('Could not load API keys');
+    }
+}
+
+// Load label sizes
+async function loadLabelSizes() {
+    try {
+        const response = await fetch('/api/label-sizes');
+        const data = await response.json();
+        
+        if (data.success) {
+            labelSizes = data.data.sizes || [];
+        }
+    } catch (error) {
+        console.error('Failed to load label sizes:', error);
     }
 }
 
@@ -230,21 +252,55 @@ curl -X POST ${baseUrl}/api/pis/PRINTER_ID/print \\
     }
 }
 
-// Update printer select dropdown
-function updatePrinterSelect() {
-    const select = document.getElementById('test-printer-select');
-    if (!select) return;
+// Update all printer select dropdowns
+function updatePrinterSelects() {
+    const selects = document.querySelectorAll('.printer-select');
     
-    if (availablePrinters.length === 0) {
-        select.innerHTML = '<option value="">No printers available</option>';
-    } else {
-        select.innerHTML = '<option value="">Select a printer...</option>';
-        availablePrinters.forEach(printer => {
-            const status = printer.websocket_connected ? '🟢' : '🔴';
-            const labelSize = printer.label_size ? ` - ${printer.label_size.display_name}` : '';
-            select.innerHTML += `<option value="${printer.id}">${status} ${printer.friendly_name}${labelSize}</option>`;
-        });
-    }
+    selects.forEach(select => {
+        const currentValue = select.value;
+        select.innerHTML = '';
+        
+        if (availablePrinters.length === 0) {
+            select.innerHTML = '<option value="">No printers available</option>';
+        } else {
+            select.innerHTML = '<option value="">Select a printer...</option>';
+            availablePrinters.forEach(printer => {
+                const status = printer.websocket_connected ? '🟢' : '🔴';
+                const option = document.createElement('option');
+                option.value = printer.id;
+                option.textContent = `${status} ${printer.friendly_name}`;
+                select.appendChild(option);
+            });
+            
+            // Restore previous selection if available
+            if (currentValue) select.value = currentValue;
+        }
+    });
+}
+
+// Update all API key select dropdowns
+function updateApiKeySelects() {
+    const selects = document.querySelectorAll('.api-key-select');
+    
+    selects.forEach(select => {
+        const currentValue = select.value;
+        select.innerHTML = '';
+        
+        if (userApiKeys.length === 0) {
+            select.innerHTML = '<option value="">No API keys available</option>';
+        } else {
+            select.innerHTML = '<option value="">Select an API key...</option>';
+            userApiKeys.forEach(key => {
+                const option = document.createElement('option');
+                option.value = key.key;
+                option.textContent = key.name;
+                select.appendChild(option);
+            });
+            
+            // Restore previous selection if available
+            if (currentValue) select.value = currentValue;
+        }
+    });
 }
 
 // Load user's API keys
@@ -264,27 +320,34 @@ async function loadUserApiKeys() {
     }
 }
 
-// Display user's API keys
+// Display user's API keys in Getting Started section
 function displayUserApiKeys() {
-    const container = document.getElementById('user-api-keys');
-    const list = document.getElementById('api-keys-list');
-    
-    if (!container || !list) return;
+    const display = document.getElementById('user-api-key-display');
+    if (!display) return;
     
     if (userApiKeys.length > 0) {
-        container.style.display = 'block';
-        list.innerHTML = userApiKeys.map(key => `
-            <div class="api-key-item">
-                <span>${key.name}</span>
-                <button class="btn btn-sm" onclick="useApiKey('${key.id}')">Use This Key</button>
+        const key = userApiKeys[0];
+        display.innerHTML = `
+            <div class="info-box">
+                <i data-lucide="key"></i>
+                <div>
+                    <strong>Your API Key:</strong> <code>${key.name}</code>
+                    <br>
+                    <small>Use this key in the Authorization header</small>
+                </div>
             </div>
-        `).join('');
-        
-        // Auto-fill the first API key in test form
-        const testKeyInput = document.getElementById('test-api-key');
-        if (testKeyInput && testKeyInput.value === '') {
-            testKeyInput.placeholder = 'Click "Use This Key" above or enter manually';
-        }
+        `;
+        lucide.createIcons();
+    } else {
+        display.innerHTML = `
+            <div class="info-box warning">
+                <i data-lucide="alert-triangle"></i>
+                <div>
+                    No API keys found. <a href="/settings#api-keys">Create one now →</a>
+                </div>
+            </div>
+        `;
+        lucide.createIcons();
     }
 }
 
@@ -473,43 +536,278 @@ function updateActiveSection() {
     }
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize base URL immediately
-    const baseUrl = window.location.origin;
-    document.querySelectorAll('.dynamic-url').forEach(el => {
-        el.textContent = baseUrl;
-    });
+// Search endpoints functionality
+function searchEndpoints(query) {
+    const sections = document.querySelectorAll('.doc-section');
+    const navItems = document.querySelectorAll('.nav-item');
     
-    // Generate initial commands even before printers load
-    generateCurlCommands();
+    if (!query) {
+        // Show all sections and nav items
+        sections.forEach(section => section.style.display = '');
+        navItems.forEach(item => item.style.display = '');
+        return;
+    }
     
-    // Highlight code syntax (basic)
-    document.querySelectorAll('.code-block code').forEach(block => {
-        // Basic syntax highlighting for JSON
-        if (block.textContent.includes('"success"')) {
-            block.innerHTML = block.innerHTML
-                .replace(/"([^"]+)":/g, '<span style="color: #9cdcfe;">"$1"</span>:')
-                .replace(/: "([^"]+)"/g, ': <span style="color: #ce9178;">"$1"</span>')
-                .replace(/: (\d+)/g, ': <span style="color: #b5cea8;">$1</span>')
-                .replace(/: (true|false)/g, ': <span style="color: #569cd6;">$1</span>');
+    const lowerQuery = query.toLowerCase();
+    
+    // Filter sections
+    sections.forEach(section => {
+        const text = section.textContent.toLowerCase();
+        if (text.includes(lowerQuery)) {
+            section.style.display = '';
+        } else {
+            section.style.display = 'none';
         }
     });
     
-    // Set up scroll spy
+    // Filter nav items
+    navItems.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(lowerQuery)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Switch code tab
+function switchCodeTab(button, tabName) {
+    const container = button.closest('.code-tabs');
+    
+    // Update buttons
+    container.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    button.classList.add('active');
+    
+    // Update content
+    container.querySelectorAll('.tab-content').forEach(content => {
+        content.style.display = 'none';
+    });
+    
+    const targetTab = container.querySelector(`#tab-${tabName}`);
+    if (targetTab) {
+        targetTab.style.display = 'block';
+    }
+}
+
+// Switch example tab
+function switchExampleTab(button, tabId) {
+    const container = button.closest('.code-tabs');
+    
+    // Update buttons
+    container.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    button.classList.add('active');
+    
+    // Update content
+    container.querySelectorAll('.tab-content').forEach(content => {
+        content.style.display = 'none';
+    });
+    
+    const targetTab = container.querySelector(`#${tabId}`);
+    if (targetTab) {
+        targetTab.style.display = 'block';
+    }
+}
+
+// Try endpoint functions
+async function tryEndpoint(endpointId) {
+    const detailsDiv = document.getElementById(`${endpointId}-details`);
+    const responseDiv = document.getElementById(`${endpointId}-response`);
+    
+    if (detailsDiv) {
+        detailsDiv.style.display = detailsDiv.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    if (responseDiv && detailsDiv.style.display === 'block') {
+        responseDiv.textContent = 'Sending request...';
+        
+        try {
+            let response;
+            
+            switch(endpointId) {
+                case 'list-printers':
+                    response = await fetch('/api/pis');
+                    break;
+                case 'label-sizes':
+                    response = await fetch('/api/label-sizes');
+                    break;
+                case 'view-queue':
+                    response = await fetch('/api/queue', {
+                        headers: {
+                            'Authorization': `Bearer ${userApiKeys[0]?.key || 'YOUR_API_KEY'}`
+                        }
+                    });
+                    break;
+                default:
+                    throw new Error('Unknown endpoint');
+            }
+            
+            const data = await response.json();
+            responseDiv.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+            responseDiv.textContent = `Error: ${error.message}`;
+        }
+    }
+}
+
+// Show interactive form
+function showInteractiveForm(formId) {
+    const form = document.getElementById(`${formId}-form`);
+    if (form) {
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+// Try printer details
+async function tryPrinterDetails() {
+    const printerId = document.getElementById('printer-details-id').value;
+    const responseDiv = document.getElementById('printer-details-response');
+    
+    if (!printerId) {
+        responseDiv.textContent = 'Please select a printer';
+        return;
+    }
+    
+    responseDiv.textContent = 'Sending request...';
+    
+    try {
+        const response = await fetch(`/api/pis/${printerId}`);
+        const data = await response.json();
+        responseDiv.textContent = JSON.stringify(data, null, 2);
+    } catch (error) {
+        responseDiv.textContent = `Error: ${error.message}`;
+    }
+}
+
+// Show print form
+function showPrintForm() {
+    const form = document.getElementById('print-form');
+    if (form) {
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+// Toggle print method
+function togglePrintMethod() {
+    const method = document.querySelector('input[name="print-method"]:checked').value;
+    
+    document.getElementById('zpl-raw-group').style.display = method === 'raw' ? 'block' : 'none';
+    document.getElementById('zpl-url-group').style.display = method === 'url' ? 'block' : 'none';
+}
+
+// Send print job
+async function sendPrintJob() {
+    const printerId = document.getElementById('print-printer-id').value;
+    const apiKey = document.getElementById('print-api-key').value;
+    const priority = document.getElementById('print-priority').value;
+    const method = document.querySelector('input[name="print-method"]:checked').value;
+    const responseDiv = document.getElementById('print-response');
+    
+    if (!printerId) {
+        alert('Please select a printer');
+        return;
+    }
+    
+    if (!apiKey) {
+        alert('Please select an API key');
+        return;
+    }
+    
+    let body = { priority: parseInt(priority) };
+    
+    if (method === 'raw') {
+        const zpl = document.getElementById('print-zpl-raw').value;
+        if (!zpl) {
+            alert('Please enter ZPL content');
+            return;
+        }
+        body.zpl_raw = zpl;
+    } else {
+        const url = document.getElementById('print-zpl-url').value;
+        if (!url) {
+            alert('Please enter a ZPL URL');
+            return;
+        }
+        body.zpl_url = url;
+    }
+    
+    responseDiv.textContent = 'Sending print job...';
+    
+    try {
+        const response = await fetch(`/api/pis/${printerId}/print`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+        
+        const data = await response.json();
+        responseDiv.textContent = JSON.stringify(data, null, 2);
+        
+        if (response.ok) {
+            alert('Print job sent successfully!');
+        }
+    } catch (error) {
+        responseDiv.textContent = `Error: ${error.message}`;
+    }
+}
+
+// Try list printers
+async function tryListPrinters() {
+    await tryEndpoint('list-printers');
+}
+
+// Show print example
+function showPrintExample() {
+    const exampleSection = document.getElementById('sending-prints');
+    if (exampleSection) {
+        scrollToSection('sending-prints', null);
+        showPrintForm();
+    }
+}
+
+// Update dynamic content
+function updateDynamicContent() {
+    // This is called after data loads to update any dynamic placeholders
+    const baseUrl = window.location.origin;
+    
+    // Update all placeholders
+    document.querySelectorAll('.dynamic-content').forEach(el => {
+        const type = el.dataset.content;
+        
+        switch(type) {
+            case 'base-url':
+                el.textContent = baseUrl;
+                break;
+            case 'printer-count':
+                el.textContent = availablePrinters.length;
+                break;
+            case 'api-key-count':
+                el.textContent = userApiKeys.length;
+                break;
+        }
+    });
+}
+
+// Setup scroll spy
+function setupScrollSpy() {
     let scrollTimeout;
+    
     window.addEventListener('scroll', () => {
-        // Debounce scroll events for better performance
+        if (isScrolling) return;
+        
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(() => {
             updateActiveSection();
         }, 10);
     });
     
-    // Update on initial load
+    // Initial update
     updateActiveSection();
-    
-    // Load printers and API keys
-    loadPrinters();
-    loadUserApiKeys();
-});
+}

@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Documentation - LabelBerry</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234263eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='5' width='14' height='14' rx='2'/%3E%3Cpath d='M9 9h6'/%3E%3Cpath d='M9 12h6'/%3E%3Cpath d='M9 15h4'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234263eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z'/%3E%3Cpath d='M14 8H8'/%3E%3Cpath d='M16 12H8'/%3E%3Cpath d='M13 16H8'/%3E%3C/svg%3E">
     
     <!-- Google Fonts - Ubuntu -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="/static/css/dashboard.css?v={{ static_version }}">
     <link rel="stylesheet" href="/static/css/api_docs.css?v={{ static_version }}">
@@ -42,550 +43,742 @@
         <div class="docs-content">
             <!-- Sidebar Navigation -->
             <div class="docs-sidebar">
+                <div class="sidebar-search">
+                    <input type="text" placeholder="Search endpoints..." id="search-endpoints" onkeyup="searchEndpoints(this.value)">
+                    <i data-lucide="search"></i>
+                </div>
+                
                 <nav class="docs-nav">
-                    <a href="#overview" class="nav-item active" onclick="scrollToSection('overview', this); return false;">
-                        <i data-lucide="info"></i>
-                        <span>Overview</span>
+                    <a href="#getting-started" class="nav-item active" onclick="scrollToSection('getting-started', this); return false;">
+                        <i data-lucide="rocket"></i>
+                        <span>Getting Started</span>
                     </a>
-                    <a href="#authentication" class="nav-item" onclick="scrollToSection('authentication', this); return false;">
-                        <i data-lucide="shield"></i>
-                        <span>Authentication</span>
+                    <a href="#printer-discovery" class="nav-item" onclick="scrollToSection('printer-discovery', this); return false;">
+                        <i data-lucide="search"></i>
+                        <span>Printer Discovery</span>
                     </a>
-                    <a href="#list-printers" class="nav-item" onclick="scrollToSection('list-printers', this); return false;">
-                        <i data-lucide="list"></i>
-                        <span>List Printers</span>
-                    </a>
-                    <a href="#print-admin" class="nav-item" onclick="scrollToSection('print-admin', this); return false;">
+                    <a href="#sending-prints" class="nav-item" onclick="scrollToSection('sending-prints', this); return false;">
                         <i data-lucide="printer"></i>
-                        <span>Print via Admin</span>
+                        <span>Sending Print Jobs</span>
                     </a>
-                    <a href="#print-direct" class="nav-item" onclick="scrollToSection('print-direct', this); return false;">
-                        <i data-lucide="send"></i>
-                        <span>Print Direct to Pi</span>
+                    <a href="#queue-management" class="nav-item" onclick="scrollToSection('queue-management', this); return false;">
+                        <i data-lucide="list-ordered"></i>
+                        <span>Queue Management</span>
                     </a>
-                    <a href="#label-sizes" class="nav-item" onclick="scrollToSection('label-sizes', this); return false;">
+                    <a href="#job-history" class="nav-item" onclick="scrollToSection('job-history', this); return false;">
+                        <i data-lucide="clock"></i>
+                        <span>Job History</span>
+                    </a>
+                    <a href="#label-config" class="nav-item" onclick="scrollToSection('label-config', this); return false;">
                         <i data-lucide="ruler"></i>
-                        <span>Label Sizes</span>
+                        <span>Label Configuration</span>
                     </a>
-                    <a href="#examples" class="nav-item" onclick="scrollToSection('examples', this); return false;">
-                        <i data-lucide="code-2"></i>
-                        <span>Code Examples</span>
+                    <a href="#api-keys" class="nav-item" onclick="scrollToSection('api-keys', this); return false;">
+                        <i data-lucide="key"></i>
+                        <span>API Key Management</span>
                     </a>
                 </nav>
             </div>
 
             <!-- Main Documentation -->
             <div class="docs-main">
-                <!-- Overview Section -->
-                <section id="overview" class="doc-section">
-                    <h2>API Overview</h2>
-                    <p>The LabelBerry API allows you to programmatically control your label printers. You can list available printers, check their status, and send print jobs.</p>
+                <!-- Getting Started Section -->
+                <section id="getting-started" class="doc-section">
+                    <h1>Getting Started</h1>
+                    <p class="section-intro">Welcome to the LabelBerry API! This guide will help you integrate label printing into your applications.</p>
                     
                     <div class="info-box">
-                        <i data-lucide="info"></i>
+                        <i data-lucide="server"></i>
                         <div>
-                            <strong>Base URL:</strong> <code id="base-url" class="dynamic-url">Loading...</code>
+                            <strong>Base URL:</strong> <code id="base-url">Loading...</code>
                             <br>
                             <strong>Content-Type:</strong> <code>application/json</code>
+                            <br>
+                            <strong>Authentication:</strong> <code>Bearer token in Authorization header</code>
                         </div>
                     </div>
+
+                    <h2>Quick Start</h2>
+                    <p>Here's how to send your first print job in 3 steps:</p>
                     
-                    <h3>Quick Commands</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>List all printers</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
+                    <div class="step-cards">
+                        <div class="step-card">
+                            <div class="step-number">1</div>
+                            <h3>Get Your API Key</h3>
+                            <p>Create an API key in <a href="/settings#api-keys">Settings → API Keys</a></p>
+                            <div id="user-api-key-display"></div>
+                        </div>
+                        
+                        <div class="step-card">
+                            <div class="step-number">2</div>
+                            <h3>Find Your Printer</h3>
+                            <p>List available printers to get their IDs</p>
+                            <button class="btn btn-sm" onclick="tryListPrinters()">
+                                <i data-lucide="play"></i> Try It
                             </button>
                         </div>
-                        <pre><code id="curl-list-printers">Loading...</code></pre>
-                    </div>
-                </section>
-
-                <!-- Authentication Section -->
-                <section id="authentication" class="doc-section">
-                    <h2>Authentication</h2>
-                    <p>Print operations require API key authentication. You can create API keys in the <a href="/settings#api-keys">Settings → API Keys</a> section.</p>
-                    
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Authorization Header</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
+                        
+                        <div class="step-card">
+                            <div class="step-number">3</div>
+                            <h3>Send Print Job</h3>
+                            <p>Send ZPL data to your printer</p>
+                            <button class="btn btn-sm" onclick="showPrintExample()">
+                                <i data-lucide="code"></i> See Example
                             </button>
                         </div>
-                        <pre><code>Authorization: Bearer labk_your_api_key_here</code></pre>
                     </div>
 
-                    <div class="api-key-display" id="user-api-keys" style="display: none;">
-                        <h3>Your API Keys</h3>
-                        <div id="api-keys-list"></div>
-                    </div>
-                </section>
-
-                <!-- List Printers Section -->
-                <section id="list-printers" class="doc-section">
-                    <h2>List All Printers</h2>
-                    <p>Get a list of all registered printers with their details and label sizes.</p>
-                    
-                    <div class="endpoint-box">
-                        <span class="method get">GET</span>
-                        <code class="endpoint">/api/pis</code>
-                    </div>
-
-                    <h3>Actual Command</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>cURL</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
+                    <h2>Complete Example</h2>
+                    <div class="code-tabs">
+                        <div class="tab-buttons">
+                            <button class="tab-btn active" onclick="switchCodeTab(this, 'nextjs')">Next.js/React</button>
+                            <button class="tab-btn" onclick="switchCodeTab(this, 'curl')">cURL</button>
                         </div>
-                        <pre><code id="curl-list-printers-2">Loading...</code></pre>
-                    </div>
+                        
+                        <div class="tab-content" id="tab-nextjs">
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Next.js Component Example</span>
+                                    <button onclick="copyCode(this)" class="copy-btn">
+                                        <i data-lucide="copy"></i>
+                                    </button>
+                                </div>
+                                <pre><code class="language-typescript">import { useState } from 'react';
 
-                    <h3>Response</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>200 OK</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
-                        </div>
-                        <pre><code>{
-  "success": true,
-  "message": "Pis retrieved",
-  "data": {
-    "pis": [
-      {
-        "id": "uuid-here",
-        "friendly_name": "Warehouse Printer 1",
-        "location": "Building A, Floor 2",
-        "printer_model": "Zebra ZD220",
-        "label_size": {
-          "id": 1,
-          "name": "Large Shipping",
-          "width_mm": 102,
-          "height_mm": 150,
-          "display_name": "Large Shipping (102mm x 150mm)"
-        },
-        "status": "online",
-        "websocket_connected": true,
-        "queue_count": 0
+const PrintLabelComponent = () => {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  
+  const printLabel = async () => {
+    setLoading(true);
+    try {
+      // Step 1: Get list of printers
+      const printersRes = await fetch('${window.location.origin}/api/pis');
+      const printers = await printersRes.json();
+      
+      if (printers.data.pis.length === 0) {
+        throw new Error('No printers available');
       }
-    ],
-    "total": 1
+      
+      const printerId = printers.data.pis[0].id;
+      
+      // Step 2: Send print job
+      const printRes = await fetch(`${window.location.origin}/api/pis/${printerId}/print`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer YOUR_API_KEY_HERE',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          zpl_raw: '^XA^FO50,50^ADN,36,20^FDHello LabelBerry!^FS^XZ'
+        })
+      });
+      
+      const printResult = await printRes.json();
+      setResult(printResult);
+      
+      if (printResult.data.status === 'queued') {
+        console.log(`Job queued at position ${printResult.data.queue_position}`);
+      }
+      
+    } catch (error) {
+      console.error('Print failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    &lt;button onClick={printLabel} disabled={loading}&gt;
+      {loading ? 'Printing...' : 'Print Label'}
+    &lt;/button&gt;
+  );
+};</code></pre>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="tab-curl" style="display: none;">
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>cURL Commands</span>
+                                    <button onclick="copyCode(this)" class="copy-btn">
+                                        <i data-lucide="copy"></i>
+                                    </button>
+                                </div>
+                                <pre><code class="language-bash"># Step 1: Get list of printers
+curl -X GET ${window.location.origin}/api/pis
+
+# Step 2: Send print job (replace PRINTER_ID and API_KEY)
+curl -X POST ${window.location.origin}/api/pis/PRINTER_ID/print \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello LabelBerry!^FS^XZ"
+  }'</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Printer Discovery Section -->
+                <section id="printer-discovery" class="doc-section">
+                    <h1>Printer Discovery & Status</h1>
+                    <p class="section-intro">Find and monitor your connected label printers.</p>
+
+                    <!-- List All Printers -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method get">GET</span>
+                                <code class="endpoint-path">/api/pis</code>
+                            </div>
+                            <button class="try-btn" onclick="tryEndpoint('list-printers')">
+                                <i data-lucide="play"></i> Try It
+                            </button>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Returns a list of all registered printers with their current status, label sizes, and connection state.</p>
+                        </div>
+
+                        <div class="endpoint-details" id="list-printers-details" style="display: none;">
+                            <div class="response-preview">
+                                <h4>Response</h4>
+                                <pre><code id="list-printers-response">Sending request...</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="code-examples">
+                            <div class="code-tabs">
+                                <div class="tab-buttons">
+                                    <button class="tab-btn active" onclick="switchExampleTab(this, 'list-nextjs')">Next.js</button>
+                                    <button class="tab-btn" onclick="switchExampleTab(this, 'list-curl')">cURL</button>
+                                </div>
+                                
+                                <div class="tab-content" id="list-nextjs">
+                                    <pre><code>const getPrinters = async () => {
+  const response = await fetch('${window.location.origin}/api/pis');
+  const data = await response.json();
+  
+  return data.data.pis.map(printer => ({
+    id: printer.id,
+    name: printer.friendly_name,
+    status: printer.status,
+    isOnline: printer.websocket_connected,
+    queueCount: printer.queue_count
+  }));
+};</code></pre>
+                                </div>
+                                
+                                <div class="tab-content" id="list-curl" style="display: none;">
+                                    <pre><code>curl -X GET ${window.location.origin}/api/pis</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Get Printer Details -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method get">GET</span>
+                                <code class="endpoint-path">/api/pis/{pi_id}</code>
+                            </div>
+                            <button class="try-btn" onclick="showInteractiveForm('printer-details')">
+                                <i data-lucide="play"></i> Try It
+                            </button>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Get detailed information about a specific printer including configuration and metrics.</p>
+                        </div>
+
+                        <div class="interactive-form" id="printer-details-form" style="display: none;">
+                            <div class="form-group">
+                                <label>Printer ID</label>
+                                <select id="printer-details-id" class="form-control printer-select">
+                                    <option value="">Loading printers...</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="tryPrinterDetails()">Send Request</button>
+                            <div class="response-preview">
+                                <h4>Response</h4>
+                                <pre><code id="printer-details-response">Ready to send request...</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Get Printer Metrics -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method get">GET</span>
+                                <code class="endpoint-path">/api/pis/{pi_id}/metrics</code>
+                            </div>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Get performance metrics for a printer including CPU usage, memory, and job statistics.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sending Print Jobs Section -->
+                <section id="sending-prints" class="doc-section">
+                    <h1>Sending Print Jobs</h1>
+                    <p class="section-intro">Send ZPL data to your printers with automatic queuing for offline devices.</p>
+
+                    <div class="feature-highlight">
+                        <i data-lucide="zap"></i>
+                        <div>
+                            <strong>Smart Routing:</strong> Jobs are automatically queued when printers are offline and sent when they reconnect.
+                        </div>
+                    </div>
+
+                    <!-- Send Print Job -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method post">POST</span>
+                                <code class="endpoint-path">/api/pis/{pi_id}/print</code>
+                                <span class="auth-badge">Requires Auth</span>
+                            </div>
+                            <button class="try-btn" onclick="showPrintForm()">
+                                <i data-lucide="play"></i> Try It
+                            </button>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Send a print job to a printer. If the printer is offline, the job will be queued and sent when it reconnects.</p>
+                        </div>
+
+                        <div class="interactive-form" id="print-form" style="display: none;">
+                            <div class="form-group">
+                                <label>Printer</label>
+                                <select id="print-printer-id" class="form-control printer-select">
+                                    <option value="">Select a printer...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>API Key</label>
+                                <select id="print-api-key" class="form-control api-key-select">
+                                    <option value="">Select API key...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Print Method</label>
+                                <div class="radio-group">
+                                    <label>
+                                        <input type="radio" name="print-method" value="raw" checked onchange="togglePrintMethod()">
+                                        Raw ZPL
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="print-method" value="url" onchange="togglePrintMethod()">
+                                        ZPL URL
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" id="zpl-raw-group">
+                                <label>ZPL Content</label>
+                                <textarea id="print-zpl-raw" class="form-control" rows="4">^XA
+^FO50,50^ADN,36,20
+^FDTest Label from API Docs
+^FS
+^FO50,100^ADN,18,10
+^FDPrinted: ${new Date().toLocaleString()}
+^FS
+^XZ</textarea>
+                            </div>
+                            
+                            <div class="form-group" id="zpl-url-group" style="display: none;">
+                                <label>ZPL URL</label>
+                                <input type="text" id="print-zpl-url" class="form-control" placeholder="https://example.com/label.zpl">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Priority (1-10)</label>
+                                <input type="number" id="print-priority" class="form-control" value="5" min="1" max="10">
+                            </div>
+                            
+                            <button class="btn btn-primary" onclick="sendPrintJob()">
+                                <i data-lucide="printer"></i> Send Print Job
+                            </button>
+                            
+                            <div class="response-preview">
+                                <h4>Response</h4>
+                                <pre><code id="print-response">Ready to send print job...</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="code-examples">
+                            <h4>Request Body</h4>
+                            <pre><code>{
+  "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello World^FS^XZ",
+  // OR
+  "zpl_url": "https://example.com/label.zpl",
+  "priority": 5  // Optional: 1-10, higher = more urgent
+}</code></pre>
+
+                            <h4>Response</h4>
+                            <pre><code>// If printer is online:
+{
+  "success": true,
+  "message": "Print job sent directly to Pi",
+  "data": {
+    "job_id": "uuid-here",
+    "pi_id": "printer-id",
+    "status": "sent"
+  }
+}
+
+// If printer is offline:
+{
+  "success": true,
+  "message": "Print job queued (Pi offline)",
+  "data": {
+    "job_id": "uuid-here",
+    "pi_id": "printer-id",
+    "status": "queued",
+    "queue_position": 3
   }
 }</code></pre>
-                    </div>
-
-                    <h3>Try It</h3>
-                    <button class="btn btn-primary" onclick="tryListPrinters()">
-                        <i data-lucide="play"></i>
-                        Send Request
-                    </button>
-                    <div id="list-response" class="response-display"></div>
-                </section>
-
-                <!-- Print via Admin Section -->
-                <section id="print-admin" class="doc-section">
-                    <h2>Print via Admin Server</h2>
-                    <p>Send print jobs to printers through the admin server. The printer must be online and connected.</p>
-                    
-                    <div class="endpoint-box">
-                        <span class="method post">POST</span>
-                        <code class="endpoint">/api/pis/{pi_id}/print</code>
-                        <span class="auth-required">Requires Authentication</span>
-                    </div>
-
-                    <h3>Method 1: Raw ZPL</h3>
-                    <div class="info-box">
-                        <i data-lucide="terminal"></i>
-                        <div>
-                            <strong>Ready-to-use command:</strong> Copy and replace YOUR_API_KEY with your actual key
                         </div>
-                    </div>
-                    
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Actual cURL Command</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
-                        </div>
-                        <pre><code id="curl-print">Loading...</code></pre>
-                    </div>
-
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Request Body</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
-                        </div>
-                        <pre><code>{
-  "zpl_raw": "^XA^FO50,50^FDHello World^FS^XZ"
-}</code></pre>
-                    </div>
-
-                    <h3>Method 2: ZPL from URL</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Actual cURL Command</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
-                        </div>
-                        <pre><code id="curl-print-url">Loading...</code></pre>
-                    </div>
-                    
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Request Body</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
-                        </div>
-                        <pre><code>{
-  "zpl_url": "https://example.com/labels/shipping-label.zpl"
-}</code></pre>
-                    </div>
-
-                    <h3>Method 3: ZPL File Upload</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Actual cURL Command</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
-                        </div>
-                        <pre><code id="curl-print-file">Loading...</code></pre>
-                    </div>
-
-                    <h3>Test Print</h3>
-                    <div class="test-print-form">
-                        <div class="form-group">
-                            <label>Select Printer</label>
-                            <select id="test-printer-select" class="form-control">
-                                <option value="">Loading printers...</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>API Key</label>
-                            <input type="text" id="test-api-key" class="form-control" placeholder="labk_your_api_key">
-                        </div>
-                        <div class="form-group">
-                            <label>ZPL Code</label>
-                            <textarea id="test-zpl" class="form-control" rows="3">^XA^FO50,50^FDTest Print from API Docs^FS^XZ</textarea>
-                        </div>
-                        <button class="btn btn-primary" onclick="testPrint()">
-                            <i data-lucide="printer"></i>
-                            Send Test Print
-                        </button>
-                        <div id="print-response" class="response-display"></div>
                     </div>
                 </section>
 
-                <!-- Print Direct to Pi Section -->
-                <section id="print-direct" class="doc-section">
-                    <h2>Print Directly to Pi</h2>
-                    <p>Send print jobs directly to a Pi on your local network without going through the admin server.</p>
-                    
-                    <div class="endpoint-box">
-                        <span class="method post">POST</span>
-                        <code class="endpoint">http://{pi_ip}:5000/print</code>
+                <!-- Queue Management Section -->
+                <section id="queue-management" class="doc-section">
+                    <h1>Queue Management</h1>
+                    <p class="section-intro">Monitor and manage print jobs in the queue. Jobs are automatically sent when printers come online.</p>
+
+                    <!-- View Queue -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method get">GET</span>
+                                <code class="endpoint-path">/api/queue</code>
+                                <span class="auth-badge">Requires Auth</span>
+                            </div>
+                            <button class="try-btn" onclick="tryEndpoint('view-queue')">
+                                <i data-lucide="play"></i> Try It
+                            </button>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>View all queued jobs across all printers.</p>
+                        </div>
+
+                        <div class="endpoint-details" id="view-queue-details" style="display: none;">
+                            <div class="response-preview">
+                                <h4>Response</h4>
+                                <pre><code id="view-queue-response">Sending request...</code></pre>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Cancel Job -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method delete">DELETE</span>
+                                <code class="endpoint-path">/api/queue/job/{job_id}</code>
+                                <span class="auth-badge">Requires Auth</span>
+                            </div>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Cancel a queued job. Only works for jobs in 'queued', 'sent', or 'pending' status.</p>
+                        </div>
+                    </div>
+
+                    <!-- Retry Failed Job -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method post">POST</span>
+                                <code class="endpoint-path">/api/queue/job/{job_id}/retry</code>
+                                <span class="auth-badge">Requires Auth</span>
+                            </div>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Retry a failed job. The job will be re-queued and processed again.</p>
+                        </div>
+
+                        <div class="code-examples">
+                            <div class="code-tabs">
+                                <div class="tab-buttons">
+                                    <button class="tab-btn active" onclick="switchExampleTab(this, 'retry-nextjs')">Next.js</button>
+                                    <button class="tab-btn" onclick="switchExampleTab(this, 'retry-curl')">cURL</button>
+                                </div>
+                                
+                                <div class="tab-content" id="retry-nextjs">
+                                    <pre><code>const retryJob = async (jobId: string) => {
+  const response = await fetch(`/api/queue/job/${jobId}/retry`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to retry job');
+  }
+  
+  return response.json();
+};</code></pre>
+                                </div>
+                                
+                                <div class="tab-content" id="retry-curl" style="display: none;">
+                                    <pre><code>curl -X POST ${window.location.origin}/api/queue/job/JOB_ID/retry \
+  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clear Queue -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method post">POST</span>
+                                <code class="endpoint-path">/api/queue/{pi_id}/clear</code>
+                                <span class="auth-badge">Requires Auth</span>
+                            </div>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Clear all queued jobs for a specific printer. This cancels all pending jobs.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Job History Section -->
+                <section id="job-history" class="doc-section">
+                    <h1>Job History & Tracking</h1>
+                    <p class="section-intro">Track the status and history of print jobs.</p>
+
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method get">GET</span>
+                                <code class="endpoint-path">/api/pis/{pi_id}/jobs</code>
+                            </div>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Get print job history for a specific printer.</p>
+                        </div>
+
+                        <h4>Job Statuses</h4>
+                        <div class="status-list">
+                            <div class="status-item">
+                                <span class="status-badge queued">QUEUED</span>
+                                <span>Job is waiting to be sent (printer offline or rate-limited)</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-badge sent">SENT</span>
+                                <span>Job was sent to printer, awaiting acknowledgment</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-badge processing">PROCESSING</span>
+                                <span>Printer is actively printing</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-badge completed">COMPLETED</span>
+                                <span>Successfully printed</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-badge failed">FAILED</span>
+                                <span>Print failed (see error_type for details)</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Label Configuration Section -->
+                <section id="label-config" class="doc-section">
+                    <h1>Label Configuration</h1>
+                    <p class="section-intro">Manage label sizes for your printers.</p>
+
+                    <!-- Get Label Sizes -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method get">GET</span>
+                                <code class="endpoint-path">/api/label-sizes</code>
+                            </div>
+                            <button class="try-btn" onclick="tryEndpoint('label-sizes')">
+                                <i data-lucide="play"></i> Try It
+                            </button>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Get all available label sizes.</p>
+                        </div>
+
+                        <div class="endpoint-details" id="label-sizes-details" style="display: none;">
+                            <div class="response-preview">
+                                <h4>Response</h4>
+                                <pre><code id="label-sizes-response">Sending request...</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Label Size -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method post">POST</span>
+                                <code class="endpoint-path">/api/label-sizes</code>
+                                <span class="auth-badge">Requires Auth</span>
+                            </div>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Add a custom label size.</p>
+                        </div>
+
+                        <div class="code-examples">
+                            <h4>Request Body</h4>
+                            <pre><code>{
+  "name": "Custom Label",
+  "width_mm": 80,
+  "height_mm": 120
+}</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- API Key Management Section -->
+                <section id="api-keys" class="doc-section">
+                    <h1>API Key Management</h1>
+                    <p class="section-intro">Manage API keys for authentication. Dashboard login required for these endpoints.</p>
 
                     <div class="info-box warning">
                         <i data-lucide="alert-triangle"></i>
                         <div>
-                            <strong>Note:</strong> Direct printing requires network access to the Pi. This is typically only available on the local network.
+                            <strong>Note:</strong> These endpoints require dashboard authentication, not API key authentication.
                         </div>
                     </div>
 
-                    <h3>Method 1: Raw ZPL</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>cURL Example</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
+                    <!-- List API Keys -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method get">GET</span>
+                                <code class="endpoint-path">/api/keys</code>
+                                <span class="auth-badge">Dashboard Auth</span>
+                            </div>
                         </div>
-                        <pre><code>curl -X POST http://192.168.1.100:5000/print \
-  -H "Content-Type: application/json" \
-  -d '{
-    "zpl_raw": "^XA^FO50,50^FDDirect Print^FS^XZ"
-  }'</code></pre>
+                        
+                        <div class="endpoint-description">
+                            <p>List all API keys (requires dashboard login).</p>
+                        </div>
                     </div>
 
-                    <h3>Method 2: ZPL from URL</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>cURL Example</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
+                    <!-- Create API Key -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method post">POST</span>
+                                <code class="endpoint-path">/api/keys</code>
+                                <span class="auth-badge">Dashboard Auth</span>
+                            </div>
                         </div>
-                        <pre><code>curl -X POST http://192.168.1.100:5000/print \
-  -H "Content-Type: application/json" \
-  -d '{
-    "zpl_url": "https://example.com/label.zpl"
-  }'</code></pre>
-                    </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Create a new API key. The key is only shown once, so save it securely.</p>
+                        </div>
 
-                    <h3>Response</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>200 OK</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
-                        </div>
-                        <pre><code>{
+                        <div class="code-examples">
+                            <h4>Request Body</h4>
+                            <pre><code>{
+  "name": "Production App",
+  "description": "API key for production label printing"
+}</code></pre>
+
+                            <h4>Response</h4>
+                            <pre><code>{
   "success": true,
-  "message": "Print job queued",
+  "message": "API key created successfully",
   "data": {
-    "job_id": "job-uuid",
-    "queue_position": 1
+    "api_key": "labk_xxxxxxxxxxxxxxxxxx",  // Save this! Only shown once
+    "name": "Production App"
   }
 }</code></pre>
+                        </div>
                     </div>
                 </section>
 
-                <!-- Label Sizes Section -->
-                <section id="label-sizes" class="doc-section">
-                    <h2>Label Sizes</h2>
-                    <p>Get all available label sizes configured in the system.</p>
-                    
-                    <div class="endpoint-box">
-                        <span class="method get">GET</span>
-                        <code class="endpoint">/api/label-sizes</code>
-                    </div>
+                <!-- Error Responses Section -->
+                <section id="error-responses" class="doc-section">
+                    <h1>Error Responses</h1>
+                    <p class="section-intro">Common error responses and how to handle them.</p>
 
-                    <h3>Command</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Actual cURL Command</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
+                    <div class="error-card">
+                        <div class="error-header">
+                            <span class="status-code">401</span>
+                            <span class="error-name">Unauthorized</span>
                         </div>
-                        <pre><code id="curl-label-sizes">Loading...</code></pre>
-                    </div>
-                    
-                    <h3>Response</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>200 OK</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
-                        </div>
-                        <pre><code>{
-  "success": true,
-  "message": "Label sizes retrieved",
-  "data": {
-    "sizes": [
-      {
-        "id": 1,
-        "name": "Large Shipping",
-        "width_mm": 102,
-        "height_mm": 150,
-        "is_default": true,
-        "display_name": "Large Shipping (102mm x 150mm)"
-      },
-      {
-        "id": 2,
-        "name": "Standard",
-        "width_mm": 57,
-        "height_mm": 32,
-        "is_default": true,
-        "display_name": "Standard (57mm x 32mm)"
-      }
-    ]
-  }
+                        <div class="error-body">
+                            <p>Invalid or missing API key.</p>
+                            <pre><code>{
+  "detail": "Invalid API key"
 }</code></pre>
+                            <p><strong>Solution:</strong> Check that your API key is correct and included in the Authorization header as <code>Bearer YOUR_KEY</code>.</p>
+                        </div>
                     </div>
 
-                    <h3>Try It</h3>
-                    <button class="btn btn-primary" onclick="tryLabelSizes()">
-                        <i data-lucide="play"></i>
-                        Send Request
-                    </button>
-                    <div id="sizes-response" class="response-display"></div>
-                </section>
-
-                <!-- Code Examples Section -->
-                <section id="examples" class="doc-section">
-                    <h2>Code Examples</h2>
-                    <p>Ready-to-use code examples for integrating with the LabelBerry API.</p>
-
-                    <h3>Python</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Python Client</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
+                    <div class="error-card">
+                        <div class="error-header">
+                            <span class="status-code">404</span>
+                            <span class="error-name">Not Found</span>
                         </div>
-                        <pre><code>import requests
-
-class LabelBerryClient:
-    def __init__(self, server_url, api_key):
-        self.server_url = server_url
-        self.headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-    
-    def list_printers(self):
-        response = requests.get(f"{self.server_url}/api/pis")
-        return response.json()
-    
-    def print_label(self, printer_id, zpl_code):
-        data = {"zpl_raw": zpl_code}
-        response = requests.post(
-            f"{self.server_url}/api/pis/{printer_id}/print",
-            headers=self.headers,
-            json=data
-        )
-        return response.json()
-
-# Usage
-client = LabelBerryClient("http://your-server:8080", "labk_your_api_key")
-
-# List printers
-printers = client.list_printers()
-for printer in printers["data"]["pis"]:
-    print(f"{printer['friendly_name']} - {printer['status']}")
-
-# Print a label
-zpl = "^XA^FO50,50^FDTest Label^FS^XZ"
-result = client.print_label("printer-id", zpl)
-print(result["message"])</code></pre>
+                        <div class="error-body">
+                            <p>The requested resource doesn't exist.</p>
+                            <pre><code>{
+  "detail": "Pi not found"
+}</code></pre>
+                            <p><strong>Solution:</strong> Verify the printer ID or resource ID is correct.</p>
+                        </div>
                     </div>
 
-                    <h3>JavaScript / Node.js</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>JavaScript Client</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
+                    <div class="error-card">
+                        <div class="error-header">
+                            <span class="status-code">503</span>
+                            <span class="error-name">Service Unavailable</span>
                         </div>
-                        <pre><code>const axios = require('axios');
-
-class LabelBerryClient {
-    constructor(serverUrl, apiKey) {
-        this.serverUrl = serverUrl;
-        this.headers = {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        };
-    }
-    
-    async listPrinters() {
-        const response = await axios.get(`${this.serverUrl}/api/pis`);
-        return response.data;
-    }
-    
-    async printLabel(printerId, zplCode) {
-        const response = await axios.post(
-            `${this.serverUrl}/api/pis/${printerId}/print`,
-            { zpl_raw: zplCode },
-            { headers: this.headers }
-        );
-        return response.data;
-    }
-}
-
-// Usage
-const client = new LabelBerryClient('http://your-server:8080', 'labk_your_api_key');
-
-// List printers
-const printers = await client.listPrinters();
-printers.data.pis.forEach(printer => {
-    console.log(`${printer.friendly_name} - ${printer.status}`);
-});
-
-// Print a label
-const zpl = '^XA^FO50,50^FDTest Label^FS^XZ';
-const result = await client.printLabel('printer-id', zpl);
-console.log(result.message);</code></pre>
+                        <div class="error-body">
+                            <p>The printer is offline (for direct print endpoints).</p>
+                            <pre><code>{
+  "detail": "Printer not connected"
+}</code></pre>
+                            <p><strong>Solution:</strong> Use the queue-enabled endpoint <code>/api/pis/{pi_id}/print</code> which will automatically queue jobs for offline printers.</p>
+                        </div>
                     </div>
 
-                    <h3>PHP</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>PHP Client</span>
-                            <button onclick="copyCode(this)" class="copy-btn">
-                                <i data-lucide="copy"></i>
-                            </button>
+                    <div class="error-card">
+                        <div class="error-header">
+                            <span class="status-code">400</span>
+                            <span class="error-name">Bad Request</span>
                         </div>
-                        <pre><code>&lt;?php
-class LabelBerryClient {
-    private $serverUrl;
-    private $apiKey;
-    
-    public function __construct($serverUrl, $apiKey) {
-        $this->serverUrl = $serverUrl;
-        $this->apiKey = $apiKey;
-    }
-    
-    public function listPrinters() {
-        $ch = curl_init($this->serverUrl . '/api/pis');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
-        return json_decode($response, true);
-    }
-    
-    public function printLabel($printerId, $zplCode) {
-        $ch = curl_init($this->serverUrl . '/api/pis/' . $printerId . '/print');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $this->apiKey,
-            'Content-Type: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['zpl_raw' => $zplCode]));
-        $response = curl_exec($ch);
-        curl_close($ch);
-        return json_decode($response, true);
-    }
-}
-
-// Usage
-$client = new LabelBerryClient('http://your-server:8080', 'labk_your_api_key');
-
-// List printers
-$printers = $client->listPrinters();
-foreach ($printers['data']['pis'] as $printer) {
-    echo $printer['friendly_name'] . ' - ' . $printer['status'] . PHP_EOL;
-}
-
-// Print a label
-$zpl = '^XA^FO50,50^FDTest Label^FS^XZ';
-$result = $client->printLabel('printer-id', $zpl);
-echo $result['message'];</code></pre>
+                        <div class="error-body">
+                            <p>Invalid request format or parameters.</p>
+                            <pre><code>{
+  "detail": "Either zpl_url or zpl_raw must be provided"
+}</code></pre>
+                            <p><strong>Solution:</strong> Check your request body matches the expected format.</p>
+                        </div>
                     </div>
                 </section>
             </div>
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div id="toast-container"></div>
-
     <script src="/static/js/api_docs.js?v={{ static_version }}"></script>
-    <script>
-        // Initialize Lucide icons with custom size
-        lucide.createIcons({
-            attrs: {
-                width: 20,
-                height: 20
-            }
-        });
-    </script>
 </body>
 </html>
