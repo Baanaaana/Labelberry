@@ -29,9 +29,6 @@
             <h1>Dashboard</h1>
         </div>
         <div class="header-right">
-            <a href="/api-docs" class="icon-btn" title="API Documentation" style="text-decoration: none;">
-                <i data-lucide="book-open"></i>
-            </a>
             <a href="/settings" class="icon-btn" title="Settings" style="text-decoration: none;">
                 <i data-lucide="settings"></i>
             </a>
@@ -92,10 +89,10 @@
 
         <!-- Main Content Area -->
         <div class="main-content">
-            <!-- Quick Actions Panel -->
+            <!-- Management Tools Panel -->
             <div class="panel">
                 <div class="panel-header">
-                    <h2>Quick Actions</h2>
+                    <h2>Management Tools</h2>
                 </div>
                 <div class="panel-content">
                     <button class="action-btn" onclick="showRegisterModal()">
@@ -106,18 +103,22 @@
                         <i data-lucide="send"></i>
                         <span>Broadcast Print</span>
                     </button>
+                    <button class="action-btn" onclick="showQueueModal()">
+                        <i data-lucide="list-ordered"></i>
+                        <span>Queue Management</span>
+                    </button>
                     <button class="action-btn" onclick="viewLogs()">
                         <i data-lucide="file-text"></i>
-                        <span>View Logs</span>
+                        <span>System Logs</span>
                     </button>
                     <button class="action-btn" onclick="showMetrics()">
                         <i data-lucide="bar-chart-2"></i>
                         <span>Performance Metrics</span>
                     </button>
-                    <button class="action-btn" onclick="showQueueModal()">
-                        <i data-lucide="list-ordered"></i>
-                        <span>Queue Management</span>
-                    </button>
+                    <a href="/api-docs" class="action-btn" style="text-decoration: none;">
+                        <i data-lucide="book-open"></i>
+                        <span>API Documentation</span>
+                    </a>
                 </div>
             </div>
 
