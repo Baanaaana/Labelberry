@@ -357,6 +357,31 @@ a.icon-btn:hover i {
     font-weight: 500;
 }
 
+/* Inline copy button for device ID */
+.copy-btn-inline {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+}
+
+.copy-btn-inline:hover {
+    background: var(--bg-primary);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.copy-btn-inline i {
+    width: 14px !important;
+    height: 14px !important;
+}
+
 .printer-actions {
     display: flex;
     gap: 8px;
