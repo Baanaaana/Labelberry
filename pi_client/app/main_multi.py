@@ -247,6 +247,25 @@ async def handle_command(data: Dict[str, Any]):
             logger.warning("Test print command received but no ZPL data provided")
 
 
+async def send_metrics_periodically(printer_instance: PrinterInstance):
+    """Send metrics periodically for a specific printer"""
+    while True:
+        try:
+            await asyncio.sleep(60)  # Send metrics every 60 seconds
+            
+            if printer_instance.monitoring and printer_instance.ws_client:
+                metrics = printer_instance.monitoring.get_metrics(
+                    queue_size=len(printer_instance.print_queue.queue) if printer_instance.print_queue else 0,
+                    printer_status="connected" if printer_instance.printer and printer_instance.printer.is_connected else "disconnected"
+                )
+                
+                await printer_instance.ws_client.send_metrics(metrics)
+                logger.debug(f"Sent metrics for {printer_instance.name}")
+                
+        except Exception as e:
+            logger.error(f"Metrics sending error for {printer_instance.name}: {e}")
+
+
 async def start_printer_services():
     """Start all services for all enabled printers"""
     if printer_manager is None:
@@ -293,6 +312,9 @@ async def start_printer_services():
         
         # Connect websocket for each printer
         tasks.append(asyncio.create_task(printer_instance.ws_client.listen()))
+        
+        # Start metrics sending for each printer
+        tasks.append(asyncio.create_task(send_metrics_periodically(printer_instance)))
     
     if tasks:
         await asyncio.gather(*tasks)

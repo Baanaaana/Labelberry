@@ -27,6 +27,11 @@ class WebSocketClient:
         self.reconnect_interval = 5
         self.max_reconnect_interval = 60
     
+    @property
+    def connected(self) -> bool:
+        """Check if WebSocket is connected"""
+        return self.ws is not None and not self.ws.closed
+    
     def register_handler(self, message_type: str, handler: Callable):
         self.message_handlers[message_type] = handler
         logger.info(f"Registered handler for message type: {message_type}")
