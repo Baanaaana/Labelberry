@@ -76,19 +76,21 @@ else
     echo ""
     
     # Find all USB printer devices
-    for device in /dev/usb/lp*; do
+    FOUND_DEVICES=()
+    for device in /dev/usblp*; do
         if [ -e "$device" ]; then
-            PRINTER_DEVICES+=("$device")
-            ((PRINTER_COUNT++))
+            FOUND_DEVICES+=("$device")
         fi
     done
     
-    if [ ${#PRINTER_DEVICES[@]} -eq 0 ]; then
-        echo -e "${YELLOW}No USB printer devices found in /dev/usb/${NC}"
+    if [ ${#FOUND_DEVICES[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No USB printer devices found in /dev/${NC}"
         echo "Using default device /dev/usblp0"
         PRINTER_COUNT=1
         PRINTER_DEVICES=("/dev/usblp0")
     else
+        PRINTER_COUNT=${#FOUND_DEVICES[@]}
+        PRINTER_DEVICES=("${FOUND_DEVICES[@]}")
         echo -e "${GREEN}Found $PRINTER_COUNT printer device(s):${NC}"
         for device in "${PRINTER_DEVICES[@]}"; do
             echo "  - $device"
