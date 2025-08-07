@@ -54,26 +54,42 @@
 .sidebar-search {
     position: relative;
     margin-bottom: 16px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: var(--shadow-sm);
 }
 
 .sidebar-search input {
     width: 100%;
-    padding: 10px 40px 10px 16px;
+    padding: 10px 40px 10px 40px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     font-size: 14px;
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     color: var(--text-primary);
+    transition: border-color 0.2s;
+}
+
+.sidebar-search input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(66, 99, 235, 0.1);
+}
+
+.sidebar-search input::placeholder {
+    color: var(--text-secondary);
 }
 
 .sidebar-search i {
     position: absolute;
-    right: 12px;
+    left: 24px;
     top: 50%;
     transform: translateY(-50%);
     width: 18px;
     height: 18px;
     color: var(--text-secondary);
+    pointer-events: none;
 }
 
 .docs-nav {
