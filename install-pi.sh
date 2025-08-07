@@ -65,6 +65,13 @@ PRINTER_DEVICES=()
 # Check for USB Zebra devices
 USB_DEVICES=$(lsusb | grep -i "zebra" || true)
 
+# Also check if usblp module is loaded
+if ! lsmod | grep -q usblp; then
+    echo -e "${YELLOW}Loading usblp kernel module...${NC}"
+    modprobe usblp || true
+    sleep 2
+fi
+
 if [ -z "$USB_DEVICES" ]; then
     echo -e "${YELLOW}No Zebra printers detected via USB${NC}"
     echo "Continuing with manual configuration..."
@@ -84,6 +91,9 @@ else
         PRINTER_MODELS+=("$MODEL")
     done <<< "$USB_DEVICES"
     
+    # Count the number of USB devices found
+    USB_COUNT=$(echo "$USB_DEVICES" | wc -l)
+    
     # Find all USB printer devices
     FOUND_DEVICES=()
     for device in /dev/usblp*; do
@@ -92,11 +102,39 @@ else
         fi
     done
     
+    # If we detected multiple USB printers but no devices yet, wait and retry
+    if [ $USB_COUNT -gt 1 ] && [ ${#FOUND_DEVICES[@]} -eq 0 ]; then
+        echo -e "${YELLOW}Detected $USB_COUNT Zebra printers via USB but devices not ready yet...${NC}"
+        echo "Waiting for devices to initialize..."
+        sleep 3
+        
+        # Retry finding devices
+        FOUND_DEVICES=()
+        for device in /dev/usblp*; do
+            if [ -e "$device" ]; then
+                FOUND_DEVICES+=("$device")
+            fi
+        done
+    fi
+    
+    # Determine printer count and devices
     if [ ${#FOUND_DEVICES[@]} -eq 0 ]; then
-        echo -e "${YELLOW}No USB printer devices found in /dev/${NC}"
-        echo "Using default device /dev/usblp0"
-        PRINTER_COUNT=1
-        PRINTER_DEVICES=("/dev/usblp0")
+        # No devices found, but we know how many USB printers there are
+        if [ $USB_COUNT -gt 1 ]; then
+            echo -e "${YELLOW}No USB printer devices found in /dev/ yet${NC}"
+            echo -e "${YELLOW}Configuring for $USB_COUNT printers based on USB detection${NC}"
+            PRINTER_COUNT=$USB_COUNT
+            PRINTER_DEVICES=()
+            for ((i=0; i<$USB_COUNT; i++)); do
+                PRINTER_DEVICES+=("/dev/usblp$i")
+            done
+            echo -e "${YELLOW}Will use devices: ${PRINTER_DEVICES[@]}${NC}"
+        else
+            echo -e "${YELLOW}No USB printer devices found in /dev/${NC}"
+            echo "Using default device /dev/usblp0"
+            PRINTER_COUNT=1
+            PRINTER_DEVICES=("/dev/usblp0")
+        fi
     else
         PRINTER_COUNT=${#FOUND_DEVICES[@]}
         PRINTER_DEVICES=("${FOUND_DEVICES[@]}")
@@ -214,8 +252,14 @@ EOF
             fi
             
             # Get printer model if available
-            if [ ${#PRINTER_MODELS[@]} -ge $PRINTER_NUM ]; then
-                PRINTER_MODEL="${PRINTER_MODELS[$((PRINTER_NUM-1))]}"
+            if [ ${#PRINTER_MODELS[@]} -gt 0 ]; then
+                # If we have models, try to get the corresponding one or use the last one
+                if [ $i -lt ${#PRINTER_MODELS[@]} ]; then
+                    PRINTER_MODEL="${PRINTER_MODELS[$i]}"
+                else
+                    # If we have fewer models than devices, use the last model (they might be the same)
+                    PRINTER_MODEL="${PRINTER_MODELS[-1]}"
+                fi
             else
                 PRINTER_MODEL="Unknown"
             fi
