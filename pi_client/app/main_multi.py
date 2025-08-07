@@ -184,6 +184,36 @@ async def download_zpl(url: str) -> str:
             return await response.text()
 
 
+async def handle_ping(data: Dict[str, Any]):
+    """Handle ping message from server"""
+    logger.debug("Received ping from server")
+    # The ping response is handled automatically by the websocket client
+
+
+async def handle_config_update(data: Dict[str, Any]):
+    """Handle config update from server"""
+    logger.info("Received config update from server")
+    # TODO: Implement config update handling
+
+
+async def handle_command(data: Dict[str, Any]):
+    """Handle command from server (like test print)"""
+    logger.info(f"Received command from server: {data}")
+    command = data.get("command")
+    
+    if command == "test_print":
+        # This is a test print command from the dashboard
+        params = data.get("params", {})
+        zpl_data = params.get("zpl_data")
+        
+        if zpl_data:
+            # Find which printer this command is for based on the WebSocket connection
+            # For now, we'll need to pass the printer instance through the handler
+            logger.info("Test print command received")
+        else:
+            logger.warning("Test print command received but no ZPL data provided")
+
+
 async def start_printer_services():
     """Start all services for all enabled printers"""
     if printer_manager is None:
@@ -193,6 +223,32 @@ async def start_printer_services():
     tasks = []
     
     for printer_instance in printer_manager.get_enabled_printers():
+        # Create printer-specific command handler
+        async def printer_command_handler(data: Dict[str, Any], printer=printer_instance):
+            """Handle command for specific printer"""
+            command = data.get("command")
+            logger.info(f"Received command '{command}' for printer {printer.name}")
+            
+            if command == "test_print":
+                params = data.get("params", {})
+                zpl_data = params.get("zpl_data")
+                
+                if zpl_data:
+                    # Create a test print job
+                    job = PrintJob(
+                        pi_id=printer.device_id,
+                        zpl_source=zpl_data
+                    )
+                    printer.print_queue.add_job(job)
+                    logger.info(f"Added test print job to {printer.name}")
+                else:
+                    logger.warning(f"Test print command for {printer.name} missing ZPL data")
+        
+        # Register handlers for this printer's websocket
+        printer_instance.ws_client.register_handler("ping", handle_ping)
+        printer_instance.ws_client.register_handler("config_update", handle_config_update)
+        printer_instance.ws_client.register_handler("command", printer_command_handler)
+        
         # Start queue processor for each printer
         tasks.append(asyncio.create_task(process_queue(printer_instance)))
         
