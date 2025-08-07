@@ -743,6 +743,10 @@ input[type="checkbox"]:hover {
 }
 
 @media (max-width: 768px) {
+    .header-center h1 {
+        display: none;
+    }
+    
     .dashboard-container {
         padding: 12px;
     }

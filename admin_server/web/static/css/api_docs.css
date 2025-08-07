@@ -398,6 +398,10 @@
 }
 
 @media (max-width: 768px) {
+    .header-center h1 {
+        display: none;
+    }
+    
     .doc-section {
         padding: 20px;
     }
