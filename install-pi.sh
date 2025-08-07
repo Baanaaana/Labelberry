@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.7"
+SCRIPT_VERSION="1.0.8"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -106,7 +106,7 @@ if [ -z "$USB_DEVICES" ]; then
     echo -e "${YELLOW}No Zebra printers detected via USB${NC}"
     echo "Continuing with manual configuration..."
     PRINTER_COUNT=1
-    PRINTER_DEVICES=("/dev/usblp0")
+    PRINTER_DEVICES=("/dev/usb/lp0")
     PRINTER_MODELS=("Unknown")
 else
     echo -e "${GREEN}Found Zebra printer(s):${NC}"
@@ -124,13 +124,23 @@ else
     # Count the number of USB devices found
     USB_COUNT=$(echo "$USB_DEVICES" | wc -l)
     
-    # Find all USB printer devices
+    # Find all USB printer devices - check both /dev/usblp* and /dev/usb/lp* patterns
     FOUND_DEVICES=()
-    for device in /dev/usblp*; do
+    # First check /dev/usb/lp* (more common on modern systems)
+    for device in /dev/usb/lp*; do
         if [ -e "$device" ]; then
             FOUND_DEVICES+=("$device")
         fi
     done
+    
+    # If no /dev/usb/lp* devices found, also check /dev/usblp* (older systems)
+    if [ ${#FOUND_DEVICES[@]} -eq 0 ]; then
+        for device in /dev/usblp*; do
+            if [ -e "$device" ]; then
+                FOUND_DEVICES+=("$device")
+            fi
+        done
+    fi
     
     # If we detected multiple USB printers but no devices yet, wait and retry
     if [ $USB_COUNT -gt 1 ] && [ ${#FOUND_DEVICES[@]} -eq 0 ]; then
@@ -140,16 +150,26 @@ else
         
         # Retry finding devices
         FOUND_DEVICES=()
-        for device in /dev/usblp*; do
+        # First check /dev/usb/lp* (more common on modern systems)
+        for device in /dev/usb/lp*; do
             if [ -e "$device" ]; then
                 FOUND_DEVICES+=("$device")
             fi
         done
+        
+        # If no /dev/usb/lp* devices found, also check /dev/usblp* (older systems)
+        if [ ${#FOUND_DEVICES[@]} -eq 0 ]; then
+            for device in /dev/usblp*; do
+                if [ -e "$device" ]; then
+                    FOUND_DEVICES+=("$device")
+                fi
+            done
+        fi
     fi
     
     # If still no devices found, inform user about pyusb fallback
     if [ ${#FOUND_DEVICES[@]} -eq 0 ] && [ -n "$USB_DEVICES" ]; then
-        echo -e "${YELLOW}Note: /dev/usblp* devices not found, but printer was detected via USB.${NC}"
+        echo -e "${YELLOW}Note: /dev/usb/lp* or /dev/usblp* devices not found, but printer was detected via USB.${NC}"
         echo -e "${YELLOW}LabelBerry will use direct USB communication (pyusb) as fallback.${NC}"
         echo -e "${YELLOW}This is normal and printing should still work.${NC}"
     fi
@@ -163,14 +183,15 @@ else
             PRINTER_COUNT=$USB_COUNT
             PRINTER_DEVICES=()
             for ((i=0; i<$USB_COUNT; i++)); do
-                PRINTER_DEVICES+=("/dev/usblp$i")
+                # Use /dev/usb/lp* pattern as default
+                PRINTER_DEVICES+=("/dev/usb/lp$i")
             done
             echo -e "${YELLOW}Will use devices: ${PRINTER_DEVICES[@]}${NC}"
         else
             echo -e "${YELLOW}No USB printer devices found in /dev/${NC}"
-            echo "Using default device /dev/usblp0"
+            echo "Using default device /dev/usb/lp0"
             PRINTER_COUNT=1
-            PRINTER_DEVICES=("/dev/usblp0")
+            PRINTER_DEVICES=("/dev/usb/lp0")
         fi
     else
         PRINTER_COUNT=${#FOUND_DEVICES[@]}
