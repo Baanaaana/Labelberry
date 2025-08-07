@@ -360,9 +360,15 @@ async def create_print_job(
 async def cancel_job(
     device_id: str,
     job_id: str,
-    printer: PrinterInstance = Depends(verify_api_key)
+    x_api_key: str = Depends(verify_api_key_header)
 ):
     """Cancel a print job for a specific printer"""
+    # Get printer and verify API key
+    printer = get_printer_by_id(device_id)
+    
+    if x_api_key != printer.api_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
     if not printer.enabled:
         raise HTTPException(status_code=503, detail="Printer is disabled")
     
