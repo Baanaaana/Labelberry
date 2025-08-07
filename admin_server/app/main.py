@@ -73,7 +73,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "5.1"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -289,6 +289,47 @@ async def get_pi_details(pi_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get Pi details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/pis/register", response_model=ApiResponse)
+async def register_pi_install(registration_data: Dict[str, Any]):
+    """Register a new Pi during installation (no auth required for local network)"""
+    try:
+        # Create PiDevice from registration data
+        device = PiDevice(
+            id=registration_data.get("id"),
+            friendly_name=registration_data.get("friendly_name", "Unnamed Pi"),
+            api_key=registration_data.get("api_key"),
+            printer_model=registration_data.get("printer_model")
+        )
+        
+        # Check if Pi already exists
+        existing = database.get_pi_by_id(device.id)
+        if existing:
+            # Update existing Pi
+            database.update_pi(device.id, {
+                "api_key": device.api_key,
+                "friendly_name": device.friendly_name,
+                "printer_model": device.printer_model
+            })
+            return ApiResponse(
+                success=True,
+                message="Pi updated successfully",
+                data={"pi_id": device.id}
+            )
+        else:
+            # Register new Pi
+            if database.register_pi(device):
+                return ApiResponse(
+                    success=True,
+                    message="Pi registered successfully",
+                    data={"pi_id": device.id}
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Failed to register Pi")
+    except Exception as e:
+        logger.error(f"Failed to register Pi during installation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

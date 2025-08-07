@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.1"
+SCRIPT_VERSION="1.0.2"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -320,6 +320,25 @@ EOF
             ALL_CONFIGS="${ALL_CONFIGS}\n${GREEN}Printer $PRINTER_NUM (${PRINTER_MODEL}):${NC}\n  Device ID: ${BLUE}$DEVICE_ID${NC}\n  API Key: ${BLUE}$API_KEY${NC}\n  Device: ${YELLOW}$DEVICE${NC}\n"
             
             echo -e "${GREEN}✓ Generated credentials for Printer $PRINTER_NUM${NC}"
+            
+            # Try to register with admin server
+            if [ ! -z "$ADMIN_SERVER" ]; then
+                echo -e "${YELLOW}  Attempting to register with admin server...${NC}"
+                
+                # Create registration request
+                REGISTER_DATA="{\"id\":\"$DEVICE_ID\",\"friendly_name\":\"$PRINTER_NAME\",\"api_key\":\"$API_KEY\",\"printer_model\":\"$PRINTER_MODEL\"}"
+                
+                # Try to register (will fail silently if endpoint doesn't exist)
+                if curl -s -X POST "$ADMIN_SERVER/api/pis/register" \
+                    -H "Content-Type: application/json" \
+                    -d "$REGISTER_DATA" \
+                    -o /dev/null 2>&1; then
+                    echo -e "${GREEN}  ✓ Registered with admin server${NC}"
+                else
+                    echo -e "${YELLOW}  ⚠ Manual registration required in admin dashboard${NC}"
+                    MANUAL_REGISTRATION_NEEDED=true
+                fi
+            fi
         done
         
         echo ""
@@ -358,6 +377,25 @@ multi_printer_mode: false
 EOF
         
         echo -e "${GREEN}Configuration created${NC}"
+        
+        # Try to register with admin server
+        if [ ! -z "$ADMIN_SERVER" ]; then
+            echo -e "${YELLOW}Attempting to register with admin server...${NC}"
+            
+            # Create registration request
+            REGISTER_DATA="{\"id\":\"$DEVICE_ID\",\"friendly_name\":\"$FRIENDLY_NAME\",\"api_key\":\"$API_KEY\",\"printer_model\":\"$PRINTER_MODEL\"}"
+            
+            # Try to register (will fail silently if endpoint doesn't exist)
+            if curl -s -X POST "$ADMIN_SERVER/api/pis/register" \
+                -H "Content-Type: application/json" \
+                -d "$REGISTER_DATA" \
+                -o /dev/null 2>&1; then
+                echo -e "${GREEN}✓ Registered with admin server${NC}"
+            else
+                echo -e "${YELLOW}⚠ Manual registration required in admin dashboard${NC}"
+                MANUAL_REGISTRATION_NEEDED=true
+            fi
+        fi
     fi
 fi
 

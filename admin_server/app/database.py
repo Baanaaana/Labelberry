@@ -363,6 +363,35 @@ class Database:
             logger.error(f"Failed to get all Pis: {e}")
             return []
     
+    def update_pi(self, pi_id: str, updates: Dict[str, Any]) -> bool:
+        """Update Pi fields"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Build update query dynamically
+                fields = []
+                values = []
+                for key, value in updates.items():
+                    if key in ['friendly_name', 'api_key', 'printer_model', 'label_size_id', 'location']:
+                        fields.append(f"{key} = ?")
+                        values.append(value)
+                
+                if not fields:
+                    return False
+                
+                # Add pi_id to values
+                values.append(pi_id)
+                
+                query = f"UPDATE pis SET {', '.join(fields)} WHERE id = ?"
+                cursor.execute(query, values)
+                conn.commit()
+                logger.info(f"Updated Pi {pi_id}: {updates}")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update Pi: {e}")
+            return False
+    
     def update_pi_ip_address(self, pi_id: str, ip_address: str):
         try:
             with self.get_connection() as conn:
