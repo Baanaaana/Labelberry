@@ -49,7 +49,7 @@ ws_client = WebSocketClient(
 async def process_queue():
     while True:
         try:
-            if not print_queue.processing and printer.is_connected:
+            if not print_queue.processing:
                 job = print_queue.get_next_job()
                 if job:
                     print_queue.processing = True
