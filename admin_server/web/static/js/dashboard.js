@@ -234,11 +234,8 @@ function createPrinterItem(pi) {
             <div class="printer-details">
                 <div class="detail-item">
                     <span class="detail-label">Device ID:</span>
-                    <span class="detail-value" style="font-family: monospace; font-size: 11px; display: flex; align-items: center; gap: 6px;">
-                        <span>${pi.id}</span>
-                        <button class="copy-btn-inline" onclick="copyDeviceId('${pi.id}')" title="Copy Device ID">
-                            <i data-lucide="copy"></i>
-                        </button>
+                    <span class="detail-value device-id-clickable" onclick="copyDeviceId('${pi.id}')" title="Click to copy">
+                        ${pi.id}
                     </span>
                 </div>
                 <div class="detail-item">

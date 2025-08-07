@@ -52,11 +52,8 @@
                     <span class="stat-title">Server Address</span>
                     <i data-lucide="server" class="stat-icon slate"></i>
                 </div>
-                <div class="stat-value" style="font-size: 16px; display: flex; align-items: center; gap: 8px;">
-                    <span id="server-ip" style="font-family: monospace;">Loading...</span>
-                    <button onclick="copyServerAddress()" class="icon-btn" style="padding: 4px;" title="Copy to clipboard">
-                        <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
-                    </button>
+                <div class="stat-value" style="font-size: 16px;">
+                    <span id="server-ip" class="server-ip-clickable" onclick="copyServerAddress()" title="Click to copy">Loading...</span>
                 </div>
             </div>
             

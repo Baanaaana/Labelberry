@@ -357,6 +357,36 @@ a.icon-btn:hover i {
     font-weight: 500;
 }
 
+/* Clickable device ID */
+.device-id-clickable {
+    font-family: monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.device-id-clickable:hover {
+    background: var(--bg-primary);
+    color: var(--primary-color);
+}
+
+/* Clickable server IP */
+.server-ip-clickable {
+    font-family: monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.server-ip-clickable:hover {
+    background: var(--bg-primary);
+    color: var(--primary-color);
+}
+
 /* Inline copy button for device ID */
 .copy-btn-inline {
     background: transparent;
