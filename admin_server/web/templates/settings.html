@@ -415,6 +415,15 @@
             loadApiKeys();
             loadLabelSizes();
             await loadServerConfig();  // Wait for server config to load
+            
+            // Check if we should navigate to a specific section based on URL hash
+            const hash = window.location.hash.replace('#', '');
+            if (hash && hash !== 'account') {
+                const navItem = document.querySelector(`.nav-item[href="#${hash}"]`);
+                if (navItem) {
+                    switchSection(hash, navItem);
+                }
+            }
         })();
     </script>
 </body>

@@ -46,6 +46,17 @@ function switchSection(sectionName, navItem) {
     
     // Update URL hash without scrolling
     history.replaceState(null, null, `#${sectionName}`);
+    
+    // Load server config when switching to preferences section
+    if (sectionName === 'preferences') {
+        // Small delay to ensure section is visible
+        setTimeout(() => {
+            const baseUrlInput = document.getElementById('base-url');
+            if (baseUrlInput && !baseUrlInput.value) {
+                loadServerConfig();
+            }
+        }, 50);
+    }
 }
 
 // Handle username change
@@ -196,9 +207,6 @@ async function saveServerConfig(event) {
 
 // Load server configuration
 async function loadServerConfig() {
-    // Small delay to ensure DOM is ready
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
     try {
         const response = await fetch('/api/server-settings', {
             credentials: 'same-origin'
@@ -212,28 +220,51 @@ async function loadServerConfig() {
         const data = await response.json();
         console.log('Server settings loaded:', data);
         
-        // Try to set the value regardless of nesting
-        const baseUrlInput = document.getElementById('base-url');
-        if (!baseUrlInput) {
-            console.error('Base URL input element not found!');
-            // Try again after a delay
-            setTimeout(() => {
-                const retryInput = document.getElementById('base-url');
-                if (retryInput && data.success && data.data && data.data.base_url) {
-                    retryInput.value = data.data.base_url;
-                    console.log('Base URL set on retry:', data.data.base_url);
-                }
-            }, 500);
-            return;
-        }
-        
         if (data.success && data.data && data.data.base_url) {
-            baseUrlInput.value = data.data.base_url;
-            console.log('Base URL set to:', data.data.base_url);
-        } else if (data.success && data.data) {
-            console.log('No base URL in response:', data.data);
+            // Store the value to set
+            const baseUrlValue = data.data.base_url;
+            
+            // Function to set the value
+            const setBaseUrl = () => {
+                const baseUrlInput = document.getElementById('base-url');
+                if (baseUrlInput) {
+                    baseUrlInput.value = baseUrlValue;
+                    console.log('Base URL set to:', baseUrlValue);
+                    return true;
+                }
+                return false;
+            };
+            
+            // Try to set immediately
+            if (!setBaseUrl()) {
+                // If it fails, wait for DOM and try again
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', setBaseUrl);
+                } else {
+                    // DOM is loaded but element might be in hidden section
+                    // Try after a delay
+                    setTimeout(setBaseUrl, 500);
+                    
+                    // Also set it when the preferences section becomes visible
+                    const observer = new MutationObserver((mutations) => {
+                        const prefsSection = document.getElementById('preferences-section');
+                        if (prefsSection && prefsSection.classList.contains('active')) {
+                            if (setBaseUrl()) {
+                                observer.disconnect();
+                            }
+                        }
+                    });
+                    
+                    const prefsSection = document.getElementById('preferences-section');
+                    if (prefsSection) {
+                        observer.observe(prefsSection, { attributes: true, attributeFilter: ['class'] });
+                        // Disconnect observer after 10 seconds to prevent memory leak
+                        setTimeout(() => observer.disconnect(), 10000);
+                    }
+                }
+            }
         } else {
-            console.log('Response structure:', data);
+            console.log('No base URL configured');
         }
     } catch (error) {
         console.error('Error loading server configuration:', error);
