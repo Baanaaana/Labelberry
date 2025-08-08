@@ -79,27 +79,26 @@ class ZebraPrinter:
                     return True
                 else:
                     logger.warning(f"Configured device path {self.device_path} does not exist")
-                    # Don't override the device_path - it was specifically configured
-                    self.is_connected = False
-                    return False
+                    # Continue to USB fallback instead of failing immediately
             
-            # Only auto-detect if no specific path was configured or path is "auto"
             # Check device files first (fastest method if they exist)
             device_paths = ["/dev/usb/lp0", "/dev/usblp0", "/dev/lp0"]
             for path in device_paths:
                 if Path(path).exists():
-                    self.device_path = path
+                    # Only update device_path if it was "auto" or not set
+                    if not self.device_path or self.device_path == "auto":
+                        self.device_path = path
                     self.is_connected = True
-                    logger.info(f"Printer device auto-detected at {path}")
+                    logger.info(f"Printer device found at {path}")
                     return True
             
-            # Check if USB device exists
+            # Check if USB device exists (fallback for when device files don't exist)
             ZEBRA_VENDOR_ID = 0x0A5F
             device = usb.core.find(idVendor=ZEBRA_VENDOR_ID)
             if device:
                 self.is_connected = True
-                logger.info(f"Zebra printer found via USB")
-                # Don't store device here to avoid holding it
+                logger.info(f"Zebra printer found via USB (will use USB fallback for printing)")
+                # Keep the configured device_path for index extraction during print
                 return True
             
             logger.error("No printer found via device files or USB")
