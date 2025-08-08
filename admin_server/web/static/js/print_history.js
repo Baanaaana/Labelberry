@@ -651,11 +651,11 @@ async function reprintJob() {
         const data = await response.json();
         
         if (response.ok && data.success) {
-            showAlert(`Print job sent to ${select.options[select.selectedIndex].text}`, 'success');
+            showAlert(`Print job queued for ${select.options[select.selectedIndex].text}`, 'success');
             // Refresh history to show new job
             setTimeout(() => loadHistory(), 1000);
         } else {
-            showAlert(data.message || 'Failed to send print job', 'error');
+            showAlert(data.message || 'Failed to queue print job', 'error');
         }
     } catch (error) {
         console.error('Failed to reprint job:', error);
