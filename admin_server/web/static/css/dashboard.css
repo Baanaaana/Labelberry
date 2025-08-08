@@ -544,6 +544,13 @@ a.icon-btn:hover i {
     max-width: 400px;
 }
 
+/* Large modals for queue, logs, and metrics */
+#queue-modal .modal-content,
+#logs-modal .modal-content,
+#metrics-modal .modal-content {
+    max-width: 1400px;
+}
+
 .modal-header {
     padding: 20px;
     margin-bottom: 10px;
