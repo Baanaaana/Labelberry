@@ -89,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.5"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.6"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -730,26 +730,12 @@ async def reprint_job(
         if not pi:
             raise HTTPException(status_code=404, detail="Printer not found")
         
-        # Create print job with PENDING status (not QUEUED to avoid queue manager picking it up)
-        job = PrintJob(
-            id=str(uuid.uuid4()),
-            pi_id=pi_id,
-            status=PrintJobStatus.PENDING,  # Use PENDING instead of QUEUED
-            zpl_source=zpl_url if zpl_url else "raw",  # Required field
-            source="reprint",
-            created_at=datetime.now(timezone.utc)
-        )
-        
-        # Save job to database with ZPL content
-        database.save_print_job(
-            job,
-            zpl_content=zpl_raw,
-            zpl_url=zpl_url
-        )
+        # Generate a job ID for tracking
+        job_id = str(uuid.uuid4())
         
         # Prepare print data
         print_data = {
-            "job_id": job.id,
+            "job_id": job_id,
             "source": "reprint"
         }
         
@@ -767,14 +753,43 @@ async def reprint_job(
             )
             
             if success:
-                database.update_job_status(job.id, PrintJobStatus.SENT)
+                # Only create the job record AFTER successful sending, with SENT status
+                job = PrintJob(
+                    id=job_id,
+                    pi_id=pi_id,
+                    status=PrintJobStatus.SENT,  # Already sent, not queued
+                    zpl_source=zpl_url if zpl_url else "raw",
+                    source="reprint",
+                    created_at=datetime.now(timezone.utc),
+                    sent_at=datetime.now(timezone.utc)
+                )
+                database.save_print_job(
+                    job,
+                    zpl_content=zpl_raw,
+                    zpl_url=zpl_url
+                )
+                
                 return ApiResponse(
                     success=True,
                     message=f"Reprint job sent to {pi.friendly_name}",
-                    data={"job_id": job.id, "pi_id": pi_id}
+                    data={"job_id": job_id, "pi_id": pi_id}
                 )
             else:
-                database.update_job_status(job.id, PrintJobStatus.FAILED, "Failed to send to printer")
+                # Create failed job record
+                job = PrintJob(
+                    id=job_id,
+                    pi_id=pi_id,
+                    status=PrintJobStatus.FAILED,
+                    zpl_source=zpl_url if zpl_url else "raw",
+                    source="reprint",
+                    created_at=datetime.now(timezone.utc),
+                    error_message="Failed to send to printer"
+                )
+                database.save_print_job(
+                    job,
+                    zpl_content=zpl_raw,
+                    zpl_url=zpl_url
+                )
         
         # If WebSocket not connected, try HTTP
         if hasattr(pi, 'local_ip') and pi.local_ip:
@@ -785,17 +800,45 @@ async def reprint_job(
                     timeout=5
                 )
                 if response.status_code == 200:
-                    database.update_job_status(job.id, PrintJobStatus.SENT)
+                    # Create successful job record
+                    job = PrintJob(
+                        id=job_id,
+                        pi_id=pi_id,
+                        status=PrintJobStatus.SENT,
+                        zpl_source=zpl_url if zpl_url else "raw",
+                        source="reprint",
+                        created_at=datetime.now(timezone.utc),
+                        sent_at=datetime.now(timezone.utc)
+                    )
+                    database.save_print_job(
+                        job,
+                        zpl_content=zpl_raw,
+                        zpl_url=zpl_url
+                    )
+                    
                     return ApiResponse(
                         success=True,
                         message=f"Reprint job sent to {pi.friendly_name} via HTTP",
-                        data={"job_id": job.id, "pi_id": pi_id}
+                        data={"job_id": job_id, "pi_id": pi_id}
                     )
             except Exception as e:
                 logger.error(f"HTTP fallback failed: {e}")
         
-        # If neither worked, mark job as failed
-        database.update_job_status(job.id, PrintJobStatus.FAILED, "Printer not connected")
+        # If neither worked, create failed job record
+        job = PrintJob(
+            id=job_id,
+            pi_id=pi_id,
+            status=PrintJobStatus.FAILED,
+            zpl_source=zpl_url if zpl_url else "raw",
+            source="reprint",
+            created_at=datetime.now(timezone.utc),
+            error_message="Printer not connected"
+        )
+        database.save_print_job(
+            job,
+            zpl_content=zpl_raw,
+            zpl_url=zpl_url
+        )
         raise HTTPException(status_code=503, detail="Printer not connected")
         
     except HTTPException:
