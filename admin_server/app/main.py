@@ -88,7 +88,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "10.9"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "11.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -225,6 +225,7 @@ async def get_server_settings(request: Request):
         
         return ApiResponse(
             success=True,
+            message="Server settings retrieved successfully",
             data={"base_url": base_url}
         )
     except Exception as e:
