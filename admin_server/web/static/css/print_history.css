@@ -5,8 +5,8 @@
     padding: 20px;
     margin-bottom: 24px;
     display: flex;
-    gap: 20px;
-    align-items: center;
+    gap: 16px;
+    align-items: flex-end;
     flex-wrap: wrap;
     box-shadow: var(--shadow-sm);
 }
@@ -14,37 +14,72 @@
 .filter-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-width: 150px;
+    gap: 8px;
+    flex: 1;
+    min-width: 200px;
+    max-width: 250px;
 }
 
 .filter-group label {
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    margin-bottom: 2px;
 }
 
 .filter-group select {
-    padding: 8px 12px;
+    padding: 10px 36px 10px 12px;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 14px;
-    background: var(--bg-secondary);
+    font-weight: 400;
+    background: white;
     color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
 }
 
 .filter-group select:hover {
     border-color: var(--primary-color);
+    background-color: var(--bg-primary);
 }
 
 .filter-group select:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(66, 99, 235, 0.1);
+}
+
+/* Clear Filters Button */
+.filters-panel .btn-secondary {
+    margin-left: auto;
+    padding: 10px 20px;
+    border: 1px solid var(--border-color);
+    background: white;
+    color: var(--text-primary);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filters-panel .btn-secondary:hover {
+    background: var(--bg-primary);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 /* Table Container */
@@ -359,9 +394,17 @@
     .filters-panel {
         flex-direction: column;
         align-items: stretch;
+        gap: 12px;
     }
     
     .filter-group {
+        width: 100%;
+        max-width: none;
+    }
+    
+    .filters-panel .btn-secondary {
+        margin-left: 0;
+        margin-top: 8px;
         width: 100%;
     }
     
