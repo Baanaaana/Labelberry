@@ -89,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.3"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.4"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -759,12 +759,22 @@ async def reprint_job(
             print_data["zpl_url"] = zpl_url
         
         # Try WebSocket first
-        if await connection_manager.send_print_job(pi_id, print_data):
-            return ApiResponse(
-                success=True,
-                message=f"Reprint job sent to {pi.friendly_name}",
-                data={"job_id": job.id, "pi_id": pi_id}
+        if connection_manager.is_connected(pi_id):
+            success = await connection_manager.send_command(
+                pi_id,
+                "print",
+                print_data
             )
+            
+            if success:
+                database.update_print_job_status(job.id, PrintJobStatus.SENT)
+                return ApiResponse(
+                    success=True,
+                    message=f"Reprint job sent to {pi.friendly_name}",
+                    data={"job_id": job.id, "pi_id": pi_id}
+                )
+            else:
+                database.update_print_job_status(job.id, PrintJobStatus.FAILED, "Failed to send to printer")
         
         # If WebSocket not connected, try HTTP
         if hasattr(pi, 'local_ip') and pi.local_ip:
@@ -775,13 +785,14 @@ async def reprint_job(
                     timeout=5
                 )
                 if response.status_code == 200:
+                    database.update_print_job_status(job.id, PrintJobStatus.SENT)
                     return ApiResponse(
                         success=True,
                         message=f"Reprint job sent to {pi.friendly_name} via HTTP",
                         data={"job_id": job.id, "pi_id": pi_id}
                     )
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"HTTP fallback failed: {e}")
         
         # If neither worked, mark job as failed
         database.update_print_job_status(job.id, PrintJobStatus.FAILED, "Printer not connected")
