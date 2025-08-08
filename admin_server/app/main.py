@@ -601,12 +601,29 @@ async def send_test_print_to_pi(
         
         # Send print command through WebSocket if connected
         if connection_manager.is_connected(pi_id):
-            # Don't include job_id for test prints - they aren't tracked
+            # Create a temporary job to track the test print
+            import uuid
+            test_job_id = str(uuid.uuid4())
+            
+            # Store in database temporarily to track result
+            test_job = PrintJob(
+                id=test_job_id,
+                pi_id=pi_id,
+                zpl_source=print_data.get("zpl_raw") or print_data.get("zpl_url", ""),
+                priority=print_data.get("priority", 5),
+                source="test",
+                status="pending"
+            )
+            database.save_print_job(test_job)
+            
+            # Send with job_id so we can track completion
             test_print_data = {
+                "job_id": test_job_id,
                 "zpl_raw": print_data.get("zpl_raw"),
                 "zpl_url": print_data.get("zpl_url"),
                 "priority": print_data.get("priority", 5)
             }
+            
             success = await connection_manager.send_command(
                 pi_id,
                 "print",
@@ -617,7 +634,14 @@ async def send_test_print_to_pi(
                 database.save_server_log("test_print", f"Test print sent to '{pi.friendly_name}'", "INFO")
                 return ApiResponse(
                     success=True,
-                    message="Test print job sent via WebSocket",
+                    message="Test print job sent to printer",
+                    data={"pi_id": pi_id, "job_id": test_job_id}
+                )
+            else:
+                database.update_job_status(test_job_id, "failed", "Failed to send to printer")
+                return ApiResponse(
+                    success=False,
+                    message="Failed to send test print to printer",
                     data={"pi_id": pi_id}
                 )
         
@@ -644,6 +668,26 @@ async def send_test_print_to_pi(
         raise
     except Exception as e:
         logger.error(f"Failed to send test print: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/jobs/{job_id}", response_model=ApiResponse)
+async def get_job_status(job_id: str, _: dict = Depends(require_login)):
+    """Get job status - for tracking test prints"""
+    try:
+        job = database.get_print_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        return ApiResponse(
+            success=True,
+            message="Job retrieved",
+            data=job.model_dump() if hasattr(job, 'model_dump') else job.__dict__
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get job: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

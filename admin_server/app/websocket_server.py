@@ -241,28 +241,33 @@ class ConnectionManager:
         error_message = data.get("error_message")
         error_type = data.get("error_type")
         
-        # Skip database update if no job_id (test prints)
+        # Skip database update if no job_id
         if not job_id:
-            logger.info(f"Test print from Pi {pi_id} completed with status: {status}")
-            await self.broadcast_admin_update("job_complete", {
-                "pi_id": pi_id,
-                "job_id": None,
-                "status": status,
-                "is_test": True
-            })
+            logger.info(f"Print from Pi {pi_id} completed with status: {status} (no job ID)")
             return
+        
+        # Check if this is a test print
+        job = self.database.get_print_job(job_id)
+        is_test = job and job.source == "test" if job else False
         
         # Update job status in database
         if status == "completed":
             self.database.update_job_status(job_id, "completed")
+            if is_test:
+                logger.info(f"Test print {job_id} completed successfully")
         elif status == "failed":
-            # Let queue manager handle retry logic
-            if self.queue_manager:
-                await self.queue_manager.handle_job_result(
-                    pi_id, job_id, "failed", error_message, error_type
-                )
-            else:
+            # Don't retry test prints
+            if is_test:
                 self.database.update_job_status(job_id, "failed", error_message, error_type)
+                logger.info(f"Test print {job_id} failed: {error_message}")
+            else:
+                # Let queue manager handle retry logic for regular jobs
+                if self.queue_manager:
+                    await self.queue_manager.handle_job_result(
+                        pi_id, job_id, "failed", error_message, error_type
+                    )
+                else:
+                    self.database.update_job_status(job_id, "failed", error_message, error_type)
         
         await self.broadcast_admin_update("job_complete", {
             "pi_id": pi_id,

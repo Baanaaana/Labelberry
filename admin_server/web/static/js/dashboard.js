@@ -133,6 +133,49 @@ function setupAutoRefresh() {
     }
 }
 
+// Track print job result
+async function trackPrintJob(jobId, piId) {
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    const checkJob = async () => {
+        attempts++;
+        
+        try {
+            const response = await fetch(`/api/jobs/${jobId}`);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                const job = data.data;
+                
+                if (job.status === 'completed') {
+                    showAlert('Print job completed successfully!', 'success');
+                    return;
+                } else if (job.status === 'failed') {
+                    showAlert(`Print job failed: ${job.error_message || 'Unknown error'}`, 'error');
+                    return;
+                } else if (attempts < maxAttempts) {
+                    // Still processing, check again
+                    setTimeout(checkJob, 1000);
+                } else {
+                    showAlert('Print job timed out', 'warning');
+                }
+            } else if (attempts < maxAttempts) {
+                // Job might not be in database yet, retry
+                setTimeout(checkJob, 1000);
+            }
+        } catch (error) {
+            console.error('Error checking job status:', error);
+            if (attempts < maxAttempts) {
+                setTimeout(checkJob, 1000);
+            }
+        }
+    };
+    
+    // Start checking after a short delay
+    setTimeout(checkJob, 500);
+}
+
 // Load dashboard data
 async function loadDashboard() {
     try {
@@ -514,8 +557,13 @@ async function sendPrint(event) {
         const data = await response.json();
         
         if (data.success) {
-            showAlert('Print job sent successfully!', 'success');
+            showAlert('Print job sent to printer, waiting for result...', 'info');
             closePrintModal();
+            
+            // Track the job to show actual result
+            if (data.data && data.data.job_id) {
+                trackPrintJob(data.data.job_id, selectedPiId);
+            }
         } else {
             showAlert(data.detail || 'Failed to send print job', 'error');
         }
