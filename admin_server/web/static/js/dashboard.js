@@ -883,7 +883,9 @@ function clearFilters() {
 
 // Update filter count display
 function updateFilterCount(filteredCount, totalCount) {
-    const printersHeader = document.querySelector('.panel-header h2');
+    // Find the Printers panel header by ID
+    const printersHeader = document.getElementById('printers-panel-title');
+    
     if (printersHeader && filteredCount !== totalCount) {
         printersHeader.textContent = `Printers (${filteredCount} of ${totalCount})`;
     } else if (printersHeader) {
