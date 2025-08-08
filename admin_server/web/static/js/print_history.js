@@ -193,11 +193,6 @@ async function viewJobDetails(jobId) {
     // Show/hide copy button based on ZPL content
     copyBtn.style.display = (job.zpl_content || job.zpl_url) ? 'inline-flex' : 'none';
     
-    // Generate label preview if ZPL content is available
-    if (job.zpl_content) {
-        generateLabelPreview(job.zpl_content);
-    }
-    
     // Format job details
     details.innerHTML = `
         <div class="job-detail-grid">
@@ -270,18 +265,29 @@ async function viewJobDetails(jobId) {
     modal.style.display = 'block';
     
     // Re-initialize Lucide icons for the modal content
-    setTimeout(() => lucide.createIcons({
-        attrs: {
-            width: 20,
-            height: 20
+    setTimeout(() => {
+        lucide.createIcons({
+            attrs: {
+                width: 20,
+                height: 20
+            }
+        });
+        
+        // Generate label preview if ZPL content is available (after DOM is ready)
+        if (job.zpl_content) {
+            generateLabelPreview(job.zpl_content).catch(err => {
+                console.error('Error generating preview:', err);
+            });
         }
-    }), 10);
+    }, 10);
 }
 
 // Generate label preview using Labelary API via proxy
 async function generateLabelPreview(zplContent) {
     const previewContainer = document.getElementById('label-preview');
     if (!previewContainer) return;
+    
+    console.log('Generating preview for ZPL:', zplContent.substring(0, 100) + '...');
     
     try {
         // Use our proxy endpoint to avoid CORS issues
@@ -290,8 +296,11 @@ async function generateLabelPreview(zplContent) {
             headers: {
                 'Content-Type': 'text/plain'
             },
+            credentials: 'same-origin',  // Include cookies for authentication
             body: zplContent
         });
+        
+        console.log('Preview response status:', response.status);
         
         if (response.ok) {
             const blob = await response.blob();
@@ -342,7 +351,7 @@ async function generateLabelPreview(zplContent) {
             <div class="preview-error">
                 <i data-lucide="alert-circle"></i>
                 <p>Could not generate preview</p>
-                <small>Network error</small>
+                <small>Network error: ${error.message}</small>
             </div>
         `;
         
