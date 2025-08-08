@@ -5,11 +5,13 @@ A Raspberry Pi-based label printing system for Zebra printers with centralized m
 ## Features
 
 - **REST API** for printing ZPL labels from URL or raw content
+- **Reliable print confirmation** - API waits for actual print completion (new!)
 - **Web Dashboard** for managing all printers from a single interface
 - **Real-time monitoring** via WebSocket connections
 - **Print queue management** with priority support and automatic retry
 - **API key authentication** for secure access
 - **Multi-printer support** with broadcast printing capabilities
+- **24-hour retry window** for failed print jobs
 
 ## Quick Start
 
@@ -46,18 +48,61 @@ Default login: `admin` / `admin123` (change immediately!)
 
 ### Send Print Job
 
+**🎯 New: The API now waits for print completion by default!** This ensures you get confirmation that the label was actually printed, not just sent.
+
 ```bash
-# From URL
-curl -X POST http://raspberry-pi:8000/print \
+# Send to admin server (recommended) - waits for print completion
+curl -X POST http://admin-server:8080/api/pis/PRINTER_ID/print \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"zpl_url": "https://example.com/label.zpl", "priority": 5}'
+  -d '{"zpl_raw": "^XA^FO50,50^A0N,50,50^FDHello World^FS^XZ"}'
+# Returns success only after label is printed
 
-# Raw ZPL
+# Async mode - returns immediately (old behavior)
+curl -X POST http://admin-server:8080/api/pis/PRINTER_ID/print \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "zpl_raw": "^XA^FO50,50^A0N,50,50^FDHello World^FS^XZ",
+    "wait_for_completion": false
+  }'
+# Returns immediately with job_id for status polling
+
+# Direct to Pi (legacy) - always immediate return
 curl -X POST http://raspberry-pi:8000/print \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"zpl_raw": "^XA^FO50,50^A0N,50,50^FDHello World^FS^XZ"}'
+```
+
+### API Response Formats
+
+```json
+// Success (default mode - waits for completion)
+{
+  "success": true,
+  "message": "Print job completed successfully",
+  "data": {
+    "job_id": "abc-123",
+    "status": "completed"
+  }
+}
+
+// Failed print (with wait_for_completion=true)
+{
+  "detail": "Print job failed: Printer not connected"
+}
+
+// Async mode response (with wait_for_completion=false)
+{
+  "success": true,
+  "message": "Print job sent to Pi (async mode)",
+  "data": {
+    "job_id": "abc-123",
+    "status": "sent",
+    "note": "Poll /api/jobs/{job_id} to check status"
+  }
+}
 ```
 
 ### Priority System
