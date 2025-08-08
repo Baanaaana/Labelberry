@@ -88,7 +88,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "11.3"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "11.4"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -757,11 +757,20 @@ async def send_print_to_pi(
     print_data: Dict[str, Any],
     api_key: str = Depends(require_api_key)
 ):
-    """Send print job to Pi - Smart routing: direct send if online, queue if offline"""
+    """Send print job to Pi - Smart routing: direct send if online, queue if offline
+    
+    Parameters:
+    - wait_for_completion (bool): Wait for print to complete before returning (default: true)
+    - timeout (int): Max seconds to wait for completion (default: 30, max: 60)
+    """
     try:
         pi = database.get_pi_by_id(pi_id)
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
+        
+        # Get wait parameters
+        wait_for_completion = print_data.get("wait_for_completion", True)
+        timeout = min(print_data.get("timeout", 30), 60)  # Cap at 60 seconds
         
         # Create print job object
         job = PrintJob(
@@ -791,15 +800,53 @@ async def send_print_to_pi(
                 job.sent_at = datetime.utcnow()
                 database.save_print_job(job)
                 
-                return ApiResponse(
-                    success=True,
-                    message="Print job sent directly to Pi",
-                    data={
-                        "job_id": job.id,
-                        "pi_id": pi_id,
-                        "status": "sent"
-                    }
-                )
+                # If wait_for_completion is true, wait for the job to complete
+                if wait_for_completion:
+                    import asyncio
+                    start_time = asyncio.get_event_loop().time()
+                    
+                    while asyncio.get_event_loop().time() - start_time < timeout:
+                        await asyncio.sleep(0.5)  # Check every 500ms
+                        
+                        # Get updated job status
+                        updated_job = database.get_print_job(job.id)
+                        if updated_job:
+                            status = updated_job.get('status')
+                            
+                            if status == 'completed':
+                                return ApiResponse(
+                                    success=True,
+                                    message="Print job completed successfully",
+                                    data={
+                                        "job_id": job.id,
+                                        "pi_id": pi_id,
+                                        "status": "completed"
+                                    }
+                                )
+                            elif status == 'failed':
+                                error_msg = updated_job.get('error_message', 'Print failed')
+                                raise HTTPException(
+                                    status_code=500, 
+                                    detail=f"Print job failed: {error_msg}"
+                                )
+                    
+                    # Timeout reached
+                    raise HTTPException(
+                        status_code=504,
+                        detail=f"Print job timed out after {timeout} seconds. Job ID: {job.id}"
+                    )
+                else:
+                    # Return immediately without waiting
+                    return ApiResponse(
+                        success=True,
+                        message="Print job sent to Pi (async mode)",
+                        data={
+                            "job_id": job.id,
+                            "pi_id": pi_id,
+                            "status": "sent",
+                            "note": "Poll /api/jobs/{job_id} to check status"
+                        }
+                    )
         
         # Pi is offline or send failed - queue the job
         if queue_manager.add_job_to_queue(job):

@@ -457,18 +457,37 @@ curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
   "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello World^FS^XZ",
   // OR
   "zpl_url": "https://example.com/label.zpl",
-  "priority": 5  // Optional: 1-10, higher = more urgent
+  "priority": 5,  // Optional: 1-10, higher = more urgent
+  "wait_for_completion": true,  // Optional: Wait for print to complete (default: true)
+  "timeout": 30  // Optional: Max seconds to wait (default: 30, max: 60)
 }</code></pre>
 
                             <h4>Response</h4>
-                            <pre><code>// If printer is online:
+                            <pre><code>// Success (with wait_for_completion=true, default):
 {
   "success": true,
-  "message": "Print job sent directly to Pi",
+  "message": "Print job completed successfully",
   "data": {
     "job_id": "uuid-here",
     "pi_id": "printer-id",
-    "status": "sent"
+    "status": "completed"
+  }
+}
+
+// Failed (with wait_for_completion=true):
+{
+  "detail": "Print job failed: Printer not connected"
+}
+
+// Async mode (with wait_for_completion=false):
+{
+  "success": true,
+  "message": "Print job sent to Pi (async mode)",
+  "data": {
+    "job_id": "uuid-here",
+    "pi_id": "printer-id",
+    "status": "sent",
+    "note": "Poll /api/jobs/{job_id} to check status"
   }
 }
 
