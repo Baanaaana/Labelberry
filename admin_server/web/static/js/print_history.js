@@ -35,8 +35,8 @@ window.clearQueue = async function() {
         const data = await response.json();
         console.log('Queue cleared:', data);
         showAlert(`Cancelled ${data.data.cancelled_count} queued jobs`, 'success');
-        // Refresh history
-        loadHistory();
+        // Refresh history (preserve current page)
+        loadHistory(true);
         return data;
     } catch (error) {
         console.error('Failed to clear queue:', error);
@@ -48,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPrinters();
     loadHistory();
     
-    // Auto-refresh every 10 seconds
-    setInterval(loadHistory, 10000);
+    // Auto-refresh every 10 seconds (preserve current page)
+    setInterval(() => loadHistory(true), 10000);
 });
 
 // Load available printers for filter
@@ -75,14 +75,14 @@ async function loadPrinters() {
 }
 
 // Load print history
-async function loadHistory() {
+async function loadHistory(preservePage = false) {
     try {
         const response = await fetch('/api/print-history?limit=1000');
         const data = await response.json();
         
         if (data.success) {
             allJobs = data.data.jobs;
-            filterHistory();
+            filterHistory(preservePage);
         }
     } catch (error) {
         console.error('Failed to load history:', error);
@@ -91,7 +91,7 @@ async function loadHistory() {
 }
 
 // Filter history based on selected filters
-function filterHistory() {
+function filterHistory(preservePage = false) {
     const printerFilter = document.getElementById('printer-filter').value;
     const statusFilter = document.getElementById('status-filter').value;
     const dateFilter = parseInt(document.getElementById('date-filter').value);
@@ -119,8 +119,17 @@ function filterHistory() {
         return true;
     });
     
-    // Reset to first page
-    currentPage = 1;
+    // Only reset to first page if not preserving
+    if (!preservePage) {
+        currentPage = 1;
+    }
+    
+    // Ensure current page is still valid
+    const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+    if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+    }
+    
     renderHistory();
 }
 
@@ -668,8 +677,8 @@ async function reprintJob() {
         
         if (response.ok && data.success) {
             showAlert(`Print job queued for ${select.options[select.selectedIndex].text}`, 'success');
-            // Refresh history to show new job
-            setTimeout(() => loadHistory(), 1000);
+            // Refresh history to show new job (preserve current page)
+            setTimeout(() => loadHistory(true), 1000);
         } else {
             showAlert(data.message || 'Failed to queue print job', 'error');
         }
@@ -741,7 +750,7 @@ function clearFilters() {
 
 // Refresh history
 function refreshHistory() {
-    loadHistory();
+    loadHistory(false);  // false = reset to page 1 on manual refresh
     showAlert('History refreshed', 'info');
 }
 

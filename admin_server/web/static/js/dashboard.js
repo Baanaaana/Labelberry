@@ -157,7 +157,7 @@ function setupAutoRefresh() {
     
     // Set new interval if not disabled
     if (dashboardSettings.refreshInterval > 0) {
-        refreshInterval = setInterval(loadDashboard, dashboardSettings.refreshInterval);
+        refreshInterval = setInterval(() => loadDashboard(true), dashboardSettings.refreshInterval);
     }
 }
 
@@ -205,7 +205,7 @@ async function trackPrintJob(jobId, piId) {
 }
 
 // Load dashboard data
-async function loadDashboard() {
+async function loadDashboard(preservePage = false) {
     try {
         // Get dashboard stats
         const statsResponse = await fetch('/api/dashboard/stats');
@@ -221,8 +221,8 @@ async function loadDashboard() {
         
         if (pisData.success) {
             currentPis = pisData.data.pis;
-            // Apply filters instead of rendering all printers
-            filterPrinters();
+            // Apply filters - pass preservePage flag to maintain current page
+            filterPrinters(!preservePage);
         }
     } catch (error) {
         console.error('Error loading dashboard:', error);
@@ -741,7 +741,7 @@ function formatDateTime(dateString) {
 
 // Refresh dashboard
 function refreshDashboard() {
-    loadDashboard();
+    loadDashboard(false);  // false = reset to page 1 on manual refresh
     showAlert('Dashboard refreshed', 'info');
 }
 
