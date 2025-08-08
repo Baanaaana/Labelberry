@@ -1161,19 +1161,14 @@ class Database:
             return False
     
     def get_queued_jobs(self, pi_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get active jobs for a specific Pi (queued, sent, processing), ordered by priority and creation time"""
+        """Get QUEUED jobs for a specific Pi (only queued, not sent), ordered by priority and creation time"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT * FROM print_jobs 
-                    WHERE pi_id = ? AND status IN ('queued', 'sent', 'processing')
+                    WHERE pi_id = ? AND status = 'queued'
                     ORDER BY 
-                        CASE status 
-                            WHEN 'processing' THEN 0
-                            WHEN 'sent' THEN 1
-                            WHEN 'queued' THEN 2
-                        END,
                         priority DESC, 
                         created_at ASC
                     LIMIT ?
