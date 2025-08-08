@@ -1418,9 +1418,18 @@ function renderQueueTable(jobs) {
             hoursRemaining = Math.max(0, 24 - jobAge);
         }
         
+        // Calculate position for queued jobs only
+        let position = '-';
+        if (job.status === 'queued') {
+            // Count how many queued jobs come before this one
+            const queuedJobs = jobs.filter(j => j.status === 'queued');
+            const queueIndex = queuedJobs.findIndex(j => j.id === job.id);
+            position = queueIndex >= 0 ? queueIndex + 1 : '-';
+        }
+        
         return `
             <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 12px;">${job.status === 'queued' ? index + 1 : '-'}</td>
+                <td style="padding: 12px;">${position}</td>
                 <td style="padding: 12px; font-family: monospace; font-size: 12px;">
                     ${job.id.substring(0, 8)}...
                 </td>

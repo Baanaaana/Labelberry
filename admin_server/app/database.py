@@ -1081,14 +1081,21 @@ class Database:
             return False
     
     def get_queued_jobs(self, pi_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get queued jobs for a specific Pi, ordered by priority and creation time"""
+        """Get active jobs for a specific Pi (queued, sent, processing), ordered by priority and creation time"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT * FROM print_jobs 
-                    WHERE pi_id = ? AND status = 'queued'
-                    ORDER BY priority DESC, created_at ASC
+                    WHERE pi_id = ? AND status IN ('queued', 'sent', 'processing')
+                    ORDER BY 
+                        CASE status 
+                            WHEN 'processing' THEN 0
+                            WHEN 'sent' THEN 1
+                            WHEN 'queued' THEN 2
+                        END,
+                        priority DESC, 
+                        created_at ASC
                     LIMIT ?
                 """, (pi_id, limit))
                 
@@ -1106,7 +1113,7 @@ class Database:
             return []
     
     def get_all_queued_jobs(self) -> List[Dict[str, Any]]:
-        """Get all queued jobs across all Pis"""
+        """Get all active jobs across all Pis (queued, sent, processing)"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -1114,8 +1121,15 @@ class Database:
                     SELECT j.*, p.friendly_name as pi_name
                     FROM print_jobs j
                     JOIN pis p ON j.pi_id = p.id
-                    WHERE j.status = 'queued'
-                    ORDER BY j.priority DESC, j.created_at ASC
+                    WHERE j.status IN ('queued', 'sent', 'processing')
+                    ORDER BY 
+                        CASE j.status 
+                            WHEN 'processing' THEN 0
+                            WHEN 'sent' THEN 1
+                            WHEN 'queued' THEN 2
+                        END,
+                        j.priority DESC, 
+                        j.created_at ASC
                 """)
                 
                 jobs = []
