@@ -4,6 +4,10 @@ let selectedPiId = null;
 let refreshInterval = null;
 let labelSizes = [];
 
+// Pagination variables
+let currentPage = 1;
+const printersPerPage = 5;
+
 // Settings with defaults
 let dashboardSettings = {
     timezone: 'Europe/Amsterdam',
@@ -839,7 +843,12 @@ async function confirmDelete() {
 
 
 // Filter printers based on search, status, and label size
-function filterPrinters() {
+function filterPrinters(resetPage = true) {
+    // Reset to first page when filtering changes
+    if (resetPage) {
+        currentPage = 1;
+    }
+    
     // Get filter values
     const searchTerm = document.querySelector('.search-input').value.toLowerCase();
     const statusFilter = document.getElementById('status-filter').value;
@@ -872,10 +881,85 @@ function filterPrinters() {
     
     // Pass true as isFiltered flag when filters are active
     const hasFilters = searchTerm || statusFilter || labelSizeFilter;
-    renderPrinters(filtered, hasFilters);
+    renderPrintersWithPagination(filtered, hasFilters);
     
     // Update filter count display
     updateFilterCount(filtered.length, currentPis.length);
+}
+
+// Render printers with pagination
+function renderPrintersWithPagination(printers, isFiltered = false) {
+    const totalPages = Math.ceil(printers.length / printersPerPage);
+    
+    // Ensure current page is valid
+    if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+    }
+    if (currentPage < 1) {
+        currentPage = 1;
+    }
+    
+    // Calculate pagination bounds
+    const startIndex = (currentPage - 1) * printersPerPage;
+    const endIndex = startIndex + printersPerPage;
+    const paginatedPrinters = printers.slice(startIndex, endIndex);
+    
+    // Render the printers for current page
+    renderPrinters(paginatedPrinters, isFiltered);
+    
+    // Add pagination controls
+    renderPaginationControls(printers.length, totalPages);
+}
+
+// Render pagination controls
+function renderPaginationControls(totalItems, totalPages) {
+    const printersList = document.getElementById('printers-list');
+    
+    // Remove existing pagination if any
+    const existingPagination = document.querySelector('.pagination-controls');
+    if (existingPagination) {
+        existingPagination.remove();
+    }
+    
+    // Don't show pagination if only one page
+    if (totalPages <= 1) {
+        return;
+    }
+    
+    // Create pagination container
+    const paginationDiv = document.createElement('div');
+    paginationDiv.className = 'pagination-controls';
+    paginationDiv.innerHTML = `
+        <div class="pagination-info">
+            Showing ${Math.min((currentPage - 1) * printersPerPage + 1, totalItems)}-${Math.min(currentPage * printersPerPage, totalItems)} of ${totalItems} printers
+        </div>
+        <div class="pagination-buttons">
+            <button class="pagination-btn" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>
+                <i data-lucide="chevron-left"></i>
+            </button>
+            <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+            <button class="pagination-btn" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>
+                <i data-lucide="chevron-right"></i>
+            </button>
+        </div>
+    `;
+    
+    // Insert after printers list
+    printersList.parentNode.insertBefore(paginationDiv, printersList.nextSibling);
+    
+    // Re-initialize Lucide icons for pagination buttons
+    setTimeout(() => lucide.createIcons({
+        attrs: {
+            width: 16,
+            height: 16
+        }
+    }), 10);
+}
+
+// Change page
+function changePage(direction) {
+    currentPage += direction;
+    filterPrinters(false); // false = don't reset page
 }
 
 // Clear all filters
@@ -883,6 +967,7 @@ function clearFilters() {
     document.querySelector('.search-input').value = '';
     document.getElementById('status-filter').value = '';
     document.getElementById('label-size-filter').value = '';
+    currentPage = 1;
     filterPrinters();
 }
 
