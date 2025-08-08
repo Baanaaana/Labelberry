@@ -51,8 +51,11 @@ function switchSection(sectionName, navItem) {
     if (sectionName === 'preferences') {
         // Small delay to ensure section is visible
         setTimeout(() => {
-            const baseUrlInput = document.getElementById('base-url');
-            if (baseUrlInput && !baseUrlInput.value) {
+            // Always try to set the value if we have it
+            if (savedBaseUrl) {
+                setBaseUrlValue();
+            } else {
+                // If we don't have it yet, load it
                 loadServerConfig();
             }
         }, 50);
@@ -205,9 +208,13 @@ async function saveServerConfig(event) {
     }
 }
 
+// Store the base URL globally so we can access it from anywhere
+let savedBaseUrl = null;
+
 // Load server configuration
 async function loadServerConfig() {
     try {
+        console.log('Loading server configuration...');
         const response = await fetch('/api/server-settings', {
             credentials: 'same-origin'
         });
@@ -218,56 +225,47 @@ async function loadServerConfig() {
         }
         
         const data = await response.json();
-        console.log('Server settings loaded:', data);
+        console.log('Server settings response:', data);
         
         if (data.success && data.data && data.data.base_url) {
-            // Store the value to set
-            const baseUrlValue = data.data.base_url;
+            // Store the value globally
+            savedBaseUrl = data.data.base_url;
+            console.log('Saved base URL:', savedBaseUrl);
             
-            // Function to set the value
-            const setBaseUrl = () => {
-                const baseUrlInput = document.getElementById('base-url');
-                if (baseUrlInput) {
-                    baseUrlInput.value = baseUrlValue;
-                    console.log('Base URL set to:', baseUrlValue);
-                    return true;
-                }
-                return false;
-            };
+            // Try to set it immediately
+            setBaseUrlValue();
             
-            // Try to set immediately
-            if (!setBaseUrl()) {
-                // If it fails, wait for DOM and try again
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', setBaseUrl);
-                } else {
-                    // DOM is loaded but element might be in hidden section
-                    // Try after a delay
-                    setTimeout(setBaseUrl, 500);
-                    
-                    // Also set it when the preferences section becomes visible
-                    const observer = new MutationObserver((mutations) => {
-                        const prefsSection = document.getElementById('preferences-section');
-                        if (prefsSection && prefsSection.classList.contains('active')) {
-                            if (setBaseUrl()) {
-                                observer.disconnect();
-                            }
-                        }
-                    });
-                    
-                    const prefsSection = document.getElementById('preferences-section');
-                    if (prefsSection) {
-                        observer.observe(prefsSection, { attributes: true, attributeFilter: ['class'] });
-                        // Disconnect observer after 10 seconds to prevent memory leak
-                        setTimeout(() => observer.disconnect(), 10000);
-                    }
-                }
-            }
+            // Also try after delays to handle various timing issues
+            setTimeout(setBaseUrlValue, 100);
+            setTimeout(setBaseUrlValue, 500);
+            setTimeout(setBaseUrlValue, 1000);
+            setTimeout(setBaseUrlValue, 2000);
         } else {
             console.log('No base URL configured');
         }
     } catch (error) {
         console.error('Error loading server configuration:', error);
+    }
+}
+
+// Separate function to set the base URL value
+function setBaseUrlValue() {
+    if (!savedBaseUrl) {
+        console.log('No saved base URL to set');
+        return false;
+    }
+    
+    const baseUrlInput = document.getElementById('base-url');
+    if (baseUrlInput) {
+        // Force set the value
+        baseUrlInput.value = savedBaseUrl;
+        // Also set as attribute to be extra sure
+        baseUrlInput.setAttribute('value', savedBaseUrl);
+        console.log('Base URL input value set to:', savedBaseUrl);
+        return true;
+    } else {
+        console.log('Base URL input not found');
+        return false;
     }
 }
 
