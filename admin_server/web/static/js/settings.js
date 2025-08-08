@@ -191,10 +191,25 @@ async function saveServerConfig(event) {
 async function loadServerConfig() {
     try {
         const response = await fetch('/api/server-settings');
-        const data = await response.json();
         
-        if (data.success && data.data.base_url) {
-            document.getElementById('base-url').value = data.data.base_url;
+        if (!response.ok) {
+            console.error('Failed to fetch server settings:', response.status);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('Server settings loaded:', data);
+        
+        if (data.success && data.data && data.data.base_url) {
+            const baseUrlInput = document.getElementById('base-url');
+            if (baseUrlInput) {
+                baseUrlInput.value = data.data.base_url;
+                console.log('Base URL set to:', data.data.base_url);
+            } else {
+                console.error('Base URL input element not found');
+            }
+        } else {
+            console.log('No base URL configured yet');
         }
     } catch (error) {
         console.error('Error loading server configuration:', error);

@@ -400,19 +400,22 @@
 
     <script src="/static/js/settings.js?v={{ static_version }}"></script>
     <script>
-        // Initialize Lucide icons with custom size
-        lucide.createIcons({
-            attrs: {
-                width: 20,
-                height: 20
-            }
-        });
-        
-        // Load saved preferences, API keys, label sizes, and server config
-        loadPreferences();
-        loadApiKeys();
-        loadLabelSizes();
-        loadServerConfig();
+        // Initialize page when script loads (DOM is ready since we're at the bottom)
+        (async function() {
+            // Initialize Lucide icons with custom size
+            lucide.createIcons({
+                attrs: {
+                    width: 20,
+                    height: 20
+                }
+            });
+            
+            // Load saved preferences, API keys, label sizes, and server config
+            loadPreferences();
+            loadApiKeys();
+            loadLabelSizes();
+            await loadServerConfig();  // Wait for server config to load
+        })();
     </script>
 </body>
 </html>
