@@ -621,19 +621,21 @@ class Database:
                 row = cursor.fetchone()
                 
                 if row:
+                    # Convert Row to dict to safely access fields
+                    job_dict = dict(row)
                     return {
-                        'id': row['id'],
-                        'pi_id': row['pi_id'],
-                        'status': row['status'],
-                        'zpl_source': row['zpl_source'],
-                        'created_at': row['created_at'],
-                        'started_at': row['started_at'],
-                        'completed_at': row['completed_at'],
-                        'error_message': row['error_message'],
-                        'retry_count': row['retry_count'],
-                        'source': row.get('source', 'api'),
-                        'priority': row.get('priority', 5),
-                        'error_type': row.get('error_type')
+                        'id': job_dict.get('id'),
+                        'pi_id': job_dict.get('pi_id'),
+                        'status': job_dict.get('status'),
+                        'zpl_source': job_dict.get('zpl_source'),
+                        'created_at': job_dict.get('created_at'),
+                        'started_at': job_dict.get('started_at'),
+                        'completed_at': job_dict.get('completed_at'),
+                        'error_message': job_dict.get('error_message'),
+                        'retry_count': job_dict.get('retry_count', 0),
+                        'source': job_dict.get('source', 'api'),
+                        'priority': job_dict.get('priority', 5),
+                        'error_type': job_dict.get('error_type')
                     }
                 return None
         except Exception as e:
