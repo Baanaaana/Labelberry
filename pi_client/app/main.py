@@ -35,6 +35,9 @@ logger = logging.getLogger(__name__)
 config_manager = ConfigManager()
 config = config_manager.get_config()
 
+# Track test print jobs
+test_print_jobs = {}
+
 printer = ZebraPrinter(config.printer_device)
 print_queue = PrintQueue(max_size=config.queue_size)
 monitoring = MonitoringService(config.device_id)
@@ -83,7 +86,7 @@ async def process_print_job(job: PrintJob) -> bool:
         logger.info(f"Processing job {job.id}")
         
         # Check if this is a test print (test prints don't have server tracking)
-        is_test_print = getattr(job, 'is_test_print', False)
+        is_test_print = test_print_jobs.get(job.id, False)
         
         # Only notify server for non-test prints
         if not is_test_print:
@@ -148,6 +151,8 @@ async def process_print_job(job: PrintJob) -> bool:
                     "job_id": job.id,
                     "status": "completed"
                 })
+            # Clean up test print tracking
+            test_print_jobs.pop(job.id, None)
             return True
         else:
             # Determine error type
@@ -165,12 +170,16 @@ async def process_print_job(job: PrintJob) -> bool:
                 })
             
             print_queue.complete_job(job.id, success=False, error_message=error_message)
+            # Clean up test print tracking
+            test_print_jobs.pop(job.id, None)
             return False
             
     except Exception as e:
         logger.error(f"Job processing error: {e}")
         print_queue.complete_job(job.id, success=False, error_message=str(e))
         await ws_client.send_error("job_error", str(e))
+        # Clean up test print tracking
+        test_print_jobs.pop(job.id, None)
         return False
 
 
@@ -225,8 +234,6 @@ async def handle_remote_print(print_data: Dict[str, Any]):
             job_data["id"] = job_id
         
         job = PrintJob(**job_data)
-        # Store test print flag on the job
-        job.is_test_print = is_test_print
         
         # If this is a queued job from server, acknowledge receipt
         if job_id:
@@ -236,7 +243,10 @@ async def handle_remote_print(print_data: Dict[str, Any]):
             })
         
         if print_queue.add_job(job):
-            logger.info(f"Remote print job {job.id} added to queue (from server queue: {bool(job_id)})")
+            logger.info(f"Remote print job {job.id} added to queue (from server queue: {bool(job_id)}, test print: {is_test_print})")
+            # Store test print flag in a global dict for this job
+            if is_test_print:
+                test_print_jobs[job.id] = True
             await ws_client.send_log("print_queued", f"Remote print job queued", {
                 "job_id": job.id,
                 "source": "server_queue" if job_id else "direct"

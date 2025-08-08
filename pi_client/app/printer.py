@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+import fcntl
 from pathlib import Path
 from typing import Optional, List
 import usb.core
@@ -126,11 +127,20 @@ class ZebraPrinter:
                 if Path(self.device_path).exists():
                     try:
                         logger.info(f"Attempting to print to assigned device: {self.device_path}")
-                        with open(self.device_path, 'wb') as printer:
-                            bytes_written = printer.write(zpl_content.encode('utf-8'))
-                            printer.flush()
-                        logger.info(f"Successfully sent {bytes_written} bytes to {self.device_path}")
-                        return True
+                        # Use os.open with O_NONBLOCK to prevent hanging
+                        import fcntl
+                        fd = os.open(self.device_path, os.O_WRONLY)
+                        try:
+                            # Set non-blocking mode
+                            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+                            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+                            
+                            data = zpl_content.encode('utf-8')
+                            bytes_written = os.write(fd, data)
+                            logger.info(f"Successfully sent {bytes_written} bytes to {self.device_path}")
+                            return True
+                        finally:
+                            os.close(fd)
                     except Exception as e:
                         logger.error(f"Failed to print to assigned device {self.device_path}: {e}")
                         # Continue to fallback methods
@@ -143,11 +153,19 @@ class ZebraPrinter:
                 if path != self.device_path and Path(path).exists():  # Don't retry the same path
                     try:
                         logger.info(f"Trying fallback device: {path}")
-                        with open(path, 'wb') as printer:
-                            bytes_written = printer.write(zpl_content.encode('utf-8'))
-                            printer.flush()
-                        logger.info(f"Successfully sent {bytes_written} bytes to {path}")
-                        return True
+                        import fcntl
+                        fd = os.open(path, os.O_WRONLY)
+                        try:
+                            # Set non-blocking mode
+                            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+                            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+                            
+                            data = zpl_content.encode('utf-8')
+                            bytes_written = os.write(fd, data)
+                            logger.info(f"Successfully sent {bytes_written} bytes to {path}")
+                            return True
+                        finally:
+                            os.close(fd)
                     except Exception as e:
                         logger.error(f"Failed to print to {path}: {e}")
                         continue
