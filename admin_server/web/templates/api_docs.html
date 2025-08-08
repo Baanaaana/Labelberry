@@ -102,6 +102,14 @@
                     <h2>Quick Start</h2>
                     <p>Here's how to send your first print job in 3 steps:</p>
                     
+                    <div class="info-box">
+                        <i data-lucide="info"></i>
+                        <div>
+                            <strong>New: Reliable Print Confirmation</strong>
+                            <p>By default, the API now waits for the print to complete before returning a response. This ensures you know if the label was actually printed successfully. You can disable this with <code>wait_for_completion: false</code> for async operations.</p>
+                        </div>
+                    </div>
+                    
                     <div class="step-cards">
                         <div class="step-card">
                             <div class="step-number">1</div>
@@ -163,7 +171,7 @@ const PrintLabelComponent = () => {
       
       const printerId = printers.data.pis[0].id;
       
-      // Step 2: Send print job
+      // Step 2: Send print job (waits for completion by default)
       const printRes = await fetch(`${window.labelberryBaseUrl}/api/pis/${printerId}/print`, {
         method: 'POST',
         headers: {
@@ -171,14 +179,18 @@ const PrintLabelComponent = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          zpl_raw: '^XA^FO50,50^ADN,36,20^FDHello LabelBerry!^FS^XZ'
+          zpl_raw: '^XA^FO50,50^ADN,36,20^FDHello LabelBerry!^FS^XZ',
+          // wait_for_completion: true,  // Default behavior - waits for print
+          // timeout: 30  // Max seconds to wait (default: 30)
         })
       });
       
       const printResult = await printRes.json();
       setResult(printResult);
       
-      if (printResult.data.status === 'queued') {
+      if (printResult.success && printResult.data.status === 'completed') {
+        console.log('Label printed successfully!');
+      } else if (printResult.data.status === 'queued') {
         console.log(`Job queued at position ${printResult.data.queue_position}`);
       }
       
@@ -209,13 +221,24 @@ const PrintLabelComponent = () => {
                                 <pre><code class="language-bash"># Step 1: Get list of printers
 curl -X GET ${window.labelberryBaseUrl}/api/pis
 
-# Step 2: Send print job (replace PRINTER_ID and API_KEY)
+# Step 2: Send print job and wait for completion (default behavior)
 curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
   -H "Authorization: Bearer YOUR_API_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{
     "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello LabelBerry!^FS^XZ"
-  }'</code></pre>
+  }'
+# Returns success only after label is printed
+
+# Optional: Send print job without waiting (async mode)
+curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello LabelBerry!^FS^XZ",
+    "wait_for_completion": false
+  }'
+# Returns immediately with job_id for status polling</code></pre>
                             </div>
                         </div>
                     </div>
@@ -379,7 +402,7 @@ curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
                         </div>
                         
                         <div class="endpoint-description">
-                            <p>Send a print job to a printer. If the printer is offline, the job will be queued and sent when it reconnects.</p>
+                            <p>Send a print job to a printer. <strong>By default, waits for the print to complete</strong> before returning a response (up to 30 seconds). This ensures you know if the label was actually printed. If the printer is offline, the job will be queued and sent when it reconnects.</p>
                         </div>
 
                         <div class="interactive-form" id="print-form" style="display: none;">
@@ -500,6 +523,52 @@ curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
     "pi_id": "printer-id",
     "status": "queued",
     "queue_position": 3
+  }
+}</code></pre>
+                            
+                            <h4 style="margin-top: 24px;">Example: Synchronous Mode (Default)</h4>
+                            <pre><code>// Request - Waits for print to complete
+POST /api/pis/{pi_id}/print
+{
+  "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello^FS^XZ"
+}
+
+// Response after label is printed (or timeout/error)
+{
+  "success": true,
+  "message": "Print job completed successfully",
+  "data": {
+    "job_id": "abc-123",
+    "status": "completed"
+  }
+}</code></pre>
+
+                            <h4 style="margin-top: 24px;">Example: Asynchronous Mode</h4>
+                            <pre><code>// Request - Returns immediately
+POST /api/pis/{pi_id}/print
+{
+  "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello^FS^XZ",
+  "wait_for_completion": false
+}
+
+// Immediate response
+{
+  "success": true,
+  "message": "Print job sent to Pi (async mode)",
+  "data": {
+    "job_id": "abc-123",
+    "status": "sent",
+    "note": "Poll /api/jobs/abc-123 to check status"
+  }
+}
+
+// Then poll for status
+GET /api/jobs/abc-123
+{
+  "success": true,
+  "data": {
+    "job_id": "abc-123",
+    "status": "completed"  // or "failed", "processing", etc.
   }
 }</code></pre>
                         </div>
