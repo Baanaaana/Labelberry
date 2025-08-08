@@ -378,19 +378,19 @@ function createPrinterItem(pi) {
             </div>
             <div class="printer-actions">
                 <div style="display: flex; gap: 8px;">
-                    <button class="printer-btn primary" onclick="showPrintModal('${pi.id}', '${pi.friendly_name}')">
-                        <i data-lucide="printer"></i> Test Print
+                    <button class="printer-btn primary" onclick="showPrintModal('${pi.id}', '${pi.friendly_name}')" title="Test Print">
+                        <i data-lucide="printer"></i> <span class="btn-text">Test Print</span>
                     </button>
-                    <button class="printer-btn curl" onclick="copyCurlCommand('${pi.id}', '${pi.friendly_name}', ${pi.label_size_id || 'null'})" title="Copy cURL command for this printer">
-                        <i data-lucide="terminal"></i> Copy cURL
+                    <button class="printer-btn curl" onclick="copyCurlCommand('${pi.id}', '${pi.friendly_name}', ${pi.label_size_id || 'null'})" title="Copy cURL command">
+                        <i data-lucide="terminal"></i> <span class="btn-text">Copy cURL</span>
                     </button>
                 </div>
                 <div style="display: flex; gap: 8px;">
-                    <button class="printer-btn" onclick="showEditModal('${pi.id}')">
-                        <i data-lucide="edit-2"></i> Edit
+                    <button class="printer-btn" onclick="showEditModal('${pi.id}')" title="Edit Printer">
+                        <i data-lucide="edit-2"></i> <span class="btn-text">Edit</span>
                     </button>
-                    <button class="printer-btn" onclick="showDeleteModal('${pi.id}', '${pi.friendly_name}')">
-                        <i data-lucide="trash-2"></i> Delete
+                    <button class="printer-btn" onclick="showDeleteModal('${pi.id}', '${pi.friendly_name}')" title="Delete Printer">
+                        <i data-lucide="trash-2"></i> <span class="btn-text">Delete</span>
                     </button>
                 </div>
             </div>

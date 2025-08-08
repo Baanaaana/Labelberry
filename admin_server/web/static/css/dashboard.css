@@ -1165,18 +1165,25 @@ input[type="checkbox"]:hover {
     }
     
     .printer-btn {
-        padding: 10px 8px;
-        font-size: 12px;
+        padding: 12px;
         border-radius: 8px;
         justify-content: center;
+        align-items: center;
         min-height: 44px; /* Touch-friendly size */
-        flex-direction: column;
-        gap: 4px;
+        gap: 0;
+        position: relative;
+    }
+    
+    /* Hide text, show only icons on mobile */
+    .printer-btn .btn-text {
+        display: none;
     }
     
     .printer-btn i {
-        width: 16px;
-        height: 16px;
+        width: 20px;
+        height: 20px;
+        display: block;
+        margin: 0;
     }
     
     /* Special styling for Test Print button */
