@@ -906,18 +906,9 @@ function searchPrinters(searchTerm) {
 // Copy cURL command for a specific printer
 async function copyCurlCommand(printerId, printerName, labelSizeId) {
     try {
-        // Get the oldest API key
-        const keysResponse = await fetch('/api/keys');
-        const keysData = await keysResponse.json();
-        
-        if (!keysData.success || !keysData.data.keys || keysData.data.keys.length === 0) {
-            showAlert('No API keys found. Please create one in Settings → API Keys', 'warning');
-            return;
-        }
-        
-        // Sort by created_at to get the oldest key
-        const keys = keysData.data.keys.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        const oldestKey = keys[0].key;
+        // API keys are hashed in the database for security, so we can't retrieve them
+        // Use a placeholder that the user needs to replace
+        const apiKeyPlaceholder = '<YOUR-API-KEY>';
         
         // Get label size details if one is set
         let zplContent = '';
@@ -965,18 +956,19 @@ async function copyCurlCommand(printerId, printerName, labelSizeId) {
         // Get base URL from settings or use current origin
         const baseUrl = dashboardSettings.baseUrl || window.location.origin;
         
-        // Generate the cURL command
-        const curlCommand = `curl -X POST ${baseUrl}/api/pis/${printerId}/print \\
-  -H "Authorization: Bearer ${oldestKey}" \\
+        // Generate the cURL command with API key placeholder
+        const curlCommand = `curl -X POST ${baseUrl}/api/print \\
+  -H "X-API-Key: ${apiKeyPlaceholder}" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "zpl_raw": "${zplContent.replace(/\n/g, '\\n').replace(/"/g, '\\"')}"
+    "printer_id": "${printerId}",
+    "zpl_content": "${zplContent.replace(/\n/g, '\\n').replace(/"/g, '\\"')}"
   }'`;
         
         // Copy to clipboard
         if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(curlCommand);
-            showAlert('cURL command copied to clipboard!', 'success');
+            showAlert(`cURL command copied! Replace ${apiKeyPlaceholder} with your actual API key from Settings → API Keys`, 'info');
         } else {
             // Fallback for older browsers
             const textArea = document.createElement('textarea');
@@ -987,7 +979,7 @@ async function copyCurlCommand(printerId, printerName, labelSizeId) {
             textArea.select();
             document.execCommand('copy');
             document.body.removeChild(textArea);
-            showAlert('cURL command copied to clipboard!', 'success');
+            showAlert(`cURL command copied! Replace ${apiKeyPlaceholder} with your actual API key from Settings → API Keys`, 'info');
         }
         
     } catch (error) {
