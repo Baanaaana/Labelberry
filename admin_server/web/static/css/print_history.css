@@ -106,6 +106,10 @@
     letter-spacing: 0.5px;
 }
 
+#history-table th:last-child {
+    text-align: center;
+}
+
 #history-table tbody tr {
     border-bottom: 1px solid var(--border-color);
     transition: background 0.2s;
@@ -119,6 +123,11 @@
     padding: 16px 12px;
     font-size: 14px;
     color: var(--text-primary);
+}
+
+#history-table td:last-child {
+    text-align: center;
+    padding: 12px;
 }
 
 /* Status Badges */
@@ -159,26 +168,38 @@
 
 /* Action Buttons */
 .action-btn {
-    padding: 6px 12px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    border-radius: 6px;
+    padding: 8px 16px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 8px;
     font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .action-btn:hover {
-    background: var(--bg-primary);
+    background: var(--primary-color);
     border-color: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .action-btn i {
-    width: 14px !important;
-    height: 14px !important;
+    width: 16px !important;
+    height: 16px !important;
+    stroke-width: 2;
 }
 
 /* Job Details Modal */
