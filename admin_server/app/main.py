@@ -89,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "15.1"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "15.2"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -941,7 +941,11 @@ async def generate_label_preview(
             
             # Common Labelary errors
             if 'Requested 1st label but ZPL generated no labels' in error_text:
-                raise HTTPException(status_code=400, detail="ZPL code did not generate any labels - may be incomplete or invalid")
+                # This ZPL is valid but doesn't produce a visible label
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Preview not available - ZPL may only contain positioning or configuration commands without visible elements"
+                )
             elif 'ERROR' in error_text:
                 # Extract just the error message
                 error_msg = error_text.replace('ERROR: ', '').strip()

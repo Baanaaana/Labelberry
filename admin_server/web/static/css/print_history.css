@@ -320,6 +320,19 @@
     line-height: 1.4;
 }
 
+.preview-warning {
+    color: #d97706;
+}
+
+.preview-warning i {
+    color: #d97706;
+}
+
+.help-info {
+    background: rgba(217, 119, 6, 0.1);
+    color: #d97706;
+}
+
 /* Reprint Controls */
 .reprint-controls {
     display: flex;
