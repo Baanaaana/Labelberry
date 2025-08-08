@@ -639,7 +639,7 @@ a.icon-btn:hover i {
     z-index: 1000;
     animation: fadeIn 0.2s;
     overflow-y: auto;
-    padding: 20px 0;
+    padding: 20px;
 }
 
 .modal-content {
@@ -647,7 +647,7 @@ a.icon-btn:hover i {
     border-radius: 12px;
     width: 90%;
     max-width: 500px;
-    margin: 50px auto;
+    margin: 20px auto;
     box-shadow: var(--shadow-lg);
     animation: slideIn 0.2s;
     position: relative;
@@ -1077,7 +1077,7 @@ input[type="checkbox"]:hover {
     
     .modal-content {
         width: calc(100% - 20px);
-        margin: 10px auto;
+        margin: 10px;
         border-radius: 12px;
         max-height: calc(100vh - 20px);
         max-width: none;
