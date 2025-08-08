@@ -82,11 +82,15 @@ async def process_print_job(job: PrintJob) -> bool:
     try:
         logger.info(f"Processing job {job.id}")
         
-        # Notify server that job is being processed
-        await ws_client.send_message("job_status", {
-            "job_id": job.id,
-            "status": "processing"
-        })
+        # Check if this is a test print (test prints don't have server tracking)
+        is_test_print = getattr(job, 'is_test_print', False)
+        
+        # Only notify server for non-test prints
+        if not is_test_print:
+            await ws_client.send_message("job_status", {
+                "job_id": job.id,
+                "status": "processing"
+            })
         
         zpl_content = ""
         error_type = None
@@ -104,26 +108,33 @@ async def process_print_job(job: PrintJob) -> bool:
             error_message = f"Failed to download ZPL: {str(e)}"
             logger.error(error_message)
             
-            await ws_client.send_message("job_complete", {
-                "job_id": job.id,
-                "status": "failed",
-                "error_type": error_type,
-                "error_message": error_message
-            })
+            if not is_test_print:
+                await ws_client.send_message("job_complete", {
+                    "job_id": job.id,
+                    "status": "failed",
+                    "error_type": error_type,
+                    "error_message": error_message
+                })
             return False
         
-        # Check printer connection
+        # Check printer connection (reconnect if needed)
         if not printer.is_connected:
-            error_type = "printer_disconnected"
-            error_message = "Printer is not connected"
-            
-            await ws_client.send_message("job_complete", {
-                "job_id": job.id,
-                "status": "failed",
-                "error_type": error_type,
-                "error_message": error_message
-            })
-            return False
+            logger.info("Printer not connected, attempting to reconnect...")
+            if not printer.connect():
+                error_type = "printer_disconnected"
+                error_message = "Printer is not connected and reconnection failed"
+                logger.error(error_message)
+                
+                if not is_test_print:
+                    await ws_client.send_message("job_complete", {
+                        "job_id": job.id,
+                        "status": "failed",
+                        "error_type": error_type,
+                        "error_message": error_message
+                    })
+                return False
+            else:
+                logger.info("Printer reconnected successfully")
         
         logger.info(f"Sending ZPL to printer for job {job.id}, content length: {len(zpl_content)}")
         success = printer.print_zpl(zpl_content)
@@ -132,10 +143,11 @@ async def process_print_job(job: PrintJob) -> bool:
         if success:
             print_queue.complete_job(job.id, success=True)
             logger.info(f"Job {job.id} completed successfully")
-            await ws_client.send_message("job_complete", {
-                "job_id": job.id,
-                "status": "completed"
-            })
+            if not is_test_print:
+                await ws_client.send_message("job_complete", {
+                    "job_id": job.id,
+                    "status": "completed"
+                })
             return True
         else:
             # Determine error type
@@ -143,13 +155,14 @@ async def process_print_job(job: PrintJob) -> bool:
             error_message = "Print failed"
             logger.error(f"Job {job.id} failed to print")
             
-            # Send failure status to server
-            await ws_client.send_message("job_complete", {
-                "job_id": job.id,
-                "status": "failed",
-                "error_type": error_type,
-                "error_message": error_message
-            })
+            # Send failure status to server for non-test prints
+            if not is_test_print:
+                await ws_client.send_message("job_complete", {
+                    "job_id": job.id,
+                    "status": "failed",
+                    "error_type": error_type,
+                    "error_message": error_message
+                })
             
             print_queue.complete_job(job.id, success=False, error_message=error_message)
             return False
@@ -198,6 +211,7 @@ async def handle_remote_print(print_data: Dict[str, Any]):
         zpl_url = print_data.get("zpl_url")
         zpl_raw = print_data.get("zpl_raw")
         priority = print_data.get("priority", 5)
+        is_test_print = print_data.get("is_test_print", False)
         
         # Create a print job from the data
         job_data = {
@@ -211,6 +225,8 @@ async def handle_remote_print(print_data: Dict[str, Any]):
             job_data["id"] = job_id
         
         job = PrintJob(**job_data)
+        # Store test print flag on the job
+        job.is_test_print = is_test_print
         
         # If this is a queued job from server, acknowledge receipt
         if job_id:

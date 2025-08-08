@@ -599,6 +599,9 @@ async def send_test_print_to_pi(
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
+        # Mark this as a test print
+        print_data["is_test_print"] = True
+        
         # Send print command through WebSocket if connected
         if connection_manager.is_connected(pi_id):
             success = await connection_manager.send_command(
