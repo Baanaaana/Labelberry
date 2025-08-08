@@ -373,9 +373,14 @@ function createPrinterItem(pi) {
                 </div>
             </div>
             <div class="printer-actions">
-                <button class="printer-btn primary" onclick="showPrintModal('${pi.id}', '${pi.friendly_name}')">
-                    <i data-lucide="printer"></i> Test
-                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="printer-btn primary" onclick="showPrintModal('${pi.id}', '${pi.friendly_name}')">
+                        <i data-lucide="printer"></i> Test Print
+                    </button>
+                    <button class="printer-btn" onclick="copyCurlCommand('${pi.id}', '${pi.friendly_name}', ${pi.label_size_id || 'null'})" title="Copy cURL command for this printer">
+                        <i data-lucide="terminal"></i> Copy cURL
+                    </button>
+                </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="printer-btn" onclick="showEditModal('${pi.id}')">
                         <i data-lucide="edit-2"></i> Edit
@@ -896,6 +901,99 @@ function updateFilterCount(filteredCount, totalCount) {
 // Legacy function for backward compatibility
 function searchPrinters(searchTerm) {
     filterPrinters();
+}
+
+// Copy cURL command for a specific printer
+async function copyCurlCommand(printerId, printerName, labelSizeId) {
+    try {
+        // Get the oldest API key
+        const keysResponse = await fetch('/api/keys');
+        const keysData = await keysResponse.json();
+        
+        if (!keysData.success || !keysData.data.keys || keysData.data.keys.length === 0) {
+            showAlert('No API keys found. Please create one in Settings → API Keys', 'warning');
+            return;
+        }
+        
+        // Sort by created_at to get the oldest key
+        const keys = keysData.data.keys.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const oldestKey = keys[0].key;
+        
+        // Get label size details if one is set
+        let zplContent = '';
+        const labelSize = labelSizes.find(size => size.id === labelSizeId);
+        
+        if (labelSize) {
+            // Generate ZPL based on label size
+            if (labelSize.name.toLowerCase().includes('small') || (labelSize.width_mm <= 60 && labelSize.height_mm <= 40)) {
+                // Small label (57mm x 32mm or similar)
+                zplContent = `^XA
+^PW448
+^LL252
+^FO20,20^A0N,25,25^FDLabelBerry API Test^FS
+^FO20,50^A0N,20,20^FD${labelSize.width_mm}mm x ${labelSize.height_mm}mm^FS
+^FO20,80^GB408,1,2^FS
+^FO20,90^A0N,18,18^FDPrinter: ${printerName}^FS
+^FO20,115^A0N,18,18^FDDate: ${new Date().toLocaleDateString()}^FS
+^FO20,140^A0N,18,18^FDTime: ${new Date().toLocaleTimeString()}^FS
+^FO20,170^BY2,3,50^BCN,50,Y,N,N^FD123456789^FS
+^XZ`;
+            } else {
+                // Large label (102mm x 150mm or similar)
+                zplContent = `^XA
+^PW812
+^LL1218
+^FO50,50^A0N,40,40^FDLabelBerry API Test^FS
+^FO50,100^A0N,30,30^FD${labelSize.width_mm}mm x ${labelSize.height_mm}mm^FS
+^FO50,150^GB712,2,2^FS
+^FO50,170^A0N,25,25^FDPrinter: ${printerName}^FS
+^FO50,210^A0N,25,25^FDDate: ${new Date().toLocaleDateString()}^FS
+^FO50,250^A0N,25,25^FDTime: ${new Date().toLocaleTimeString()}^FS
+^FO50,350^BY3,3,100^BCN,100,Y,N,N^FD987654321^FS
+^XZ`;
+            }
+        } else {
+            // Default ZPL if no label size is set
+            zplContent = `^XA
+^FO50,50^A0N,30,30^FDLabelBerry API Test^FS
+^FO50,100^A0N,25,25^FDPrinter: ${printerName}^FS
+^FO50,150^A0N,20,20^FDNo Label Size Configured^FS
+^FO50,200^BY2,3,50^BCN,50,Y,N,N^FD123456789^FS
+^XZ`;
+        }
+        
+        // Get base URL from settings or use current origin
+        const baseUrl = dashboardSettings.baseUrl || window.location.origin;
+        
+        // Generate the cURL command
+        const curlCommand = `curl -X POST ${baseUrl}/api/pis/${printerId}/print \\
+  -H "Authorization: Bearer ${oldestKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "zpl_raw": "${zplContent.replace(/\n/g, '\\n').replace(/"/g, '\\"')}"
+  }'`;
+        
+        // Copy to clipboard
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(curlCommand);
+            showAlert('cURL command copied to clipboard!', 'success');
+        } else {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = curlCommand;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showAlert('cURL command copied to clipboard!', 'success');
+        }
+        
+    } catch (error) {
+        console.error('Error generating cURL command:', error);
+        showAlert('Failed to generate cURL command', 'error');
+    }
 }
 
 // Switch print tab
