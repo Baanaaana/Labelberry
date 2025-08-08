@@ -185,12 +185,17 @@ async def handle_remote_print(print_data: Dict[str, Any]):
         priority = print_data.get("priority", 5)
         
         # Create a print job from the data
-        job = PrintJob(
-            id=job_id if job_id else None,  # Use server job ID if provided
-            pi_id=config.device_id,
-            zpl_source=zpl_url or zpl_raw or "",
-            priority=priority
-        )
+        job_data = {
+            "pi_id": config.device_id,
+            "zpl_source": zpl_url or zpl_raw or "",
+            "priority": priority
+        }
+        
+        # Only add id if provided by server
+        if job_id:
+            job_data["id"] = job_id
+        
+        job = PrintJob(**job_data)
         
         # If this is a queued job from server, acknowledge receipt
         if job_id:
