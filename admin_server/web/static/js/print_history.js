@@ -469,20 +469,61 @@ async function loadAvailablePrinters(job) {
         const data = await response.json();
         
         if (data.success && data.data.pis) {
-            // Filter only online printers
-            const onlinePrinters = data.data.pis.filter(pi => pi.status === 'online');
+            // Find the original printer to get its label size
+            const originalPrinter = data.data.pis.find(pi => pi.id === job.pi_id);
+            const originalLabelSizeId = originalPrinter?.label_size_id;
             
-            if (onlinePrinters.length > 0) {
-                onlinePrinters.forEach(pi => {
-                    const option = document.createElement('option');
-                    option.value = pi.id;
-                    option.textContent = `${pi.friendly_name} (${pi.status})`;
-                    // If this was the original printer, mark it
-                    if (pi.id === job.pi_id) {
-                        option.textContent += ' - Original';
-                    }
-                    select.appendChild(option);
-                });
+            // Filter printers: online AND same label size
+            let compatiblePrinters = data.data.pis.filter(pi => {
+                // Must be online
+                if (pi.status !== 'online') return false;
+                
+                // If original printer has no label size configured, only match printers with no label size
+                if (!originalLabelSizeId) {
+                    return !pi.label_size_id;
+                }
+                
+                // Match the label size
+                return pi.label_size_id === originalLabelSizeId;
+            });
+            
+            if (compatiblePrinters.length > 0) {
+                // Show label size info if available
+                let labelSizeInfo = '';
+                if (originalPrinter?.label_size) {
+                    labelSizeInfo = ` (${originalPrinter.label_size.name})`;
+                }
+                
+                // Add a descriptive option group label
+                if (labelSizeInfo) {
+                    const optGroup = document.createElement('optgroup');
+                    optGroup.label = `Printers with label size${labelSizeInfo}`;
+                    
+                    compatiblePrinters.forEach(pi => {
+                        const option = document.createElement('option');
+                        option.value = pi.id;
+                        option.textContent = pi.friendly_name;
+                        // If this was the original printer, mark it
+                        if (pi.id === job.pi_id) {
+                            option.textContent += ' (Original)';
+                        }
+                        optGroup.appendChild(option);
+                    });
+                    
+                    select.appendChild(optGroup);
+                } else {
+                    // No label size info, just add printers directly
+                    compatiblePrinters.forEach(pi => {
+                        const option = document.createElement('option');
+                        option.value = pi.id;
+                        option.textContent = pi.friendly_name;
+                        // If this was the original printer, mark it
+                        if (pi.id === job.pi_id) {
+                            option.textContent += ' (Original)';
+                        }
+                        select.appendChild(option);
+                    });
+                }
                 
                 // Enable button when printer is selected
                 select.onchange = () => {
@@ -491,7 +532,9 @@ async function loadAvailablePrinters(job) {
             } else {
                 const option = document.createElement('option');
                 option.value = "";
-                option.textContent = "No printers online";
+                option.textContent = originalLabelSizeId 
+                    ? "No online printers with matching label size" 
+                    : "No compatible printers online";
                 option.disabled = true;
                 select.appendChild(option);
             }

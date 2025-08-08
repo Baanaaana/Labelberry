@@ -89,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.1"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.3"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -735,9 +735,9 @@ async def reprint_job(
             id=str(uuid.uuid4()),
             pi_id=pi_id,
             status=PrintJobStatus.QUEUED,
+            zpl_source=zpl_url if zpl_url else "raw",  # Required field
             source="reprint",
-            created_at=datetime.now(timezone.utc),
-            printer_name=pi.friendly_name
+            created_at=datetime.now(timezone.utc)
         )
         
         # Save job to database with ZPL content
