@@ -217,7 +217,8 @@ async function loadDashboard() {
         
         if (pisData.success) {
             currentPis = pisData.data.pis;
-            renderPrinters(currentPis);
+            // Apply filters instead of rendering all printers
+            filterPrinters();
         }
     } catch (error) {
         console.error('Error loading dashboard:', error);
@@ -235,7 +236,7 @@ function updateStats(stats) {
 
 
 // Render printer cards
-function renderPrinters(pis) {
+function renderPrinters(pis, isFiltered = false) {
     const list = document.getElementById('printers-list');
     
     if (!list) {
@@ -244,13 +245,40 @@ function renderPrinters(pis) {
     }
     
     if (pis.length === 0) {
-        list.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #6c757d;">
-                <i data-lucide="printer" style="width: 48px; height: 48px; margin: 0 auto 16px;"></i>
-                <p style="margin: 0; font-size: 16px; font-weight: 500;">No printers registered yet</p>
-                <p style="margin: 8px 0 0; font-size: 14px;">Click "Add Printer" to add your first printer</p>
-            </div>
-        `;
+        // Check if we're showing filtered results or if there are actually no printers
+        const hasActiveFilters = isFiltered || 
+            document.querySelector('.search-input').value || 
+            document.getElementById('status-filter').value || 
+            document.getElementById('label-size-filter').value;
+        
+        if (hasActiveFilters) {
+            // No results due to filters
+            list.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #6c757d;">
+                    <i data-lucide="filter-x" style="width: 48px; height: 48px; margin: 0 auto 16px;"></i>
+                    <p style="margin: 0; font-size: 16px; font-weight: 500;">No printers match your filters</p>
+                    <p style="margin: 8px 0 0; font-size: 14px;">Try adjusting your filters or <a href="#" onclick="clearFilters(); return false;" style="color: var(--primary-color);">clear all filters</a></p>
+                </div>
+            `;
+        } else if (currentPis.length === 0) {
+            // No printers registered at all
+            list.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #6c757d;">
+                    <i data-lucide="printer" style="width: 48px; height: 48px; margin: 0 auto 16px;"></i>
+                    <p style="margin: 0; font-size: 16px; font-weight: 500;">No printers registered yet</p>
+                    <p style="margin: 8px 0 0; font-size: 14px;">Click "Add Printer" to add your first printer</p>
+                </div>
+            `;
+        } else {
+            // This shouldn't happen, but handle it gracefully
+            list.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #6c757d;">
+                    <i data-lucide="alert-circle" style="width: 48px; height: 48px; margin: 0 auto 16px;"></i>
+                    <p style="margin: 0; font-size: 16px; font-weight: 500;">Unable to display printers</p>
+                    <p style="margin: 8px 0 0; font-size: 14px;">Please refresh the page</p>
+                </div>
+            `;
+        }
         lucide.createIcons({
         attrs: {
             width: 20,
@@ -837,7 +865,9 @@ function filterPrinters() {
         return matchesSearch && matchesStatus && matchesLabelSize;
     });
     
-    renderPrinters(filtered);
+    // Pass true as isFiltered flag when filters are active
+    const hasFilters = searchTerm || statusFilter || labelSizeFilter;
+    renderPrinters(filtered, hasFilters);
     
     // Update filter count display
     updateFilterCount(filtered.length, currentPis.length);
