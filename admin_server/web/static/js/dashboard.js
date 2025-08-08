@@ -1052,7 +1052,7 @@ async function copyCurlCommand(printerId, printerName, labelSizeId) {
         
         // Generate the cURL command with API key placeholder
         const curlCommand = `curl -X POST ${baseUrl}/api/pis/${printerId}/print \\
-  -H "X-API-Key: ${apiKeyPlaceholder}" \\
+  -H "Authorization: Bearer ${apiKeyPlaceholder}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "zpl_raw": "${zplContent.replace(/\n/g, '\\n').replace(/"/g, '\\"')}"
