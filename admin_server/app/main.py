@@ -88,7 +88,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "13.5"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "13.6"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -705,6 +705,61 @@ async def print_history_page(request: Request):
         "request": request,
         "user": request.session["user"]
     })
+
+
+@app.post("/api/generate-label-preview")
+async def generate_label_preview(
+    request: Request,
+    _: dict = Depends(require_login)
+):
+    """Generate label preview using Labelary API"""
+    try:
+        # Get ZPL content from request body
+        body = await request.body()
+        zpl_content = body.decode('utf-8')
+        
+        # Labelary API parameters
+        dpmm = 8  # 203 dpi (8 dots per mm)
+        width = 4  # 4 inches wide
+        height = 6  # 6 inches tall
+        
+        # Make request to Labelary API
+        response = requests.post(
+            f"https://api.labelary.com/v1/printers/{dpmm}dpmm/labels/{width}x{height}/0/",
+            data=zpl_content,
+            headers={
+                'Accept': 'image/png',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            # Return the image directly
+            from fastapi.responses import Response
+            return Response(
+                content=response.content,
+                media_type="image/png",
+                headers={
+                    "Cache-Control": "public, max-age=3600"
+                }
+            )
+        else:
+            # Return error message
+            error_text = response.text
+            if 'ERROR' in error_text:
+                raise HTTPException(status_code=400, detail=error_text)
+            else:
+                raise HTTPException(status_code=response.status_code, detail="Failed to generate preview")
+    
+    except requests.RequestException as e:
+        logger.error(f"Labelary API request failed: {e}")
+        raise HTTPException(status_code=503, detail="Preview service unavailable")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate label preview: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/jobs/{job_id}", response_model=ApiResponse)

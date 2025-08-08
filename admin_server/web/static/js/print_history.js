@@ -278,23 +278,17 @@ async function viewJobDetails(jobId) {
     }), 10);
 }
 
-// Generate label preview using Labelary API
+// Generate label preview using Labelary API via proxy
 async function generateLabelPreview(zplContent) {
     const previewContainer = document.getElementById('label-preview');
     if (!previewContainer) return;
     
     try {
-        // Labelary API parameters
-        const dpmm = 8; // 203 dpi (8 dots per mm)
-        const width = 4; // 4 inches wide
-        const height = 6; // 6 inches tall (will auto-crop)
-        
-        // Make request to Labelary API
-        const response = await fetch(`https://api.labelary.com/v1/printers/${dpmm}dpmm/labels/${width}x${height}/0/`, {
+        // Use our proxy endpoint to avoid CORS issues
+        const response = await fetch('/api/generate-label-preview', {
             method: 'POST',
             headers: {
-                'Accept': 'image/png',
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'text/plain'
             },
             body: zplContent
         });
@@ -311,12 +305,19 @@ async function generateLabelPreview(zplContent) {
             `;
         } else {
             // Try to get error message
-            const errorText = await response.text();
             let errorMessage = 'Failed to generate preview';
             
-            // Parse Labelary error if possible
-            if (errorText.includes('ERROR')) {
-                errorMessage = errorText;
+            try {
+                const errorData = await response.json();
+                if (errorData.detail) {
+                    errorMessage = errorData.detail;
+                }
+            } catch {
+                // If not JSON, try text
+                const errorText = await response.text();
+                if (errorText) {
+                    errorMessage = errorText;
+                }
             }
             
             previewContainer.innerHTML = `
@@ -341,7 +342,7 @@ async function generateLabelPreview(zplContent) {
             <div class="preview-error">
                 <i data-lucide="alert-circle"></i>
                 <p>Could not generate preview</p>
-                <small>Network error or CORS issue</small>
+                <small>Network error</small>
             </div>
         `;
         
