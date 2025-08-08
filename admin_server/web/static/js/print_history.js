@@ -180,7 +180,7 @@ function changePage(direction) {
 }
 
 // View job details
-function viewJobDetails(jobId) {
+async function viewJobDetails(jobId) {
     const job = allJobs.find(j => j.id === jobId);
     if (!job) return;
     
@@ -192,6 +192,11 @@ function viewJobDetails(jobId) {
     
     // Show/hide copy button based on ZPL content
     copyBtn.style.display = (job.zpl_content || job.zpl_url) ? 'inline-flex' : 'none';
+    
+    // Generate label preview if ZPL content is available
+    if (job.zpl_content) {
+        generateLabelPreview(job.zpl_content);
+    }
     
     // Format job details
     details.innerHTML = `
@@ -233,10 +238,21 @@ function viewJobDetails(jobId) {
         </div>
         
         ${job.zpl_content ? `
-        <div class="zpl-section">
-            <h3>ZPL Content</h3>
-            <div class="zpl-content">
-                <pre>${escapeHtml(job.zpl_content)}</pre>
+        <div class="zpl-preview-container">
+            <div class="zpl-section zpl-code-section">
+                <h3>ZPL Content</h3>
+                <div class="zpl-content">
+                    <pre>${escapeHtml(job.zpl_content)}</pre>
+                </div>
+            </div>
+            <div class="zpl-section zpl-preview-section">
+                <h3>Label Preview</h3>
+                <div id="label-preview" class="label-preview">
+                    <div class="preview-loading">
+                        <i data-lucide="loader-2" class="spinner"></i>
+                        <p>Generating preview...</p>
+                    </div>
+                </div>
             </div>
         </div>
         ` : ''}
@@ -252,6 +268,91 @@ function viewJobDetails(jobId) {
     `;
     
     modal.style.display = 'block';
+    
+    // Re-initialize Lucide icons for the modal content
+    setTimeout(() => lucide.createIcons({
+        attrs: {
+            width: 20,
+            height: 20
+        }
+    }), 10);
+}
+
+// Generate label preview using Labelary API
+async function generateLabelPreview(zplContent) {
+    const previewContainer = document.getElementById('label-preview');
+    if (!previewContainer) return;
+    
+    try {
+        // Labelary API parameters
+        const dpmm = 8; // 203 dpi (8 dots per mm)
+        const width = 4; // 4 inches wide
+        const height = 6; // 6 inches tall (will auto-crop)
+        
+        // Make request to Labelary API
+        const response = await fetch(`https://api.labelary.com/v1/printers/${dpmm}dpmm/labels/${width}x${height}/0/`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'image/png',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: zplContent
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const imageUrl = URL.createObjectURL(blob);
+            
+            previewContainer.innerHTML = `
+                <img src="${imageUrl}" alt="Label Preview" class="preview-image" />
+                <div class="preview-info">
+                    <small>Preview rendered at 203 dpi</small>
+                </div>
+            `;
+        } else {
+            // Try to get error message
+            const errorText = await response.text();
+            let errorMessage = 'Failed to generate preview';
+            
+            // Parse Labelary error if possible
+            if (errorText.includes('ERROR')) {
+                errorMessage = errorText;
+            }
+            
+            previewContainer.innerHTML = `
+                <div class="preview-error">
+                    <i data-lucide="alert-circle"></i>
+                    <p>Could not generate preview</p>
+                    <small>${escapeHtml(errorMessage)}</small>
+                </div>
+            `;
+            
+            // Re-initialize icons
+            lucide.createIcons({
+                attrs: {
+                    width: 20,
+                    height: 20
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Failed to generate label preview:', error);
+        previewContainer.innerHTML = `
+            <div class="preview-error">
+                <i data-lucide="alert-circle"></i>
+                <p>Could not generate preview</p>
+                <small>Network error or CORS issue</small>
+            </div>
+        `;
+        
+        // Re-initialize icons
+        lucide.createIcons({
+            attrs: {
+                width: 20,
+                height: 20
+            }
+        });
+    }
 }
 
 // Close job modal
