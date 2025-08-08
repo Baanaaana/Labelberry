@@ -310,6 +310,16 @@
     font-size: 12px;
 }
 
+.preview-help {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(66, 99, 235, 0.1);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--primary-color);
+    line-height: 1.4;
+}
+
 /* Reprint Controls */
 .reprint-controls {
     display: flex;

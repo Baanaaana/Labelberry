@@ -89,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "15.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "15.1"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -890,7 +890,23 @@ async def generate_label_preview(
     try:
         # Get ZPL content from request body
         body = await request.body()
-        zpl_content = body.decode('utf-8')
+        zpl_content = body.decode('utf-8').strip()
+        
+        # Basic ZPL validation
+        if not zpl_content:
+            raise HTTPException(status_code=400, detail="Empty ZPL content")
+        
+        # Check for basic ZPL structure
+        if not zpl_content.startswith('^XA'):
+            raise HTTPException(status_code=400, detail="Invalid ZPL - must start with ^XA")
+        
+        if not zpl_content.endswith('^XZ'):
+            raise HTTPException(status_code=400, detail="Invalid ZPL - must end with ^XZ")
+        
+        # Check if there's actual content between XA and XZ
+        content_between = zpl_content[3:-3].strip()
+        if not content_between or len(content_between) < 5:
+            raise HTTPException(status_code=400, detail="ZPL appears to be empty - no commands between ^XA and ^XZ")
         
         # Labelary API parameters
         dpmm = 8  # 203 dpi (8 dots per mm)
@@ -909,22 +925,33 @@ async def generate_label_preview(
         )
         
         if response.status_code == 200:
-            # Return the image directly
-            from fastapi.responses import Response
-            return Response(
-                content=response.content,
-                media_type="image/png",
-                headers={
-                    "Cache-Control": "public, max-age=3600"
-                }
-            )
+            # Check if we actually got an image
+            if len(response.content) > 0 and response.headers.get('content-type', '').startswith('image'):
+                # Return the image directly
+                from fastapi.responses import Response
+                return Response(
+                    content=response.content,
+                    media_type="image/png",
+                    headers={
+                        "Cache-Control": "public, max-age=3600"
+                    }
+                )
+            else:
+                # Empty response or not an image
+                raise HTTPException(status_code=400, detail="No label image generated - check ZPL syntax")
         else:
             # Return error message
             error_text = response.text
-            if 'ERROR' in error_text:
-                raise HTTPException(status_code=400, detail=error_text)
+            
+            # Common Labelary errors
+            if 'Requested 1st label but ZPL generated no labels' in error_text:
+                raise HTTPException(status_code=400, detail="ZPL code did not generate any labels - may be incomplete or invalid")
+            elif 'ERROR' in error_text:
+                # Extract just the error message
+                error_msg = error_text.replace('ERROR: ', '').strip()
+                raise HTTPException(status_code=400, detail=f"ZPL Error: {error_msg}")
             else:
-                raise HTTPException(status_code=response.status_code, detail="Failed to generate preview")
+                raise HTTPException(status_code=response.status_code, detail=f"Preview generation failed: {error_text[:200]}")
     
     except requests.RequestException as e:
         logger.error(f"Labelary API request failed: {e}")

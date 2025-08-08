@@ -457,11 +457,22 @@ async function generateLabelPreview(zplContent) {
                 }
             }
             
+            // Check if it's a known ZPL issue
+            let helpText = '';
+            if (errorMessage.includes('no labels') || errorMessage.includes('empty')) {
+                helpText = 'The ZPL code may be incomplete or missing print commands.';
+            } else if (errorMessage.includes('start with ^XA')) {
+                helpText = 'ZPL code must begin with ^XA command.';
+            } else if (errorMessage.includes('end with ^XZ')) {
+                helpText = 'ZPL code must end with ^XZ command.';
+            }
+            
             previewContainer.innerHTML = `
                 <div class="preview-error">
                     <i data-lucide="alert-circle"></i>
                     <p>Could not generate preview</p>
                     <small>${escapeHtml(errorMessage)}</small>
+                    ${helpText ? `<div class="preview-help">${helpText}</div>` : ''}
                 </div>
             `;
             
