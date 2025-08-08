@@ -239,12 +239,12 @@ class QueueManager:
             logger.error(f"Error checking retry readiness: {e}")
             return False
     
-    def add_job_to_queue(self, job: PrintJob) -> bool:
+    def add_job_to_queue(self, job: PrintJob, zpl_content: str = None, zpl_url: str = None) -> bool:
         """Add a new job to the queue"""
         try:
             job.status = PrintJobStatus.QUEUED
             job.queued_at = datetime.utcnow()
-            return self.database.queue_print_job(job)
+            return self.database.queue_print_job(job, zpl_content, zpl_url)
         except Exception as e:
             logger.error(f"Error adding job to queue: {e}")
             return False

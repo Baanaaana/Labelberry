@@ -3,7 +3,7 @@ import json
 import logging
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -257,14 +257,87 @@ class Database:
                 cursor.execute("ALTER TABLE print_jobs ADD COLUMN source TEXT DEFAULT 'api'")
                 logger.info("Added source column to print_jobs table")
             
+            if 'zpl_content' not in print_jobs_columns:
+                cursor.execute("ALTER TABLE print_jobs ADD COLUMN zpl_content TEXT")
+                logger.info("Added zpl_content column to print_jobs table")
+            
+            if 'zpl_url' not in print_jobs_columns:
+                cursor.execute("ALTER TABLE print_jobs ADD COLUMN zpl_url TEXT")
+                logger.info("Added zpl_url column to print_jobs table")
+            
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pis_api_key ON pis (api_key)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_pi_id ON print_jobs (pi_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_status ON print_jobs (status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_priority ON print_jobs (priority DESC)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_created_at ON print_jobs (created_at)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_pi_id ON metrics (pi_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_error_logs_pi_id ON error_logs (pi_id)")
             
         logger.info(f"Database initialized at {self.db_path}")
+        
+        # Clean up old print jobs on startup
+        self.cleanup_old_print_jobs()
+    
+    def cleanup_old_print_jobs(self):
+        """Delete print jobs older than 48 hours"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cutoff_time = datetime.utcnow() - timedelta(hours=48)
+                cursor.execute("""
+                    DELETE FROM print_jobs 
+                    WHERE created_at < ?
+                """, (cutoff_time,))
+                deleted_count = cursor.rowcount
+                conn.commit()
+                if deleted_count > 0:
+                    logger.info(f"Cleaned up {deleted_count} print jobs older than 48 hours")
+        except Exception as e:
+            logger.error(f"Failed to cleanup old print jobs: {e}")
+    
+    def get_print_history(self, pi_id: str = None, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+        """Get print job history with ZPL content"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                if pi_id:
+                    cursor.execute("""
+                        SELECT pj.*, p.friendly_name as printer_name
+                        FROM print_jobs pj
+                        LEFT JOIN pis p ON pj.pi_id = p.id
+                        WHERE pj.pi_id = ?
+                        ORDER BY pj.created_at DESC
+                        LIMIT ? OFFSET ?
+                    """, (pi_id, limit, offset))
+                else:
+                    cursor.execute("""
+                        SELECT pj.*, p.friendly_name as printer_name
+                        FROM print_jobs pj
+                        LEFT JOIN pis p ON pj.pi_id = p.id
+                        ORDER BY pj.created_at DESC
+                        LIMIT ? OFFSET ?
+                    """, (limit, offset))
+                
+                jobs = []
+                for row in cursor.fetchall():
+                    job_dict = dict(row)
+                    # Ensure timestamps are properly formatted
+                    for field in ['created_at', 'queued_at', 'sent_at', 'started_at', 'completed_at']:
+                        if job_dict.get(field):
+                            try:
+                                dt = datetime.fromisoformat(job_dict[field])
+                                if dt.tzinfo is None:
+                                    dt = dt.replace(tzinfo=timezone.utc)
+                                job_dict[field] = dt.isoformat()
+                            except:
+                                pass
+                    jobs.append(job_dict)
+                
+                return jobs
+        except Exception as e:
+            logger.error(f"Failed to get print history: {e}")
+            return []
     
     def get_label_sizes(self) -> List[Dict[str, Any]]:
         """Get all label sizes"""
@@ -584,14 +657,14 @@ class Database:
             logger.error(f"Failed to get Pi config: {e}")
             return None
     
-    def save_print_job(self, job: PrintJob):
+    def save_print_job(self, job: PrintJob, zpl_content: str = None, zpl_url: str = None):
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
                     INSERT OR REPLACE INTO print_jobs 
-                    (id, pi_id, status, zpl_source, created_at, started_at, completed_at, error_message, retry_count, source, priority)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, pi_id, status, zpl_source, created_at, started_at, completed_at, error_message, retry_count, source, priority, zpl_content, zpl_url)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     job.id,
                     job.pi_id,
@@ -603,7 +676,9 @@ class Database:
                     job.error_message,
                     job.retry_count,
                     getattr(job, 'source', 'api'),
-                    getattr(job, 'priority', 5)
+                    getattr(job, 'priority', 5),
+                    zpl_content,
+                    zpl_url
                 ))
         except Exception as e:
             logger.error(f"Failed to save print job: {e}")
@@ -1054,15 +1129,15 @@ class Database:
     
     # Queue Management Methods
     
-    def queue_print_job(self, job: PrintJob) -> bool:
+    def queue_print_job(self, job: PrintJob, zpl_content: str = None, zpl_url: str = None) -> bool:
         """Add a print job to the queue"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
                     INSERT INTO print_jobs 
-                    (id, pi_id, status, zpl_source, created_at, queued_at, priority, source, retry_count, max_retries)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, pi_id, status, zpl_source, created_at, queued_at, priority, source, retry_count, max_retries, zpl_content, zpl_url)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     job.id,
                     job.pi_id,
@@ -1073,7 +1148,9 @@ class Database:
                     job.priority,
                     job.source,
                     0,  # retry_count
-                    job.max_retries
+                    job.max_retries,
+                    zpl_content,
+                    zpl_url
                 ))
                 return True
         except Exception as e:

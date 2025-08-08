@@ -649,6 +649,11 @@ async function tryEndpoint(endpointId) {
                 case 'label-sizes':
                     response = await fetch('/api/label-sizes');
                     break;
+                case 'print-history':
+                    response = await fetch('/api/print-history?limit=10', {
+                        credentials: 'same-origin'
+                    });
+                    break;
                 case 'view-queue':
                     // Note: /api/queue endpoint doesn't exist yet, this is a placeholder
                     response = await fetch('/api/pis', {

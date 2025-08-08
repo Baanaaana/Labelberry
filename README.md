@@ -7,6 +7,7 @@ A Raspberry Pi-based label printing system for Zebra printers with centralized m
 - **REST API** for printing ZPL labels from URL or raw content
 - **Reliable print confirmation** - API waits for actual print completion (new!)
 - **Web Dashboard** for managing all printers from a single interface
+- **Print History** - Complete 48-hour history with ZPL content storage (new!)
 - **Real-time monitoring** via WebSocket connections
 - **Print queue management** with priority support and automatic retry
 - **API key authentication** for secure access
@@ -136,6 +137,64 @@ labelberry status                                # Check status
 labelberry test-print                           # Send test label
 labelberry queue list                           # View queue
 labelberry queue clear                          # Clear queue
+```
+
+## Print History
+
+The admin server maintains a comprehensive print history for all printers, automatically storing ZPL content and metadata for every print job.
+
+### Features
+- **48-hour retention** - Jobs are automatically deleted after 48 hours
+- **ZPL storage** - Complete ZPL content and URLs are stored for debugging
+- **Advanced filtering** - Filter by printer, status, and time range
+- **Job details** - View complete job information including errors and duration
+- **Copy functionality** - Easily copy ZPL content for reuse
+
+### Accessing Print History
+
+1. **Web Interface**: Navigate to Dashboard → Management Tools → Print History
+2. **API Endpoint**: `GET /api/print-history`
+
+### API Usage
+
+```bash
+# Get all print jobs from last 48 hours
+curl -X GET http://admin-server:8080/api/print-history \
+  -H "Cookie: session=YOUR_SESSION_COOKIE"
+
+# Get print jobs for specific printer
+curl -X GET "http://admin-server:8080/api/print-history?pi_id=PRINTER_ID" \
+  -H "Cookie: session=YOUR_SESSION_COOKIE"
+
+# Pagination
+curl -X GET "http://admin-server:8080/api/print-history?limit=50&offset=100" \
+  -H "Cookie: session=YOUR_SESSION_COOKIE"
+```
+
+### Response Format
+
+```json
+{
+  "success": true,
+  "message": "Print history retrieved",
+  "data": {
+    "jobs": [
+      {
+        "id": "abc-123",
+        "pi_id": "printer-uuid",
+        "printer_name": "Warehouse Printer 1",
+        "status": "completed",
+        "source": "api",
+        "zpl_content": "^XA^FO50,50^A0N,50,50^FDHello^FS^XZ",
+        "zpl_url": null,
+        "created_at": "2024-01-15T10:30:00Z",
+        "completed_at": "2024-01-15T10:30:02Z",
+        "error_message": null
+      }
+    ],
+    "total": 150
+  }
+}
 ```
 
 ## Configuration Files

@@ -88,7 +88,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "12.9"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "13.1"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -614,7 +614,11 @@ async def send_test_print_to_pi(
                 source="test",
                 status="pending"
             )
-            database.save_print_job(test_job)
+            database.save_print_job(
+                test_job,
+                zpl_content=print_data.get("zpl_raw"),
+                zpl_url=print_data.get("zpl_url")
+            )
             
             # Send with job_id so we can track completion
             test_print_data = {
@@ -669,6 +673,35 @@ async def send_test_print_to_pi(
     except Exception as e:
         logger.error(f"Failed to send test print: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/print-history", response_model=ApiResponse)
+async def get_print_history(
+    pi_id: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    _: dict = Depends(require_login)
+):
+    """Get print job history"""
+    try:
+        jobs = database.get_print_history(pi_id, limit, offset)
+        return ApiResponse(
+            success=True,
+            message="Print history retrieved",
+            data={"jobs": jobs, "total": len(jobs)}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get print history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/print-history")
+async def print_history_page(request: Request, current_user: str = Depends(require_login)):
+    """Print history page"""
+    return templates.TemplateResponse("print_history.html", {
+        "request": request,
+        "user": current_user
+    })
 
 
 @app.get("/api/jobs/{job_id}", response_model=ApiResponse)
@@ -849,7 +882,11 @@ async def send_print_to_pi(
                     )
         
         # Pi is offline or send failed - queue the job
-        if queue_manager.add_job_to_queue(job):
+        if queue_manager.add_job_to_queue(
+            job,
+            zpl_content=print_data.get("zpl_raw"),
+            zpl_url=print_data.get("zpl_url")
+        ):
             database.save_server_log(
                 "job_queued",
                 f"Print job queued for offline Pi '{pi.friendly_name}'",

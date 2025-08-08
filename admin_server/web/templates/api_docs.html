@@ -677,8 +677,76 @@ GET /api/jobs/abc-123
                 <!-- Job History Section -->
                 <section id="job-history" class="doc-section">
                     <h1>Job History & Tracking</h1>
-                    <p class="section-intro">Track the status and history of print jobs.</p>
+                    <p class="section-intro">Track the status and history of print jobs with complete ZPL content storage.</p>
 
+                    <!-- Print History (New) -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <div class="endpoint-title">
+                                <span class="method get">GET</span>
+                                <code class="endpoint-path">/api/print-history</code>
+                                <span class="auth-badge">Dashboard Auth</span>
+                            </div>
+                            <button class="try-btn" onclick="tryEndpoint('print-history')">
+                                <i data-lucide="play"></i> Try It
+                            </button>
+                        </div>
+                        
+                        <div class="endpoint-description">
+                            <p>Get comprehensive print history for all printers with ZPL content. Jobs are automatically deleted after 48 hours.</p>
+                        </div>
+
+                        <div class="endpoint-details" id="print-history-details" style="display: none;">
+                            <h4>Query Parameters</h4>
+                            <table class="params-table">
+                                <thead>
+                                    <tr>
+                                        <th>Parameter</th>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>pi_id</code></td>
+                                        <td>string</td>
+                                        <td>Filter by specific printer ID (optional)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>limit</code></td>
+                                        <td>integer</td>
+                                        <td>Number of jobs to return (default: 100)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>offset</code></td>
+                                        <td>integer</td>
+                                        <td>Pagination offset (default: 0)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <h4>Response Fields</h4>
+                            <ul>
+                                <li><strong>id:</strong> Unique job identifier</li>
+                                <li><strong>pi_id:</strong> Printer UUID</li>
+                                <li><strong>printer_name:</strong> Friendly name of the printer</li>
+                                <li><strong>status:</strong> Job status (queued, processing, completed, failed)</li>
+                                <li><strong>source:</strong> Job origin (api, test, broadcast)</li>
+                                <li><strong>zpl_content:</strong> Complete ZPL content if available</li>
+                                <li><strong>zpl_url:</strong> URL source if job was from URL</li>
+                                <li><strong>created_at:</strong> When job was created</li>
+                                <li><strong>completed_at:</strong> When job completed (if applicable)</li>
+                                <li><strong>error_message:</strong> Error details if failed</li>
+                            </ul>
+
+                            <div class="response-preview">
+                                <h4>Response</h4>
+                                <pre><code id="print-history-response">Sending request...</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Printer-specific Jobs -->
                     <div class="endpoint-card">
                         <div class="endpoint-header">
                             <div class="endpoint-title">
@@ -688,7 +756,7 @@ GET /api/jobs/abc-123
                         </div>
                         
                         <div class="endpoint-description">
-                            <p>Get print job history for a specific printer.</p>
+                            <p>Get print job history for a specific printer (legacy endpoint).</p>
                         </div>
 
                         <h4>Job Statuses</h4>
