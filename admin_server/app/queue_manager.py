@@ -127,18 +127,18 @@ class QueueManager:
                 logger.info(f"Job {job_id} completed successfully")
                 
             elif status == 'failed':
-                # Check if we should retry
-                should_retry = await self.should_retry_job(job, error_type)
+                # Don't auto-retry, mark as failed but keep for manual retry
+                self.database.update_job_status(job_id, 'failed', error_message, error_type)
                 
-                if should_retry:
-                    # Increment retry count and requeue
-                    self.database.increment_job_retry(job_id)
-                    self.database.update_job_status(job_id, 'queued', error_message, error_type)
-                    logger.info(f"Job {job_id} failed, requeueing for retry (attempt {job['retry_count'] + 1})")
+                # Check if job is older than 24 hours
+                from datetime import datetime, timedelta
+                job_age = datetime.utcnow() - job['created_at']
+                if job_age > timedelta(hours=24):
+                    logger.info(f"Job {job_id} is older than 24 hours, marking as expired")
+                    self.database.update_job_status(job_id, 'expired', error_message, error_type)
                 else:
-                    # Mark as permanently failed
-                    self.database.update_job_status(job_id, 'failed', error_message, error_type)
-                    logger.error(f"Job {job_id} permanently failed: {error_message}")
+                    hours_left = 24 - (job_age.total_seconds() / 3600)
+                    logger.info(f"Job {job_id} failed. Manual retry available for {hours_left:.1f} more hours.")
                     
         except Exception as e:
             logger.error(f"Error handling job result: {e}")

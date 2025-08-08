@@ -1227,7 +1227,7 @@ class Database:
                 cursor.execute("""
                     UPDATE print_jobs 
                     SET status = 'expired', completed_at = CURRENT_TIMESTAMP
-                    WHERE status = 'queued' 
+                    WHERE status IN ('queued', 'failed')
                     AND CAST(strftime('%s', created_at) AS INTEGER) < ?
                 """, (cutoff_time,))
                 return cursor.rowcount

@@ -1301,7 +1301,15 @@ function renderQueueTable(jobs) {
         }[job.status] || '#6b7280';
         
         const canCancel = ['queued', 'sent', 'pending'].includes(job.status);
-        const canRetry = job.status === 'failed';
+        
+        // Check if job can be retried (failed and less than 24 hours old)
+        let canRetry = false;
+        let hoursRemaining = 0;
+        if (job.status === 'failed' && job.created_at) {
+            const jobAge = (Date.now() - new Date(job.created_at).getTime()) / 1000 / 3600; // Age in hours
+            canRetry = jobAge < 24;
+            hoursRemaining = Math.max(0, 24 - jobAge);
+        }
         
         return `
             <tr style="border-bottom: 1px solid var(--border-color);">
@@ -1323,9 +1331,13 @@ function renderQueueTable(jobs) {
                             <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
                         </button>
                         ${canRetry ? `
-                            <button class="icon-btn" onclick="retryJobFromQueue('${job.id}')" title="Retry" style="padding: 4px; color: #fbbf24;">
+                            <button class="icon-btn" onclick="retryJobFromQueue('${job.id}')" title="Retry (${hoursRemaining.toFixed(1)}h remaining)" style="padding: 4px; color: #fbbf24;">
                                 <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
                             </button>
+                        ` : job.status === 'failed' ? `
+                            <span title="Retry window expired (>24h old)" style="padding: 4px; color: #6b7280;">
+                                <i data-lucide="clock" style="width: 16px; height: 16px;"></i>
+                            </span>
                         ` : ''}
                         ${canCancel ? `
                             <button class="icon-btn" onclick="cancelJobFromQueue('${job.id}')" title="Cancel" style="padding: 4px; color: #ef4444;">

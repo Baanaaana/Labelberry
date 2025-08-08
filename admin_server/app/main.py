@@ -88,7 +88,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "11.2"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "11.3"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -688,6 +688,66 @@ async def get_job_status(job_id: str, _: dict = Depends(require_login)):
         raise
     except Exception as e:
         logger.error(f"Failed to get job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/jobs/{job_id}/retry", response_model=ApiResponse)
+async def retry_failed_job(job_id: str, _: dict = Depends(require_login)):
+    """Manually retry a failed print job"""
+    try:
+        job = database.get_print_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Check if job is failed
+        if job['status'] not in ['failed', 'error']:
+            raise HTTPException(status_code=400, detail=f"Job is not in failed state (current: {job['status']})")
+        
+        # Check if job is within 24 hour retry window
+        from datetime import datetime, timedelta
+        job_created = datetime.fromisoformat(job['created_at']) if isinstance(job['created_at'], str) else job['created_at']
+        job_age = datetime.utcnow() - job_created
+        
+        if job_age > timedelta(hours=24):
+            raise HTTPException(status_code=400, detail="Job is older than 24 hours and cannot be retried")
+        
+        # Reset job to queued for retry
+        database.update_job_status(job_id, 'queued')
+        database.increment_job_retry(job_id)
+        
+        # If Pi is online, send immediately
+        pi_id = job['pi_id']
+        if connection_manager.is_connected(pi_id):
+            success = await connection_manager.send_command(
+                pi_id,
+                "print",
+                {
+                    "job_id": job_id,
+                    "zpl_raw": job['zpl_source'] if not job['zpl_source'].startswith('http') else None,
+                    "zpl_url": job['zpl_source'] if job['zpl_source'].startswith('http') else None,
+                    "priority": job.get('priority', 5)
+                }
+            )
+            
+            if success:
+                database.update_job_status(job_id, 'sent')
+                return ApiResponse(
+                    success=True,
+                    message="Job sent for retry",
+                    data={"job_id": job_id, "status": "sent"}
+                )
+        
+        # Pi offline, job will be sent when it comes online
+        return ApiResponse(
+            success=True,
+            message="Job queued for retry",
+            data={"job_id": job_id, "status": "queued"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retry job: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
