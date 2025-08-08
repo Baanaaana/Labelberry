@@ -220,6 +220,10 @@ class ConnectionManager:
         job_id = data.get("job_id")
         status = data.get("status")
         
+        # Skip if no job_id (test prints)
+        if not job_id:
+            return
+        
         # Update job status in database
         if status in ["pending", "processing"]:
             self.database.update_job_status(job_id, status)
@@ -236,6 +240,17 @@ class ConnectionManager:
         status = data.get("status")
         error_message = data.get("error_message")
         error_type = data.get("error_type")
+        
+        # Skip database update if no job_id (test prints)
+        if not job_id:
+            logger.info(f"Test print from Pi {pi_id} completed with status: {status}")
+            await self.broadcast_admin_update("job_complete", {
+                "pi_id": pi_id,
+                "job_id": None,
+                "status": status,
+                "is_test": True
+            })
+            return
         
         # Update job status in database
         if status == "completed":
