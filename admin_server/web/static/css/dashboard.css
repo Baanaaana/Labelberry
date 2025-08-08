@@ -1157,21 +1157,29 @@ input[type="checkbox"]:hover {
         max-width: 60%;
     }
     
-    /* Printer actions as 2x2 grid on mobile */
+    /* Printer actions as flex row on mobile */
     .printer-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+    }
+    
+    .printer-actions > div {
+        display: flex;
         gap: 8px;
     }
     
     .printer-btn {
-        padding: 12px;
+        width: 48px;
+        height: 48px;
+        padding: 0;
         border-radius: 8px;
+        display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 44px; /* Touch-friendly size */
-        gap: 0;
         position: relative;
+        flex-shrink: 0;
     }
     
     /* Hide text, show only icons on mobile */
@@ -1187,16 +1195,31 @@ input[type="checkbox"]:hover {
     }
     
     /* Special styling for Test Print button */
-    .printer-btn.btn-primary {
+    .printer-btn.primary {
         background: var(--primary-color);
         color: white;
         border-color: var(--primary-color);
-        font-weight: 500;
     }
     
-    .printer-btn.btn-secondary {
-        background: var(--bg-primary);
+    .printer-btn.primary i {
+        color: white;
+    }
+    
+    .printer-btn.curl {
+        background: #2d3748;
+        color: white;
+        border-color: #2d3748;
+    }
+    
+    .printer-btn.curl i {
+        color: white;
+    }
+    
+    /* Edit and Delete buttons */
+    .printer-btn:not(.primary):not(.curl) {
+        background: var(--bg-secondary);
         color: var(--text-primary);
+        border: 1px solid var(--border-color);
     }
     
     /* Panel improvements on mobile */
