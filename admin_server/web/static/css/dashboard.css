@@ -252,6 +252,38 @@ a.icon-btn:hover i {
     box-shadow: 0 0 0 3px rgba(66, 99, 235, 0.1);
 }
 
+/* Filter Controls */
+.filter-controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-select {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    height: 32px;
+    box-sizing: border-box;
+}
+
+.filter-select:hover {
+    border-color: var(--primary-color);
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(66, 99, 235, 0.1);
+}
+
 /* Action Buttons */
 .action-btn {
     width: 100%;

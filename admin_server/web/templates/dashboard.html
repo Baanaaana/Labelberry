@@ -130,10 +130,25 @@
                 <div class="panel-header">
                     <h2>Printers</h2>
                     <div class="panel-actions">
-                        <input type="text" class="search-input" placeholder="Search printers..." onkeyup="searchPrinters(this.value)">
+                        <input type="text" class="search-input" placeholder="Search printers..." onkeyup="filterPrinters()">
                     </div>
                 </div>
                 <div class="panel-content">
+                    <!-- Filter Controls -->
+                    <div class="filter-controls" style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                        <select id="status-filter" class="filter-select" onchange="filterPrinters()" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; background: var(--bg-primary);">
+                            <option value="">All Status</option>
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                        <select id="label-size-filter" class="filter-select" onchange="filterPrinters()" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; background: var(--bg-primary);">
+                            <option value="">All Label Sizes</option>
+                            <option value="none">No Label Size Set</option>
+                        </select>
+                        <button onclick="clearFilters()" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; background: var(--bg-primary); cursor: pointer; color: var(--text-secondary);">
+                            Clear Filters
+                        </button>
+                    </div>
                     <div id="printers-list" class="printers-list">
                         <!-- Printer items will be dynamically added here -->
                     </div>

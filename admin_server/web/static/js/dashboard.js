@@ -94,9 +94,33 @@ async function loadLabelSizes() {
         if (data.success) {
             labelSizes = data.data.sizes;
             updateLabelSizeDropdowns();
+            updateLabelSizeFilter(); // Update the filter dropdown
         }
     } catch (error) {
         console.error('Failed to load label sizes:', error);
+    }
+}
+
+// Update label size filter dropdown with available sizes
+function updateLabelSizeFilter() {
+    const filterSelect = document.getElementById('label-size-filter');
+    if (!filterSelect) return;
+    
+    // Keep the current selection
+    const currentValue = filterSelect.value;
+    
+    // Clear and rebuild options
+    filterSelect.innerHTML = `
+        <option value="">All Label Sizes</option>
+        ${labelSizes.map(size => 
+            `<option value="${size.id}">${size.name} (${size.width_mm}mm x ${size.height_mm}mm)</option>`
+        ).join('')}
+        <option value="none">No Label Size Set</option>
+    `;
+    
+    // Restore selection if it still exists
+    if (currentValue && filterSelect.querySelector(`option[value="${currentValue}"]`)) {
+        filterSelect.value = currentValue;
     }
 }
 
@@ -781,14 +805,65 @@ async function confirmDelete() {
 }
 
 
-// Search printers
-function searchPrinters(searchTerm) {
-    const filtered = currentPis.filter(pi => 
-        pi.friendly_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (pi.location && pi.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (pi.printer_model && pi.printer_model.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+// Filter printers based on search, status, and label size
+function filterPrinters() {
+    // Get filter values
+    const searchTerm = document.querySelector('.search-input').value.toLowerCase();
+    const statusFilter = document.getElementById('status-filter').value;
+    const labelSizeFilter = document.getElementById('label-size-filter').value;
+    
+    // Apply filters
+    const filtered = currentPis.filter(pi => {
+        // Search filter
+        const matchesSearch = !searchTerm || 
+            pi.friendly_name.toLowerCase().includes(searchTerm) ||
+            (pi.location && pi.location.toLowerCase().includes(searchTerm)) ||
+            (pi.printer_model && pi.printer_model.toLowerCase().includes(searchTerm));
+        
+        // Status filter
+        const matchesStatus = !statusFilter || pi.status === statusFilter;
+        
+        // Label size filter
+        let matchesLabelSize = true;
+        if (labelSizeFilter) {
+            if (labelSizeFilter === 'none') {
+                matchesLabelSize = !pi.label_size_id;
+            } else {
+                // Filter by label size ID
+                matchesLabelSize = pi.label_size_id && pi.label_size_id.toString() === labelSizeFilter;
+            }
+        }
+        
+        return matchesSearch && matchesStatus && matchesLabelSize;
+    });
+    
     renderPrinters(filtered);
+    
+    // Update filter count display
+    updateFilterCount(filtered.length, currentPis.length);
+}
+
+// Clear all filters
+function clearFilters() {
+    document.querySelector('.search-input').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('label-size-filter').value = '';
+    filterPrinters();
+}
+
+// Update filter count display
+function updateFilterCount(filteredCount, totalCount) {
+    const printersHeader = document.querySelector('.panel-header h2');
+    if (printersHeader && filteredCount !== totalCount) {
+        printersHeader.textContent = `Printers (${filteredCount} of ${totalCount})`;
+    } else if (printersHeader) {
+        printersHeader.textContent = 'Printers';
+    }
+}
+
+// Legacy function for backward compatibility
+function searchPrinters(searchTerm) {
+    filterPrinters();
 }
 
 // Switch print tab
