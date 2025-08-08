@@ -336,6 +336,35 @@ curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
                         </div>
                     </div>
 
+                    <!-- Priority System Explanation -->
+                    <div class="doc-section" style="background: var(--bg-primary); padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3>Understanding Job Priority</h3>
+                        <p>The priority field (1-10) determines the order in which queued print jobs are processed when a printer comes back online.</p>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0;">
+                            <div>
+                                <h4 style="color: var(--danger-color); margin-bottom: 8px;">High Priority (8-10)</h4>
+                                <p style="font-size: 13px; color: var(--text-secondary);">Urgent/critical labels that must print first. Use for express shipping or time-sensitive items.</p>
+                            </div>
+                            <div>
+                                <h4 style="color: var(--warning-color); margin-bottom: 8px;">Medium Priority (5-7)</h4>
+                                <p style="font-size: 13px; color: var(--text-secondary);">Standard labels with normal urgency. Default is 5.</p>
+                            </div>
+                            <div>
+                                <h4 style="color: var(--info-color); margin-bottom: 8px;">Low Priority (1-4)</h4>
+                                <p style="font-size: 13px; color: var(--text-secondary);">Non-urgent labels that can wait. Use for batch jobs or inventory labels.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="info-box" style="margin-top: 16px;">
+                            <i data-lucide="info"></i>
+                            <div>
+                                <strong>Processing Order:</strong> Jobs are sorted by priority (highest first), then by creation time (FIFO within same priority). 
+                                For example, a priority 10 job will always print before a priority 5 job, regardless of when they were submitted.
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Send Print Job -->
                     <div class="endpoint-card">
                         <div class="endpoint-header">
@@ -409,6 +438,7 @@ curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
                             <div class="form-group">
                                 <label>Priority (1-10)</label>
                                 <input type="number" id="print-priority" class="form-control" value="5" min="1" max="10">
+                                <small style="color: var(--text-secondary);">Higher values print first when queued. Default: 5</small>
                             </div>
                             
                             <button class="btn btn-primary" onclick="sendPrintJob()">
