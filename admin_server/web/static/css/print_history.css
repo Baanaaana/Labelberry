@@ -310,6 +310,27 @@
     font-size: 12px;
 }
 
+/* Reprint Controls */
+.reprint-controls {
+    display: flex;
+    align-items: center;
+}
+
+.reprint-controls .form-control {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .filters-panel {

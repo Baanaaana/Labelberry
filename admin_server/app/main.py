@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import uuid
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
@@ -88,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "13.8"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -705,6 +706,92 @@ async def print_history_page(request: Request):
         "request": request,
         "user": request.session["user"]
     })
+
+
+@app.post("/api/reprint", response_model=ApiResponse)
+async def reprint_job(
+    data: dict,
+    _: dict = Depends(require_login)
+):
+    """Reprint a job to a selected printer"""
+    try:
+        pi_id = data.get('pi_id')
+        zpl_raw = data.get('zpl_raw')
+        zpl_url = data.get('zpl_url')
+        
+        if not pi_id:
+            raise HTTPException(status_code=400, detail="Printer ID is required")
+        
+        if not zpl_raw and not zpl_url:
+            raise HTTPException(status_code=400, detail="ZPL content or URL is required")
+        
+        # Get the printer
+        pi = database.get_pi_by_id(pi_id)
+        if not pi:
+            raise HTTPException(status_code=404, detail="Printer not found")
+        
+        # Create print job
+        job = PrintJob(
+            id=str(uuid.uuid4()),
+            pi_id=pi_id,
+            status=PrintJobStatus.QUEUED,
+            source="reprint",
+            created_at=datetime.now(timezone.utc),
+            printer_name=pi.friendly_name
+        )
+        
+        # Save job to database with ZPL content
+        database.save_print_job(
+            job,
+            zpl_content=zpl_raw,
+            zpl_url=zpl_url
+        )
+        
+        # Prepare print data
+        print_data = {
+            "job_id": job.id,
+            "source": "reprint"
+        }
+        
+        if zpl_raw:
+            print_data["zpl_raw"] = zpl_raw
+        else:
+            print_data["zpl_url"] = zpl_url
+        
+        # Try WebSocket first
+        if await connection_manager.send_print_job(pi_id, print_data):
+            return ApiResponse(
+                success=True,
+                message=f"Reprint job sent to {pi.friendly_name}",
+                data={"job_id": job.id, "pi_id": pi_id}
+            )
+        
+        # If WebSocket not connected, try HTTP
+        if hasattr(pi, 'local_ip') and pi.local_ip:
+            try:
+                response = requests.post(
+                    f"http://{pi.local_ip}:5000/print",
+                    json=print_data,
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    return ApiResponse(
+                        success=True,
+                        message=f"Reprint job sent to {pi.friendly_name} via HTTP",
+                        data={"job_id": job.id, "pi_id": pi_id}
+                    )
+            except:
+                pass
+        
+        # If neither worked, mark job as failed
+        database.update_print_job_status(job.id, PrintJobStatus.FAILED, "Printer not connected")
+        raise HTTPException(status_code=503, detail="Printer not connected")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to send reprint job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/generate-label-preview")

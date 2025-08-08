@@ -141,6 +141,14 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <div class="reprint-controls" style="display: none; flex: 1; margin-right: 16px;">
+                    <select id="reprint-printer-select" class="form-control" style="width: 200px; margin-right: 8px;">
+                        <option value="">Select Printer...</option>
+                    </select>
+                    <button id="reprint-btn" class="btn btn-primary" onclick="reprintJob()" disabled>
+                        <i data-lucide="printer"></i> Print
+                    </button>
+                </div>
                 <button class="btn btn-secondary" onclick="closeJobModal()">Close</button>
                 <button id="copy-zpl-btn" class="btn btn-primary" onclick="copyZPL()" style="display: none;">
                     <i data-lucide="copy"></i> Copy ZPL

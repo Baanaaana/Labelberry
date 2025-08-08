@@ -189,9 +189,18 @@ async function viewJobDetails(jobId) {
     const modal = document.getElementById('job-modal');
     const details = document.getElementById('job-details');
     const copyBtn = document.getElementById('copy-zpl-btn');
+    const reprintControls = document.querySelector('.reprint-controls');
     
     // Show/hide copy button based on ZPL content
     copyBtn.style.display = (job.zpl_content || job.zpl_url) ? 'inline-flex' : 'none';
+    
+    // Show/hide reprint controls based on ZPL content
+    if (job.zpl_content || job.zpl_url) {
+        reprintControls.style.display = 'flex';
+        loadAvailablePrinters(job);
+    } else {
+        reprintControls.style.display = 'none';
+    }
     
     // Format job details
     details.innerHTML = `
@@ -365,10 +374,144 @@ async function generateLabelPreview(zplContent) {
     }
 }
 
+// Load available printers for reprinting
+async function loadAvailablePrinters(job) {
+    const select = document.getElementById('reprint-printer-select');
+    const reprintBtn = document.getElementById('reprint-btn');
+    
+    // Reset the select
+    select.innerHTML = '<option value="">Select Printer...</option>';
+    reprintBtn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/pis');
+        const data = await response.json();
+        
+        if (data.success && data.data.pis) {
+            // Filter only online printers
+            const onlinePrinters = data.data.pis.filter(pi => pi.status === 'online');
+            
+            if (onlinePrinters.length > 0) {
+                onlinePrinters.forEach(pi => {
+                    const option = document.createElement('option');
+                    option.value = pi.id;
+                    option.textContent = `${pi.friendly_name} (${pi.status})`;
+                    // If this was the original printer, mark it
+                    if (pi.id === job.pi_id) {
+                        option.textContent += ' - Original';
+                    }
+                    select.appendChild(option);
+                });
+                
+                // Enable button when printer is selected
+                select.onchange = () => {
+                    reprintBtn.disabled = !select.value;
+                };
+            } else {
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "No printers online";
+                option.disabled = true;
+                select.appendChild(option);
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load printers for reprint:', error);
+        const option = document.createElement('option');
+        option.value = "";
+        option.textContent = "Failed to load printers";
+        option.disabled = true;
+        select.appendChild(option);
+    }
+}
+
+// Reprint job to selected printer
+async function reprintJob() {
+    if (!currentJobDetails) return;
+    
+    const select = document.getElementById('reprint-printer-select');
+    const reprintBtn = document.getElementById('reprint-btn');
+    const selectedPrinterId = select.value;
+    
+    if (!selectedPrinterId) {
+        showAlert('Please select a printer', 'error');
+        return;
+    }
+    
+    // Disable controls during print
+    reprintBtn.disabled = true;
+    select.disabled = true;
+    reprintBtn.innerHTML = '<i data-lucide="loader-2" class="spinner"></i> Printing...';
+    
+    // Re-initialize icons
+    lucide.createIcons({
+        attrs: {
+            width: 16,
+            height: 16
+        }
+    });
+    
+    try {
+        // Prepare print data
+        const printData = {
+            pi_id: selectedPrinterId
+        };
+        
+        // Add ZPL content or URL
+        if (currentJobDetails.zpl_content) {
+            printData.zpl_raw = currentJobDetails.zpl_content;
+        } else if (currentJobDetails.zpl_url) {
+            printData.zpl_url = currentJobDetails.zpl_url;
+        }
+        
+        // Send reprint request
+        const response = await fetch('/api/reprint', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(printData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showAlert(`Print job sent to ${select.options[select.selectedIndex].text}`, 'success');
+            // Refresh history to show new job
+            setTimeout(() => loadHistory(), 1000);
+        } else {
+            showAlert(data.message || 'Failed to send print job', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to reprint job:', error);
+        showAlert('Failed to send print job', 'error');
+    } finally {
+        // Re-enable controls
+        reprintBtn.disabled = false;
+        select.disabled = false;
+        reprintBtn.innerHTML = '<i data-lucide="printer"></i> Print';
+        
+        // Re-initialize icons
+        lucide.createIcons({
+            attrs: {
+                width: 16,
+                height: 16
+            }
+        });
+    }
+}
+
 // Close job modal
 function closeJobModal() {
     document.getElementById('job-modal').style.display = 'none';
     currentJobDetails = null;
+    
+    // Reset reprint controls
+    const select = document.getElementById('reprint-printer-select');
+    const reprintBtn = document.getElementById('reprint-btn');
+    if (select) select.value = '';
+    if (reprintBtn) reprintBtn.disabled = true;
 }
 
 // Copy ZPL content
