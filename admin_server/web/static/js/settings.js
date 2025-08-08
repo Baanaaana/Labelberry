@@ -411,8 +411,20 @@ async function createApiKey(event) {
             // Show the key display modal
             document.getElementById('api-key-display').value = data.data.api_key;
             
-            // Format usage example
-            const usageExample = `curl -X POST http://your-server:8080/api/pis/{pi_id}/print \\
+            // Get base URL from server settings or use current origin
+            let baseUrl = window.location.origin;
+            try {
+                const settingsResponse = await fetch('/api/server-settings');
+                const settingsData = await settingsResponse.json();
+                if (settingsData.success && settingsData.data.base_url) {
+                    baseUrl = settingsData.data.base_url;
+                }
+            } catch (error) {
+                console.warn('Could not fetch base URL, using current origin');
+            }
+            
+            // Format usage example with actual base URL
+            const usageExample = `curl -X POST ${baseUrl}/api/pis/{pi_id}/print \\
   -H "Authorization: Bearer ${data.data.api_key}" \\
   -H "Content-Type: application/json" \\
   -d '{"zpl_raw": "^XA^FO50,50^FDTest^FS^XZ"}'`;
