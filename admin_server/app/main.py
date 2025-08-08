@@ -88,7 +88,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "13.2"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "13.3"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -756,8 +756,8 @@ async def retry_failed_job(job_id: str, _: dict = Depends(require_login)):
                 "print",
                 {
                     "job_id": job_id,
-                    "zpl_raw": job['zpl_source'] if not job['zpl_source'].startswith('http') else None,
-                    "zpl_url": job['zpl_source'] if job['zpl_source'].startswith('http') else None,
+                    "zpl_raw": job.get('zpl_content') or (job['zpl_source'] if job.get('zpl_source') and not job['zpl_source'].startswith('http') else None),
+                    "zpl_url": job.get('zpl_url') or (job['zpl_source'] if job.get('zpl_source') and job['zpl_source'].startswith('http') else None),
                     "priority": job.get('priority', 5)
                 }
             )
@@ -828,10 +828,14 @@ async def send_print_to_pi(
             )
             
             if success:
-                # Save job with 'sent' status
+                # Save job with 'sent' status and ZPL content
                 job.status = "sent"
                 job.sent_at = datetime.utcnow()
-                database.save_print_job(job)
+                database.save_print_job(
+                    job,
+                    zpl_content=print_data.get("zpl_raw"),
+                    zpl_url=print_data.get("zpl_url")
+                )
                 
                 # If wait_for_completion is true, wait for the job to complete
                 if wait_for_completion:

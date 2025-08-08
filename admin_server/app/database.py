@@ -690,7 +690,8 @@ class Database:
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT id, pi_id, status, zpl_source, created_at, started_at, 
-                           completed_at, error_message, retry_count, source, priority, error_type
+                           completed_at, error_message, retry_count, source, priority, error_type,
+                           zpl_content, zpl_url
                     FROM print_jobs WHERE id = ?
                 """, (job_id,))
                 row = cursor.fetchone()
@@ -710,7 +711,9 @@ class Database:
                         'retry_count': job_dict.get('retry_count', 0),
                         'source': job_dict.get('source', 'api'),
                         'priority': job_dict.get('priority', 5),
-                        'error_type': job_dict.get('error_type')
+                        'error_type': job_dict.get('error_type'),
+                        'zpl_content': job_dict.get('zpl_content'),
+                        'zpl_url': job_dict.get('zpl_url')
                     }
                 return None
         except Exception as e:
