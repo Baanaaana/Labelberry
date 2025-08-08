@@ -578,7 +578,7 @@
 }
 
 .try-btn:hover {
-    background: var(--primary-hover);
+    background: #364fc7;  /* Darker shade of primary color */
 }
 
 .try-btn i {
@@ -868,19 +868,20 @@ textarea.form-control {
 }
 
 .btn-primary:hover {
-    background: var(--primary-hover);
+    background: #364fc7;  /* Darker shade of primary color */
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(66, 99, 235, 0.3);
 }
 
 .btn-secondary {
-    background: var(--bg-primary);
+    background: var(--bg-secondary);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
+    border-color: var(--primary-color);
 }
 
 .btn-sm {

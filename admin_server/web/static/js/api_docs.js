@@ -650,10 +650,9 @@ async function tryEndpoint(endpointId) {
                     response = await fetch('/api/label-sizes');
                     break;
                 case 'view-queue':
-                    response = await fetch('/api/queue', {
-                        headers: {
-                            'Authorization': `Bearer ${userApiKeys[0]?.key || 'YOUR_API_KEY'}`
-                        }
+                    // Note: /api/queue endpoint doesn't exist yet, this is a placeholder
+                    response = await fetch('/api/pis', {
+                        credentials: 'same-origin'
                     });
                     break;
                 default:
@@ -726,10 +725,7 @@ async function sendPrintJob() {
         return;
     }
     
-    if (!apiKey) {
-        alert('Please select an API key');
-        return;
-    }
+    // Note: API key field is shown for documentation purposes, but we use session auth for testing
     
     let body = { priority: parseInt(priority) };
     
@@ -752,12 +748,13 @@ async function sendPrintJob() {
     responseDiv.textContent = 'Sending print job...';
     
     try {
-        const response = await fetch(`/api/pis/${printerId}/print`, {
+        // Use test-print endpoint which uses session authentication
+        const response = await fetch(`/api/pis/${printerId}/test-print`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
+            credentials: 'same-origin',  // Include session cookies
             body: JSON.stringify(body)
         });
         

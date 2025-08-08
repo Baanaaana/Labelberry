@@ -354,6 +354,13 @@ curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
                         </div>
 
                         <div class="interactive-form" id="print-form" style="display: none;">
+                            <div class="info-box">
+                                <i data-lucide="info"></i>
+                                <div>
+                                    <strong>Test Mode:</strong> You're authenticated via the dashboard. The API key field is shown for reference, but your session credentials will be used for testing.
+                                </div>
+                            </div>
+                            
                             <div class="form-group">
                                 <label>Printer</label>
                                 <select id="print-printer-id" class="form-control printer-select">
@@ -361,10 +368,10 @@ curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
                                 </select>
                             </div>
                             
-                            <div class="form-group">
+                            <div class="form-group" style="display: none;">
                                 <label>API Key</label>
                                 <select id="print-api-key" class="form-control api-key-select">
-                                    <option value="">Select API key...</option>
+                                    <option value="session">Dashboard Session</option>
                                 </select>
                             </div>
                             
