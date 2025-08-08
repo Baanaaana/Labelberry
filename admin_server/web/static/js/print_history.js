@@ -261,11 +261,22 @@ async function viewJobDetails(jobId) {
         </div>
         ` : ''}
         
-        ${job.zpl_url ? `
-        <div class="zpl-section">
-            <h3>ZPL URL</h3>
-            <div class="zpl-url">
-                <a href="${job.zpl_url}" target="_blank">${job.zpl_url}</a>
+        ${job.zpl_url && !job.zpl_content ? `
+        <div class="zpl-preview-container">
+            <div class="zpl-section zpl-code-section">
+                <h3>ZPL URL</h3>
+                <div class="zpl-url">
+                    <a href="${job.zpl_url}" target="_blank">${job.zpl_url}</a>
+                </div>
+            </div>
+            <div class="zpl-section zpl-preview-section">
+                <h3>Label Preview</h3>
+                <div id="label-preview" class="label-preview">
+                    <div class="preview-loading">
+                        <i data-lucide="loader-2" class="spinner"></i>
+                        <p>Loading ZPL from URL...</p>
+                    </div>
+                </div>
             </div>
         </div>
         ` : ''}
@@ -282,13 +293,83 @@ async function viewJobDetails(jobId) {
             }
         });
         
-        // Generate label preview if ZPL content is available (after DOM is ready)
+        // Generate label preview if ZPL content or URL is available (after DOM is ready)
         if (job.zpl_content) {
             generateLabelPreview(job.zpl_content).catch(err => {
                 console.error('Error generating preview:', err);
             });
+        } else if (job.zpl_url) {
+            generateLabelPreviewFromUrl(job.zpl_url).catch(err => {
+                console.error('Error generating preview from URL:', err);
+            });
         }
     }, 10);
+}
+
+// Generate label preview from ZPL URL
+async function generateLabelPreviewFromUrl(zplUrl) {
+    const previewContainer = document.getElementById('label-preview');
+    if (!previewContainer) return;
+    
+    console.log('Fetching ZPL from URL:', zplUrl);
+    
+    try {
+        // First fetch the ZPL content from the URL via our proxy
+        const fetchResponse = await fetch('/api/fetch-zpl-from-url', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ url: zplUrl })
+        });
+        
+        if (!fetchResponse.ok) {
+            throw new Error(`Failed to fetch ZPL: ${fetchResponse.statusText}`);
+        }
+        
+        const data = await fetchResponse.json();
+        if (!data.success || !data.data?.zpl_content) {
+            throw new Error('No ZPL content received');
+        }
+        
+        // Update loading message
+        previewContainer.innerHTML = `
+            <div class="preview-loading">
+                <i data-lucide="loader-2" class="spinner"></i>
+                <p>Generating preview...</p>
+            </div>
+        `;
+        
+        // Re-initialize the spinner icon
+        lucide.createIcons({
+            attrs: {
+                width: 20,
+                height: 20
+            }
+        });
+        
+        // Now generate the preview with the fetched ZPL content
+        await generateLabelPreview(data.data.zpl_content);
+        
+    } catch (error) {
+        console.error('Failed to generate preview from URL:', error);
+        previewContainer.innerHTML = `
+            <div class="preview-error">
+                <i data-lucide="alert-circle"></i>
+                <p>Could not load preview</p>
+                <small>${escapeHtml(error.message)}</small>
+            </div>
+        `;
+        
+        // Re-initialize icons
+        lucide.createIcons({
+            attrs: {
+                width: 20,
+                height: 20
+            }
+        });
+    }
 }
 
 // Generate label preview using Labelary API via proxy

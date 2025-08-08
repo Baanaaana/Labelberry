@@ -89,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.1"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -791,6 +791,46 @@ async def reprint_job(
         raise
     except Exception as e:
         logger.error(f"Failed to send reprint job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/fetch-zpl-from-url", response_model=ApiResponse)
+async def fetch_zpl_from_url(
+    data: dict,
+    _: dict = Depends(require_login)
+):
+    """Fetch ZPL content from a URL"""
+    try:
+        url = data.get('url')
+        if not url:
+            raise HTTPException(status_code=400, detail="URL is required")
+        
+        # Fetch the ZPL content from the URL
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        
+        # Get the content as text
+        zpl_content = response.text
+        
+        # Basic validation - check if it looks like ZPL
+        if not zpl_content or (not zpl_content.startswith('^XA') and '^XA' not in zpl_content):
+            # Maybe it's binary or encoded differently, try to decode
+            if not zpl_content:
+                raise HTTPException(status_code=400, detail="Empty ZPL file")
+        
+        return ApiResponse(
+            success=True,
+            message="ZPL content fetched successfully",
+            data={"zpl_content": zpl_content}
+        )
+        
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch ZPL from URL: {e}")
+        raise HTTPException(status_code=503, detail=f"Failed to fetch ZPL: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching ZPL from URL: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
