@@ -248,7 +248,7 @@ class ConnectionManager:
         
         # Check if this is a test print
         job = self.database.get_print_job(job_id)
-        is_test = job and job.source == "test" if job else False
+        is_test = job and job.get('source') == "test" if job else False
         
         # Update job status in database
         if status == "completed":

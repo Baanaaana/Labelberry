@@ -682,7 +682,7 @@ async def get_job_status(job_id: str, _: dict = Depends(require_login)):
         return ApiResponse(
             success=True,
             message="Job retrieved",
-            data=job.model_dump() if hasattr(job, 'model_dump') else job.__dict__
+            data=job if isinstance(job, dict) else (job.model_dump() if hasattr(job, 'model_dump') else job.__dict__)
         )
     except HTTPException:
         raise
