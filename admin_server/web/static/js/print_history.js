@@ -587,9 +587,18 @@ async function loadAvailablePrinters(job) {
     }
 }
 
+// Track if reprint is in progress to prevent double-clicks
+let reprintInProgress = false;
+
 // Reprint job to selected printer
 async function reprintJob() {
     if (!currentJobDetails) return;
+    
+    // Prevent double-clicks
+    if (reprintInProgress) {
+        console.log('Reprint already in progress, ignoring duplicate request');
+        return;
+    }
     
     const select = document.getElementById('reprint-printer-select');
     const reprintBtn = document.getElementById('reprint-btn');
@@ -599,6 +608,9 @@ async function reprintJob() {
         showAlert('Please select a printer', 'error');
         return;
     }
+    
+    // Mark as in progress
+    reprintInProgress = true;
     
     // Disable controls during print
     reprintBtn.disabled = true;
@@ -653,6 +665,9 @@ async function reprintJob() {
         reprintBtn.disabled = false;
         select.disabled = false;
         reprintBtn.innerHTML = '<i data-lucide="printer"></i> Print';
+        
+        // Clear in-progress flag
+        reprintInProgress = false;
         
         // Re-initialize icons
         lucide.createIcons({

@@ -89,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.7"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.8"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -686,16 +686,18 @@ async def clear_print_queue(
         with database.get_connection() as conn:
             cursor = conn.cursor()
             if pi_id:
+                # Cancel ALL active jobs (queued, sent, processing) for this printer
                 cursor.execute("""
                     UPDATE print_jobs 
                     SET status = 'cancelled' 
-                    WHERE status = 'queued' AND pi_id = ?
+                    WHERE status IN ('queued', 'sent', 'processing') AND pi_id = ?
                 """, (pi_id,))
             else:
+                # Cancel ALL active jobs globally
                 cursor.execute("""
                     UPDATE print_jobs 
                     SET status = 'cancelled' 
-                    WHERE status = 'queued'
+                    WHERE status IN ('queued', 'sent', 'processing')
                 """)
             
             affected = cursor.rowcount
@@ -826,6 +828,7 @@ async def reprint_job(
         
         # Try WebSocket first
         if connection_manager.is_connected(pi_id):
+            logger.info(f"Sending reprint job {job_id} directly to {pi_id}")
             success = await connection_manager.send_command(
                 pi_id,
                 "print",
@@ -833,6 +836,7 @@ async def reprint_job(
             )
             
             if success:
+                logger.info(f"Reprint job {job_id} sent successfully")
                 # Only create the job record AFTER successful sending, with SENT status
                 job = PrintJob(
                     id=job_id,
