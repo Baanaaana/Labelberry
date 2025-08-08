@@ -88,7 +88,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "13.3"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "13.4"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -695,12 +695,15 @@ async def get_print_history(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/print-history")
-async def print_history_page(request: Request, current_user: str = Depends(require_login)):
+@app.get("/print-history", response_class=HTMLResponse)
+async def print_history_page(request: Request):
     """Print history page"""
+    # Check if user is logged in
+    if "user" not in request.session:
+        return RedirectResponse(url="/login?next=/print-history", status_code=302)
     return templates.TemplateResponse("print_history.html", {
         "request": request,
-        "user": current_user
+        "user": request.session["user"]
     })
 
 
