@@ -1271,9 +1271,11 @@ input[type="checkbox"]:hover {
     .modal-content {
         width: calc(100% - 20px);
         margin: 10px;
-        border-radius: 12px;
+        border-radius: 16px !important;
         max-height: calc(100vh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         max-width: none;
+        overflow: hidden;
+        background: var(--bg-secondary);
     }
     
     /* Large modals on mobile */
@@ -1289,7 +1291,8 @@ input[type="checkbox"]:hover {
         top: 0;
         background: var(--bg-secondary);
         z-index: 10;
-        border-radius: 12px 12px 0 0;
+        border-radius: 16px 16px 0 0;
+        border-bottom: 1px solid var(--border-color);
     }
     
     .modal-body {
@@ -1303,5 +1306,14 @@ input[type="checkbox"]:hover {
         bottom: 0;
         background: var(--bg-secondary);
         z-index: 10;
+        border-radius: 0 0 16px 16px;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    /* Ensure proper overflow for modal body */
+    .modal-body {
+        overflow-y: auto;
+        overflow-x: hidden;
+        max-height: calc(100vh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     }
 }
