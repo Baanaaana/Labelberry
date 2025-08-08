@@ -995,6 +995,18 @@ async function copyCurlCommand(printerId, printerName, labelSizeId) {
         // Use a placeholder that the user needs to replace
         const apiKeyPlaceholder = '<YOUR-API-KEY>';
         
+        // Get base URL from server settings
+        let baseUrl = window.location.origin;
+        try {
+            const settingsResponse = await fetch('/api/server-settings');
+            const settingsData = await settingsResponse.json();
+            if (settingsData.success && settingsData.data && settingsData.data.base_url) {
+                baseUrl = settingsData.data.base_url;
+            }
+        } catch (error) {
+            console.error('Failed to fetch server settings:', error);
+        }
+        
         // Get label size details if one is set
         let zplContent = '';
         const labelSize = labelSizes.find(size => size.id === labelSizeId);
@@ -1038,16 +1050,12 @@ async function copyCurlCommand(printerId, printerName, labelSizeId) {
 ^XZ`;
         }
         
-        // Get base URL from settings or use current origin
-        const baseUrl = dashboardSettings.baseUrl || window.location.origin;
-        
         // Generate the cURL command with API key placeholder
-        const curlCommand = `curl -X POST ${baseUrl}/api/print \\
+        const curlCommand = `curl -X POST ${baseUrl}/api/pis/${printerId}/print \\
   -H "X-API-Key: ${apiKeyPlaceholder}" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "printer_id": "${printerId}",
-    "zpl_content": "${zplContent.replace(/\n/g, '\\n').replace(/"/g, '\\"')}"
+    "zpl_raw": "${zplContent.replace(/\n/g, '\\n').replace(/"/g, '\\"')}"
   }'`;
         
         // Copy to clipboard
