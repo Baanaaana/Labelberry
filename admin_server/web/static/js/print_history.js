@@ -5,6 +5,44 @@ let currentPage = 1;
 const jobsPerPage = 20;
 let currentJobDetails = null;
 
+// Debug function to check queue (can be called from console)
+window.checkQueue = async function() {
+    try {
+        const response = await fetch('/api/print-queue');
+        const data = await response.json();
+        console.log('Active queue:', data);
+        if (data.data.jobs.length > 0) {
+            console.log('Found', data.data.jobs.length, 'active jobs');
+            data.data.jobs.forEach(job => {
+                console.log(`  ${job.id.substring(0,8)}... Status: ${job.status} Source: ${job.source}`);
+            });
+        }
+        return data;
+    } catch (error) {
+        console.error('Failed to check queue:', error);
+    }
+};
+
+// Debug function to clear queue (can be called from console)
+window.clearQueue = async function() {
+    if (!confirm('Clear all queued print jobs?')) return;
+    
+    try {
+        const response = await fetch('/api/print-queue/clear', {
+            method: 'DELETE',
+            credentials: 'same-origin'
+        });
+        const data = await response.json();
+        console.log('Queue cleared:', data);
+        showAlert(`Cancelled ${data.data.cancelled_count} queued jobs`, 'success');
+        // Refresh history
+        loadHistory();
+        return data;
+    } catch (error) {
+        console.error('Failed to clear queue:', error);
+    }
+};
+
 // Load print history on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadPrinters();

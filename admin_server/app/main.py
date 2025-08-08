@@ -89,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.6"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.7"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -673,6 +673,86 @@ async def send_test_print_to_pi(
         raise
     except Exception as e:
         logger.error(f"Failed to send test print: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/print-queue/clear", response_model=ApiResponse)
+async def clear_print_queue(
+    pi_id: Optional[str] = None,
+    _: dict = Depends(require_login)
+):
+    """Clear queued print jobs"""
+    try:
+        with database.get_connection() as conn:
+            cursor = conn.cursor()
+            if pi_id:
+                cursor.execute("""
+                    UPDATE print_jobs 
+                    SET status = 'cancelled' 
+                    WHERE status = 'queued' AND pi_id = ?
+                """, (pi_id,))
+            else:
+                cursor.execute("""
+                    UPDATE print_jobs 
+                    SET status = 'cancelled' 
+                    WHERE status = 'queued'
+                """)
+            
+            affected = cursor.rowcount
+            
+        return ApiResponse(
+            success=True,
+            message=f"Cancelled {affected} queued jobs",
+            data={"cancelled_count": affected}
+        )
+    except Exception as e:
+        logger.error(f"Failed to clear print queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/print-queue", response_model=ApiResponse)
+async def get_print_queue(
+    pi_id: Optional[str] = None,
+    _: dict = Depends(require_login)
+):
+    """Get active print queue"""
+    try:
+        with database.get_connection() as conn:
+            cursor = conn.cursor()
+            if pi_id:
+                cursor.execute("""
+                    SELECT id, pi_id, status, source, created_at 
+                    FROM print_jobs 
+                    WHERE status IN ('queued', 'sent', 'processing') AND pi_id = ?
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                """, (pi_id,))
+            else:
+                cursor.execute("""
+                    SELECT id, pi_id, status, source, created_at 
+                    FROM print_jobs 
+                    WHERE status IN ('queued', 'sent', 'processing')
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                """)
+            
+            jobs = []
+            for row in cursor.fetchall():
+                jobs.append({
+                    "id": row[0],
+                    "pi_id": row[1],
+                    "status": row[2],
+                    "source": row[3],
+                    "created_at": row[4]
+                })
+            
+        return ApiResponse(
+            success=True,
+            message=f"Found {len(jobs)} active jobs",
+            data={"jobs": jobs}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get print queue: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
