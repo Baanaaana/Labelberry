@@ -157,6 +157,50 @@ async function savePreferences(event) {
     }
 }
 
+// Save server configuration
+async function saveServerConfig(event) {
+    event.preventDefault();
+    
+    const baseUrl = document.getElementById('base-url').value.trim();
+    
+    try {
+        const response = await fetch('/api/server-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                base_url: baseUrl
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Server configuration saved successfully!', 'success');
+        } else {
+            showAlert(data.message || 'Failed to save server configuration', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving server configuration:', error);
+        showAlert('Failed to save server configuration', 'error');
+    }
+}
+
+// Load server configuration
+async function loadServerConfig() {
+    try {
+        const response = await fetch('/api/server-settings');
+        const data = await response.json();
+        
+        if (data.success && data.data.base_url) {
+            document.getElementById('base-url').value = data.data.base_url;
+        }
+    } catch (error) {
+        console.error('Error loading server configuration:', error);
+    }
+}
+
 // Show alert toast
 function showAlert(message, type = 'info') {
     const toast = document.createElement('div');

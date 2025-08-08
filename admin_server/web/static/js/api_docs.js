@@ -10,7 +10,7 @@ let isScrolling = false;
 // Initialize page on load
 window.addEventListener('DOMContentLoaded', async () => {
     // Set base URL
-    const baseUrl = window.location.origin;
+    const baseUrl = window.labelberryBaseUrl || window.location.origin;
     document.getElementById('base-url').textContent = baseUrl;
     
     // Load data
@@ -68,7 +68,7 @@ async function copyCode(button) {
     let code = codeBlock.querySelector('code').textContent;
     
     // Replace placeholders with actual values
-    const baseUrl = window.location.origin;
+    const baseUrl = window.labelberryBaseUrl || window.location.origin;
     code = code.replace(/http:\/\/your-server:8080/g, baseUrl);
     code = code.replace(/\{pi_id\}/g, availablePrinters.length > 0 ? availablePrinters[0].id : 'YOUR_PRINTER_ID');
     code = code.replace(/labk_your_api_key_here/g, 'YOUR_API_KEY');
@@ -152,7 +152,7 @@ async function loadLabelSizes() {
 
 // Update all dynamic commands with actual values
 function updateDynamicCommands() {
-    const baseUrl = window.location.origin;
+    const baseUrl = window.labelberryBaseUrl || window.location.origin;
     
     // Update all base URLs
     document.querySelectorAll('.dynamic-url').forEach(el => {
@@ -178,7 +178,7 @@ function updateDynamicCommands() {
 
 // Generate actual cURL commands
 function generateCurlCommands() {
-    const baseUrl = window.location.origin;
+    const baseUrl = window.labelberryBaseUrl || window.location.origin;
     const printerId = availablePrinters.length > 0 ? availablePrinters[0].id : 'PRINTER_ID';
     const printerName = availablePrinters.length > 0 ? availablePrinters[0].friendly_name : 'your printer';
     
@@ -789,7 +789,7 @@ function showPrintExample() {
 // Update dynamic content
 function updateDynamicContent() {
     // This is called after data loads to update any dynamic placeholders
-    const baseUrl = window.location.origin;
+    const baseUrl = window.labelberryBaseUrl || window.location.origin;
     
     // Update all placeholders
     document.querySelectorAll('.dynamic-content').forEach(el => {

@@ -88,7 +88,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "9.9"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "10.1"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -210,6 +210,51 @@ async def change_username(request: Request):
     except Exception as e:
         logger.error(f"Username change error: {e}")
         return JSONResponse({"success": False, "message": "Failed to change username"}, status_code=500)
+
+
+@app.get("/api/server-settings", response_model=ApiResponse)
+async def get_server_settings(request: Request):
+    """Get server settings"""
+    # Check if user is logged in
+    if "user" not in request.session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        # Get base URL setting
+        base_url = database.get_server_setting("base_url", "")
+        
+        return ApiResponse(
+            success=True,
+            data={"base_url": base_url}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get server settings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get server settings")
+
+
+@app.post("/api/server-settings", response_model=ApiResponse)
+async def save_server_settings(request: Request, settings: Dict[str, Any]):
+    """Save server settings"""
+    # Check if user is logged in
+    if "user" not in request.session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        # Save base URL if provided
+        if "base_url" in settings:
+            database.set_server_setting(
+                "base_url", 
+                settings["base_url"],
+                "Base URL for LabelBerry API documentation examples"
+            )
+        
+        return ApiResponse(
+            success=True,
+            message="Server settings saved successfully"
+        )
+    except Exception as e:
+        logger.error(f"Failed to save server settings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save server settings")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -1101,7 +1146,16 @@ async def api_documentation(request: Request):
         # Redirect to login page
         return RedirectResponse(url="/login?next=/api-docs", status_code=302)
     
-    return templates.TemplateResponse("api_docs.html", {"request": request})
+    # Get base URL from settings
+    base_url = database.get_server_setting("base_url", "")
+    if not base_url:
+        # Try to construct from request if not set
+        base_url = f"{request.url.scheme}://{request.url.netloc}"
+    
+    return templates.TemplateResponse("api_docs.html", {
+        "request": request,
+        "base_url": base_url
+    })
 
 
 @app.get("/swagger-docs", response_class=HTMLResponse)

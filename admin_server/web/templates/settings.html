@@ -191,6 +191,22 @@
                             </div>
                         </form>
                     </div>
+                    
+                    <div class="settings-card">
+                        <h3>Server Configuration</h3>
+                        <p class="settings-description">Configure server-wide settings for LabelBerry</p>
+                        <form id="server-config-form" onsubmit="saveServerConfig(event)">
+                            <div class="form-group">
+                                <label for="base-url">Base URL</label>
+                                <input type="url" id="base-url" class="form-control" placeholder="https://labelberry.example.com">
+                                <small>The base URL of your LabelBerry server. This will be used in API documentation examples.</small>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Save Configuration</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- API Keys Section -->
@@ -392,10 +408,11 @@
             }
         });
         
-        // Load saved preferences, API keys, and label sizes
+        // Load saved preferences, API keys, label sizes, and server config
         loadPreferences();
         loadApiKeys();
         loadLabelSizes();
+        loadServerConfig();
     </script>
 </body>
 </html>

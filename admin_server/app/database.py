@@ -207,6 +207,16 @@ class Database:
                 )
             """)
             
+            # Create server settings table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS server_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT,
+                    description TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
             # Add missing columns to error_logs if they don't exist (migration)
             cursor.execute("PRAGMA table_info(error_logs)")
             error_log_columns = [col[1] for col in cursor.fetchall()]
@@ -833,6 +843,49 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to update username: {e}")
             return False
+    
+    def get_server_setting(self, key: str, default: str = None) -> Optional[str]:
+        """Get a server setting value"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM server_settings WHERE key = ?", (key,))
+                row = cursor.fetchone()
+                return row['value'] if row else default
+        except Exception as e:
+            logger.error(f"Failed to get server setting {key}: {e}")
+            return default
+    
+    def set_server_setting(self, key: str, value: str, description: str = None) -> bool:
+        """Set a server setting value"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT OR REPLACE INTO server_settings (key, value, description, updated_at)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                """, (key, value, description))
+                return True
+        except Exception as e:
+            logger.error(f"Failed to set server setting {key}: {e}")
+            return False
+    
+    def get_all_server_settings(self) -> Dict[str, Any]:
+        """Get all server settings"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT key, value, description FROM server_settings")
+                settings = {}
+                for row in cursor.fetchall():
+                    settings[row['key']] = {
+                        'value': row['value'],
+                        'description': row['description']
+                    }
+                return settings
+        except Exception as e:
+            logger.error(f"Failed to get server settings: {e}")
+            return {}
     
     def get_user(self, username: str) -> Optional[Dict[str, Any]]:
         """Get user details"""

@@ -154,7 +154,7 @@ const PrintLabelComponent = () => {
     setLoading(true);
     try {
       // Step 1: Get list of printers
-      const printersRes = await fetch('${window.location.origin}/api/pis');
+      const printersRes = await fetch('${window.labelberryBaseUrl}/api/pis');
       const printers = await printersRes.json();
       
       if (printers.data.pis.length === 0) {
@@ -164,7 +164,7 @@ const PrintLabelComponent = () => {
       const printerId = printers.data.pis[0].id;
       
       // Step 2: Send print job
-      const printRes = await fetch(`${window.location.origin}/api/pis/${printerId}/print`, {
+      const printRes = await fetch(`${window.labelberryBaseUrl}/api/pis/${printerId}/print`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer YOUR_API_KEY_HERE',
@@ -207,10 +207,10 @@ const PrintLabelComponent = () => {
                                     </button>
                                 </div>
                                 <pre><code class="language-bash"># Step 1: Get list of printers
-curl -X GET ${window.location.origin}/api/pis
+curl -X GET ${window.labelberryBaseUrl}/api/pis
 
 # Step 2: Send print job (replace PRINTER_ID and API_KEY)
-curl -X POST ${window.location.origin}/api/pis/PRINTER_ID/print \
+curl -X POST ${window.labelberryBaseUrl}/api/pis/PRINTER_ID/print \
   -H "Authorization: Bearer YOUR_API_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{
@@ -258,7 +258,7 @@ curl -X POST ${window.location.origin}/api/pis/PRINTER_ID/print \
                                 
                                 <div class="tab-content" id="list-nextjs">
                                     <pre><code>const getPrinters = async () => {
-  const response = await fetch('${window.location.origin}/api/pis');
+  const response = await fetch('${window.labelberryBaseUrl}/api/pis');
   const data = await response.json();
   
   return data.data.pis.map(printer => ({
@@ -272,7 +272,7 @@ curl -X POST ${window.location.origin}/api/pis/PRINTER_ID/print \
                                 </div>
                                 
                                 <div class="tab-content" id="list-curl" style="display: none;">
-                                    <pre><code>curl -X GET ${window.location.origin}/api/pis</code></pre>
+                                    <pre><code>curl -X GET ${window.labelberryBaseUrl}/api/pis</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -534,7 +534,7 @@ curl -X POST ${window.location.origin}/api/pis/PRINTER_ID/print \
                                 </div>
                                 
                                 <div class="tab-content" id="retry-curl" style="display: none;">
-                                    <pre><code>curl -X POST ${window.location.origin}/api/queue/job/JOB_ID/retry \
+                                    <pre><code>curl -X POST ${window.labelberryBaseUrl}/api/queue/job/JOB_ID/retry \
   -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
                                 </div>
                             </div>
@@ -780,6 +780,10 @@ curl -X POST ${window.location.origin}/api/pis/PRINTER_ID/print \
         </div>
     </div>
 
+    <script>
+        // Set the base URL for API examples
+        window.labelberryBaseUrl = "{{ base_url }}" || window.location.origin;
+    </script>
     <script src="/static/js/api_docs.js?v={{ static_version }}"></script>
 </body>
 </html>
