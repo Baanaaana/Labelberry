@@ -2,6 +2,22 @@
 
 A Raspberry Pi-based label printing system for Zebra printers with centralized management capabilities.
 
+## Quick Menu Installation
+
+Install the LabelBerry interactive menu for easy management:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-menu.sh | bash
+```
+
+After installation, use these commands:
+- `labelberry` - Show main menu
+- `labelberry-status` - Show service status
+- `labelberry-logs` - View service logs
+- `labelberry-restart` - Restart services
+- `labelberry-dev` - Development environment
+- `labelberry-update` - Update from Git
+
 ## Features
 
 - **Print ZPL labels** via REST API from URL or raw ZPL content
