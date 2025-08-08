@@ -161,7 +161,10 @@ async function savePreferences(event) {
 async function saveServerConfig(event) {
     event.preventDefault();
     
-    const baseUrl = document.getElementById('base-url').value.trim();
+    const baseUrlInput = document.getElementById('base-url');
+    const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : '';
+    
+    console.log('Saving base URL:', baseUrl);
     
     try {
         const response = await fetch('/api/server-settings', {
@@ -169,15 +172,19 @@ async function saveServerConfig(event) {
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'same-origin',
             body: JSON.stringify({
                 base_url: baseUrl
             })
         });
         
         const data = await response.json();
+        console.log('Save response:', data);
         
         if (data.success) {
             showAlert('Server configuration saved successfully!', 'success');
+            // Reload to verify it was saved
+            setTimeout(() => loadServerConfig(), 500);
         } else {
             showAlert(data.message || 'Failed to save server configuration', 'error');
         }
@@ -189,8 +196,13 @@ async function saveServerConfig(event) {
 
 // Load server configuration
 async function loadServerConfig() {
+    // Small delay to ensure DOM is ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     try {
-        const response = await fetch('/api/server-settings');
+        const response = await fetch('/api/server-settings', {
+            credentials: 'same-origin'
+        });
         
         if (!response.ok) {
             console.error('Failed to fetch server settings:', response.status);
@@ -200,16 +212,28 @@ async function loadServerConfig() {
         const data = await response.json();
         console.log('Server settings loaded:', data);
         
+        // Try to set the value regardless of nesting
+        const baseUrlInput = document.getElementById('base-url');
+        if (!baseUrlInput) {
+            console.error('Base URL input element not found!');
+            // Try again after a delay
+            setTimeout(() => {
+                const retryInput = document.getElementById('base-url');
+                if (retryInput && data.success && data.data && data.data.base_url) {
+                    retryInput.value = data.data.base_url;
+                    console.log('Base URL set on retry:', data.data.base_url);
+                }
+            }, 500);
+            return;
+        }
+        
         if (data.success && data.data && data.data.base_url) {
-            const baseUrlInput = document.getElementById('base-url');
-            if (baseUrlInput) {
-                baseUrlInput.value = data.data.base_url;
-                console.log('Base URL set to:', data.data.base_url);
-            } else {
-                console.error('Base URL input element not found');
-            }
+            baseUrlInput.value = data.data.base_url;
+            console.log('Base URL set to:', data.data.base_url);
+        } else if (data.success && data.data) {
+            console.log('No base URL in response:', data.data);
         } else {
-            console.log('No base URL configured yet');
+            console.log('Response structure:', data);
         }
     } catch (error) {
         console.error('Error loading server configuration:', error);
