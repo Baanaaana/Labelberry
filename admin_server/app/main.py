@@ -89,7 +89,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.4"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "14.5"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -730,11 +730,11 @@ async def reprint_job(
         if not pi:
             raise HTTPException(status_code=404, detail="Printer not found")
         
-        # Create print job
+        # Create print job with PENDING status (not QUEUED to avoid queue manager picking it up)
         job = PrintJob(
             id=str(uuid.uuid4()),
             pi_id=pi_id,
-            status=PrintJobStatus.QUEUED,
+            status=PrintJobStatus.PENDING,  # Use PENDING instead of QUEUED
             zpl_source=zpl_url if zpl_url else "raw",  # Required field
             source="reprint",
             created_at=datetime.now(timezone.utc)
@@ -767,14 +767,14 @@ async def reprint_job(
             )
             
             if success:
-                database.update_print_job_status(job.id, PrintJobStatus.SENT)
+                database.update_job_status(job.id, PrintJobStatus.SENT)
                 return ApiResponse(
                     success=True,
                     message=f"Reprint job sent to {pi.friendly_name}",
                     data={"job_id": job.id, "pi_id": pi_id}
                 )
             else:
-                database.update_print_job_status(job.id, PrintJobStatus.FAILED, "Failed to send to printer")
+                database.update_job_status(job.id, PrintJobStatus.FAILED, "Failed to send to printer")
         
         # If WebSocket not connected, try HTTP
         if hasattr(pi, 'local_ip') and pi.local_ip:
@@ -785,7 +785,7 @@ async def reprint_job(
                     timeout=5
                 )
                 if response.status_code == 200:
-                    database.update_print_job_status(job.id, PrintJobStatus.SENT)
+                    database.update_job_status(job.id, PrintJobStatus.SENT)
                     return ApiResponse(
                         success=True,
                         message=f"Reprint job sent to {pi.friendly_name} via HTTP",
@@ -795,7 +795,7 @@ async def reprint_job(
                 logger.error(f"HTTP fallback failed: {e}")
         
         # If neither worked, mark job as failed
-        database.update_print_job_status(job.id, PrintJobStatus.FAILED, "Printer not connected")
+        database.update_job_status(job.id, PrintJobStatus.FAILED, "Printer not connected")
         raise HTTPException(status_code=503, detail="Printer not connected")
         
     except HTTPException:
