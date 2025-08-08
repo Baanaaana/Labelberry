@@ -53,16 +53,27 @@ async def process_queue():
                 job = print_queue.get_next_job()
                 if job:
                     print_queue.processing = True
-                    success = await process_print_job(job)
-                    if success:
-                        monitoring.increment_completed()
-                    else:
+                    logger.info(f"Starting to process job {job.id} from queue")
+                    try:
+                        # Add timeout to prevent hanging
+                        success = await asyncio.wait_for(process_print_job(job), timeout=30.0)
+                        if success:
+                            monitoring.increment_completed()
+                            logger.info(f"Job {job.id} marked as completed in monitoring")
+                        else:
+                            monitoring.increment_failed()
+                            logger.info(f"Job {job.id} marked as failed in monitoring")
+                    except asyncio.TimeoutError:
+                        logger.error(f"Job {job.id} timed out after 30 seconds")
                         monitoring.increment_failed()
-                    print_queue.processing = False
+                        print_queue.complete_job(job.id, success=False, error_message="Job timed out")
+                    finally:
+                        print_queue.processing = False
+                        logger.info(f"Queue processing flag reset after job {job.id}")
             
             await asyncio.sleep(1)
         except Exception as e:
-            logger.error(f"Queue processing error: {e}")
+            logger.error(f"Queue processing error: {e}", exc_info=True)
             print_queue.processing = False
             await asyncio.sleep(5)
 
@@ -114,10 +125,13 @@ async def process_print_job(job: PrintJob) -> bool:
             })
             return False
         
+        logger.info(f"Sending ZPL to printer for job {job.id}, content length: {len(zpl_content)}")
         success = printer.print_zpl(zpl_content)
+        logger.info(f"Printer returned {'success' if success else 'failure'} for job {job.id}")
         
         if success:
             print_queue.complete_job(job.id, success=True)
+            logger.info(f"Job {job.id} completed successfully")
             await ws_client.send_message("job_complete", {
                 "job_id": job.id,
                 "status": "completed"
@@ -127,6 +141,7 @@ async def process_print_job(job: PrintJob) -> bool:
             # Determine error type
             error_type = "generic_error"
             error_message = "Print failed"
+            logger.error(f"Job {job.id} failed to print")
             
             # Send failure status to server
             await ws_client.send_message("job_complete", {

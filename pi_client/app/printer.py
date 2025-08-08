@@ -114,7 +114,8 @@ class ZebraPrinter:
     def print_zpl(self, zpl_content: str) -> bool:
         """Print ZPL content"""
         logger.info(f"print_zpl called for device {self.device_path}")
-        logger.debug(f"ZPL content length: {len(zpl_content)} bytes")
+        logger.info(f"ZPL content length: {len(zpl_content)} bytes")
+        logger.info(f"First 100 chars of ZPL: {zpl_content[:100]}")
         
         # Always clean up any stuck resources before printing
         self._emergency_cleanup()
@@ -126,11 +127,12 @@ class ZebraPrinter:
                     try:
                         logger.info(f"Attempting to print to assigned device: {self.device_path}")
                         with open(self.device_path, 'wb') as printer:
-                            printer.write(zpl_content.encode('utf-8'))
-                        logger.info(f"Successfully sent {len(zpl_content)} bytes to {self.device_path}")
+                            bytes_written = printer.write(zpl_content.encode('utf-8'))
+                            printer.flush()
+                        logger.info(f"Successfully sent {bytes_written} bytes to {self.device_path}")
                         return True
                     except Exception as e:
-                        logger.warning(f"Failed to print to assigned device {self.device_path}: {e}")
+                        logger.error(f"Failed to print to assigned device {self.device_path}: {e}")
                         # Continue to fallback methods
                 else:
                     logger.warning(f"Assigned device {self.device_path} does not exist")
@@ -142,11 +144,12 @@ class ZebraPrinter:
                     try:
                         logger.info(f"Trying fallback device: {path}")
                         with open(path, 'wb') as printer:
-                            printer.write(zpl_content.encode('utf-8'))
-                        logger.info(f"Successfully sent {len(zpl_content)} bytes to {path}")
+                            bytes_written = printer.write(zpl_content.encode('utf-8'))
+                            printer.flush()
+                        logger.info(f"Successfully sent {bytes_written} bytes to {path}")
                         return True
                     except Exception as e:
-                        logger.debug(f"Failed to print to {path}: {e}")
+                        logger.error(f"Failed to print to {path}: {e}")
                         continue
             
             # No device file worked, use USB directly with proper kernel driver handling
