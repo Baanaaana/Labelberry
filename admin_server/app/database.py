@@ -590,8 +590,8 @@ class Database:
                 cursor = conn.cursor()
                 cursor.execute("""
                     INSERT OR REPLACE INTO print_jobs 
-                    (id, pi_id, status, zpl_source, created_at, started_at, completed_at, error_message, retry_count)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, pi_id, status, zpl_source, created_at, started_at, completed_at, error_message, retry_count, source, priority)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     job.id,
                     job.pi_id,
@@ -601,10 +601,44 @@ class Database:
                     job.started_at,
                     job.completed_at,
                     job.error_message,
-                    job.retry_count
+                    job.retry_count,
+                    getattr(job, 'source', 'api'),
+                    getattr(job, 'priority', 5)
                 ))
         except Exception as e:
             logger.error(f"Failed to save print job: {e}")
+    
+    def get_print_job(self, job_id: str) -> Optional[Dict]:
+        """Get a single print job by ID"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT id, pi_id, status, zpl_source, created_at, started_at, 
+                           completed_at, error_message, retry_count, source, priority, error_type
+                    FROM print_jobs WHERE id = ?
+                """, (job_id,))
+                row = cursor.fetchone()
+                
+                if row:
+                    return {
+                        'id': row['id'],
+                        'pi_id': row['pi_id'],
+                        'status': row['status'],
+                        'zpl_source': row['zpl_source'],
+                        'created_at': row['created_at'],
+                        'started_at': row['started_at'],
+                        'completed_at': row['completed_at'],
+                        'error_message': row['error_message'],
+                        'retry_count': row['retry_count'],
+                        'source': row.get('source', 'api'),
+                        'priority': row.get('priority', 5),
+                        'error_type': row.get('error_type')
+                    }
+                return None
+        except Exception as e:
+            logger.error(f"Failed to get print job: {e}")
+            return None
     
     def get_print_jobs(self, pi_id: str, limit: int = 100) -> List[PrintJob]:
         try:
