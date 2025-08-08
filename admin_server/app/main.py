@@ -892,21 +892,17 @@ async def generate_label_preview(
         body = await request.body()
         zpl_content = body.decode('utf-8').strip()
         
-        # Basic ZPL validation
+        # Basic ZPL validation - be less strict
         if not zpl_content:
             raise HTTPException(status_code=400, detail="Empty ZPL content")
         
-        # Check for basic ZPL structure
-        if not zpl_content.startswith('^XA'):
-            raise HTTPException(status_code=400, detail="Invalid ZPL - must start with ^XA")
+        # Check for basic ZPL structure (case-insensitive)
+        zpl_upper = zpl_content.upper()
+        if not ('^XA' in zpl_upper):
+            raise HTTPException(status_code=400, detail="Invalid ZPL - missing ^XA start command")
         
-        if not zpl_content.endswith('^XZ'):
-            raise HTTPException(status_code=400, detail="Invalid ZPL - must end with ^XZ")
-        
-        # Check if there's actual content between XA and XZ
-        content_between = zpl_content[3:-3].strip()
-        if not content_between or len(content_between) < 5:
-            raise HTTPException(status_code=400, detail="ZPL appears to be empty - no commands between ^XA and ^XZ")
+        if not ('^XZ' in zpl_upper):
+            raise HTTPException(status_code=400, detail="Invalid ZPL - missing ^XZ end command")
         
         # Labelary API parameters
         dpmm = 8  # 203 dpi (8 dots per mm)
