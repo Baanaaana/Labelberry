@@ -27,6 +27,11 @@ body {
     color: var(--text-primary);
     line-height: 1.6;
     font-size: 14px;
+    /* iOS Safe Area Support */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Force all Lucide icons to be 20x20 by default */
@@ -52,6 +57,10 @@ body {
     max-width: 1600px;
     margin: 0 auto;
     padding: 24px 20px;
+    /* Add extra padding for iOS safe areas */
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
 
 /* Header */
@@ -59,6 +68,9 @@ body {
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
     padding: 20px 24px;
+    /* Add safe area padding for header */
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -639,6 +651,11 @@ a.icon-btn:hover i {
     z-index: 1000;
     animation: fadeIn 0.2s;
     overflow-y: auto;
+    /* iOS Safe Area Support */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
     padding: 20px;
 }
 
@@ -1073,13 +1090,18 @@ input[type="checkbox"]:hover {
     
     .modal {
         padding: 10px;
+        /* Add safe area padding on mobile */
+        padding-top: max(10px, calc(10px + env(safe-area-inset-top)));
+        padding-bottom: max(10px, calc(10px + env(safe-area-inset-bottom)));
+        padding-left: max(10px, calc(10px + env(safe-area-inset-left)));
+        padding-right: max(10px, calc(10px + env(safe-area-inset-right)));
     }
     
     .modal-content {
         width: calc(100% - 20px);
         margin: 10px;
         border-radius: 12px;
-        max-height: calc(100vh - 20px);
+        max-height: calc(100vh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         max-width: none;
     }
     
