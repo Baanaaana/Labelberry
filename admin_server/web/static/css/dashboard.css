@@ -611,6 +611,22 @@ a.icon-btn:hover i {
     background: #364fc7;
 }
 
+/* Copy cURL button with off-black color */
+.printer-btn.curl {
+    background: #2d3436;
+    color: white;
+    border-color: #2d3436;
+}
+
+.printer-btn.curl:hover {
+    background: #1e272e;
+    border-color: #1e272e;
+}
+
+.printer-btn.curl i {
+    color: white;
+}
+
 /* Modals */
 .modal {
     display: none;

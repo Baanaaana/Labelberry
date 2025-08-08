@@ -381,7 +381,7 @@ function createPrinterItem(pi) {
                     <button class="printer-btn primary" onclick="showPrintModal('${pi.id}', '${pi.friendly_name}')">
                         <i data-lucide="printer"></i> Test Print
                     </button>
-                    <button class="printer-btn" onclick="copyCurlCommand('${pi.id}', '${pi.friendly_name}', ${pi.label_size_id || 'null'})" title="Copy cURL command for this printer">
+                    <button class="printer-btn curl" onclick="copyCurlCommand('${pi.id}', '${pi.friendly_name}', ${pi.label_size_id || 'null'})" title="Copy cURL command for this printer">
                         <i data-lucide="terminal"></i> Copy cURL
                     </button>
                 </div>
