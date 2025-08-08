@@ -397,8 +397,6 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    position: relative;
-    z-index: 1;
 }
 
 .reprint-controls .form-control {
@@ -410,22 +408,6 @@
     color: var(--text-primary);
     flex: 1;
     min-width: 0;
-    position: relative;
-    z-index: 1;
-}
-
-/* Fix for select dropdown positioning in modal */
-#reprint-printer-select {
-    position: relative;
-    z-index: 1;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 16px;
-    padding-right: 36px;
 }
 
 /* Modal Buttons */
@@ -558,9 +540,6 @@
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
-    position: relative;
-    overflow: visible;
-    z-index: 1;
 }
 
 /* Animations */
@@ -680,8 +659,6 @@
         width: 100%;
         gap: 12px;
         margin-right: 0 !important;
-        position: relative;
-        z-index: 1;
     }
     
     .reprint-controls .form-control {
@@ -691,13 +668,6 @@
     
     .reprint-controls .btn {
         width: 100%;
-    }
-    
-    /* Fix select dropdown on mobile */
-    #reprint-printer-select {
-        width: 100%;
-        position: relative;
-        z-index: 10;
     }
     
     /* Ensure Copy ZPL button appears at top on mobile */
