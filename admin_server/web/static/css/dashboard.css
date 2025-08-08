@@ -1084,8 +1084,149 @@ input[type="checkbox"]:hover {
         grid-template-columns: 1fr;
     }
     
+    /* Main content stacks on mobile */
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Filter controls improvement */
+    .filter-controls {
+        gap: 8px;
+    }
+    
+    .filter-select,
+    .search-input {
+        width: 100%;
+        max-width: none;
+    }
+    
+    /* Printer card improvements */
+    .printer-item {
+        padding: 12px;
+        border-radius: 12px;
+        background: var(--bg-secondary);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .printer-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    
+    .printer-name {
+        font-size: 16px;
+        font-weight: 600;
+    }
+    
+    .printer-status-container {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
     .printer-details {
         grid-template-columns: 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 12px;
+        background: var(--bg-primary);
+        border-radius: 8px;
+    }
+    
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .detail-item:last-child {
+        border-bottom: none;
+    }
+    
+    .detail-label {
+        font-weight: 500;
+        font-size: 13px;
+    }
+    
+    .detail-value {
+        font-size: 13px;
+        text-align: right;
+        word-break: break-all;
+        max-width: 60%;
+    }
+    
+    /* Printer actions as 2x2 grid on mobile */
+    .printer-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    
+    .printer-btn {
+        padding: 10px 8px;
+        font-size: 12px;
+        border-radius: 8px;
+        justify-content: center;
+        min-height: 44px; /* Touch-friendly size */
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .printer-btn i {
+        width: 16px;
+        height: 16px;
+    }
+    
+    /* Special styling for Test Print button */
+    .printer-btn.btn-primary {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+        font-weight: 500;
+    }
+    
+    .printer-btn.btn-secondary {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+    }
+    
+    /* Panel improvements on mobile */
+    .panel-header {
+        flex-direction: column;
+        align-items: stretch;
+        height: auto;
+        padding: 16px;
+        gap: 12px;
+    }
+    
+    .panel-header h2 {
+        font-size: 18px;
+        margin-bottom: 0;
+    }
+    
+    .panel-actions {
+        width: 100%;
+    }
+    
+    .panel-content {
+        padding: 12px;
+    }
+    
+    /* Management nav grid */
+    .management-nav {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .nav-item {
+        padding: 12px;
+        font-size: 12px;
+    }
+    
+    .nav-item span {
+        font-size: 11px;
     }
     
     .modal {
