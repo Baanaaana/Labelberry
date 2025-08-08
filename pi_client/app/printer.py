@@ -172,18 +172,20 @@ class ZebraPrinter:
         try:
             ZEBRA_VENDOR_ID = 0x0A5F
             
-            # Extract printer index from device path if available (e.g., /dev/usblp1 -> index 1)
+            # Extract printer index from device path if available
+            # Handles: /dev/usb/lp1, /dev/usblp1, /dev/lp1 -> index 1
             printer_index = 0
-            if self.device_path and 'usblp' in self.device_path:
+            if self.device_path:
                 try:
-                    # Extract number from path like /dev/usblp1
                     import re
-                    match = re.search(r'usblp(\d+)', self.device_path)
+                    # Match patterns like lp0, lp1, usblp0, usblp1
+                    match = re.search(r'lp(\d+)', self.device_path)
                     if match:
                         printer_index = int(match.group(1))
+                        logger.info(f"Extracted index {printer_index} from device path {self.device_path}")
                         logger.info(f"Looking for USB printer at index {printer_index}")
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Could not extract index from {self.device_path}: {e}")
             
             # Find all Zebra devices
             devices = list(usb.core.find(find_all=True, idVendor=ZEBRA_VENDOR_ID))
