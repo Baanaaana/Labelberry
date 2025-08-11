@@ -112,6 +112,21 @@ class ZebraPrinter:
     
     def print_zpl(self, zpl_content: str) -> bool:
         """Print ZPL content"""
+        # Validate and fix ZPL content
+        if not zpl_content:
+            logger.error("Empty ZPL content provided")
+            return False
+        
+        # Ensure ZPL has proper start and end markers
+        zpl_content = zpl_content.strip()
+        if not zpl_content.startswith("^XA"):
+            logger.warning("ZPL missing ^XA start marker, adding it")
+            zpl_content = "^XA\n" + zpl_content
+        
+        if not zpl_content.endswith("^XZ"):
+            logger.warning("ZPL missing ^XZ end marker, adding it")
+            zpl_content = zpl_content + "\n^XZ"
+        
         logger.info(f"print_zpl called for device {self.device_path}")
         logger.info(f"ZPL content length: {len(zpl_content)} bytes")
         logger.info(f"First 100 chars of ZPL: {zpl_content[:100]}")
@@ -322,11 +337,19 @@ class ZebraPrinter:
         }
     
     def test_print(self) -> bool:
+        """Print a test label with proper formatting"""
         test_zpl = """^XA
-^FO50,50^A0N,50,50^FDLabelBerry Test^FS
-^FO50,150^A0N,30,30^FDPrinter Connected Successfully^FS
-^FO50,200^A0N,25,25^FDTime: """ + time.strftime("%Y-%m-%d %H:%M:%S") + """^FS
+^PW448
+^LL252
+^FO20,20^A0N,30,30^FDLabelBerry Test Print^FS
+^FO20,60^A0N,20,20^FDPrinter Connected Successfully^FS
+^FO20,90^GB400,2,2^FS
+^FO20,100^A0N,18,18^FDDevice: """ + self.device_path + """^FS
+^FO20,125^A0N,18,18^FDTime: """ + time.strftime("%Y-%m-%d %H:%M:%S") + """^FS
+^FO20,150^A0N,18,18^FDStatus: Ready^FS
+^FO20,180^BY2,2,40^BCN,,Y,N^FD""" + str(int(time.time()) % 100000000) + """^FS
 ^XZ"""
+        logger.info("Sending test print with complete ZPL")
         return self.print_zpl(test_zpl)
     
     def disconnect(self):
