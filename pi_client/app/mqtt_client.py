@@ -253,6 +253,11 @@ class MQTTClient:
                 logger.warning(f"Unknown message type: {message_type}")
                 return False
             
+            # Ensure data is a dictionary
+            if not isinstance(data, dict):
+                logger.error(f"Invalid data type for message {message_type}: expected dict, got {type(data)}")
+                return False
+            
             # Add metadata
             payload = {
                 **data,
@@ -275,9 +280,6 @@ class MQTTClient:
     
     async def send_metrics(self, metrics: PiMetrics):
         return await self.send_message("metrics", metrics.model_dump())
-    
-    async def send_status(self, status: Dict[str, Any]):
-        return await self.send_message("status", status)
     
     async def send_error(self, error_type: str, message: str):
         return await self.send_message("error", {
