@@ -1843,6 +1843,9 @@ function toggleQueuePanel() {
         navQueue.classList.add('active');
         document.getElementById('nav-settings').classList.remove('active');
         
+        // Render Lucide icons
+        setTimeout(() => lucide.createIcons(), 10);
+        
         // Load queue data
         loadQueuePrinters();
         loadQueue();
