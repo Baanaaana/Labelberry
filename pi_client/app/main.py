@@ -164,7 +164,7 @@ async def process_print_job(job: PrintJob) -> bool:
 async def handle_ping(data: Dict[str, Any]):
     """Handle ping message from server"""
     logger.debug("Received ping from server")
-    # The ping response is handled automatically by the websocket client
+    # Ping can be used for keepalive if needed
 
 
 async def handle_config_update(data: Dict[str, Any]):
@@ -351,7 +351,7 @@ async def get_status():
             "printer": printer.get_status(),
             "queue": print_queue.get_status(),
             "system": monitoring.get_system_info(),
-            "websocket_connected": mqtt_client.ws and not mqtt_client.ws.closed
+            "mqtt_connected": mqtt_client.connected
         }
         
         return ApiResponse(
