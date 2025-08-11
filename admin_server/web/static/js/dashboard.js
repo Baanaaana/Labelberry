@@ -1867,74 +1867,109 @@ function switchSettingsTab(tab, element) {
 }
 
 // Account Settings Functions
-async function changeUsername(event) {
-    event.preventDefault();
-    
-    const newUsername = document.getElementById('new-username').value;
-    const password = document.getElementById('username-password').value;
-    
-    try {
-        const response = await fetch('/api/change-username', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                new_username: newUsername,
-                password: password
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-            showAlert('Username changed successfully', 'success');
-            document.getElementById('username-form').reset();
-        } else {
-            showAlert(data.message || 'Failed to change username', 'error');
-        }
-    } catch (error) {
-        console.error('Error changing username:', error);
-        showAlert('Failed to change username', 'error');
-    }
-}
-
-async function changePassword(event) {
+async function updateAccount(event) {
     event.preventDefault();
     
     const currentPassword = document.getElementById('current-password').value;
+    const newUsername = document.getElementById('new-username').value.trim();
     const newPassword = document.getElementById('new-password').value;
     const confirmPassword = document.getElementById('confirm-password').value;
     
-    if (newPassword !== confirmPassword) {
-        showAlert('Passwords do not match', 'error');
+    // Validate inputs
+    if (!currentPassword) {
+        showAlert('Current password is required', 'error');
+        return;
+    }
+    
+    if (!newUsername && !newPassword) {
+        showAlert('Please enter a new username or password to update', 'error');
+        return;
+    }
+    
+    if (newPassword && newPassword !== confirmPassword) {
+        showAlert('New passwords do not match', 'error');
+        return;
+    }
+    
+    if (newPassword && newPassword.length < 6) {
+        showAlert('New password must be at least 6 characters', 'error');
         return;
     }
     
     try {
-        const response = await fetch('/api/change-password', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                current_password: currentPassword,
-                new_password: newPassword
-            })
-        });
+        let changesApplied = [];
+        let hasError = false;
         
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-            showAlert('Password changed successfully', 'success');
-            document.getElementById('password-form').reset();
-        } else {
-            showAlert(data.message || 'Failed to change password', 'error');
+        // Change username if provided
+        if (newUsername) {
+            const usernameResponse = await fetch('/api/change-username', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    new_username: newUsername,
+                    password: currentPassword
+                })
+            });
+            
+            const usernameData = await usernameResponse.json();
+            
+            if (usernameResponse.ok && usernameData.success) {
+                changesApplied.push('Username');
+            } else {
+                showAlert(usernameData.message || 'Failed to change username', 'error');
+                hasError = true;
+            }
         }
+        
+        // Change password if provided (only if username change didn't fail)
+        if (newPassword && !hasError) {
+            const passwordResponse = await fetch('/api/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword
+                })
+            });
+            
+            const passwordData = await passwordResponse.json();
+            
+            if (passwordResponse.ok && passwordData.success) {
+                changesApplied.push('Password');
+            } else {
+                showAlert(passwordData.message || 'Failed to change password', 'error');
+                hasError = true;
+            }
+        }
+        
+        // Show success message if any changes were applied
+        if (changesApplied.length > 0) {
+            const message = `${changesApplied.join(' and ')} updated successfully`;
+            showAlert(message, 'success');
+            resetAccountForm();
+        }
+        
     } catch (error) {
-        console.error('Error changing password:', error);
-        showAlert('Failed to change password', 'error');
+        console.error('Error updating account:', error);
+        showAlert('Failed to update account', 'error');
     }
+}
+
+function resetAccountForm() {
+    document.getElementById('account-form').reset();
+}
+
+// Legacy functions for backward compatibility
+async function changeUsername(event) {
+    return updateAccount(event);
+}
+
+async function changePassword(event) {
+    return updateAccount(event);
 }
 
 // System Settings Functions
