@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.6"
+SCRIPT_VERSION="1.0.7"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -185,7 +185,15 @@ if [ ! -f "/etc/labelberry/server.conf" ]; then
     PORT=${PORT:-8080}
 else
     echo -e "${YELLOW}Configuration already exists, updating MQTT settings...${NC}"
-    PORT=$(grep "port:" /etc/labelberry/server.conf | cut -d' ' -f2)
+    # Try to extract port from existing config, use default if not found
+    PORT=$(grep "^port:" /etc/labelberry/server.conf | head -n1 | cut -d' ' -f2)
+    # Validate and set default if empty or invalid
+    if [ -z "$PORT" ] || ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+        PORT=8080
+        echo -e "${YELLOW}Could not parse existing port, using default: 8080${NC}"
+    else
+        echo -e "${GREEN}Using existing port: $PORT${NC}"
+    fi
     # Backup existing config
     cp /etc/labelberry/server.conf /etc/labelberry/server.conf.backup
 fi
