@@ -6,8 +6,12 @@ from typing import Optional, Dict, Any
 
 class ServerConfig:
     def __init__(self, config_path: str = "/etc/labelberry/server.conf"):
+        import logging
+        self.logger = logging.getLogger(__name__)
         self.config_path = Path(config_path)
+        self.logger.info(f"Loading config from: {self.config_path}")
         self.config = self.load_config()
+        self.logger.info(f"Config loaded - MQTT broker: {self.mqtt_broker}, port: {self.mqtt_port}, username: {self.mqtt_username}")
     
     def load_config(self) -> Dict[str, Any]:
         if not self.config_path.exists():

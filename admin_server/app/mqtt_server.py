@@ -42,9 +42,11 @@ class MQTTServer:
         
         # Set authentication from config
         if server_config and server_config.mqtt_username and server_config.mqtt_password:
+            logger.info(f"Using configured MQTT credentials - Username: {server_config.mqtt_username}")
             self.client.username_pw_set(server_config.mqtt_username, server_config.mqtt_password)
         else:
             # Fallback to default credentials
+            logger.warning("No MQTT credentials in config, using default (admin/admin_password)")
             self.client.username_pw_set("admin", "admin_password")
         
         self.connected = False
@@ -70,7 +72,15 @@ class MQTTServer:
                 self.client.subscribe(topic, qos)
                 logger.info(f"Subscribed to {topic}")
         else:
-            logger.error(f"Failed to connect to MQTT broker, return code: {rc}")
+            error_messages = {
+                1: "Incorrect protocol version",
+                2: "Invalid client identifier",
+                3: "Server unavailable",
+                4: "Bad username or password",
+                5: "Not authorized"
+            }
+            error_msg = error_messages.get(rc, f"Unknown error (code: {rc})")
+            logger.error(f"Failed to connect to MQTT broker: {error_msg} (code: {rc})")
             self.connected = False
     
     def _on_disconnect(self, client, userdata, rc):
