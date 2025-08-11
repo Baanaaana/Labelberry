@@ -162,6 +162,16 @@ class MQTTClient:
         }
         self.client.publish(topic, json.dumps(payload), qos=1, retain=True)
     
+    async def send_connect_message(self):
+        """Async wrapper for sending connect message"""
+        self._send_connect_message()
+        logger.info(f"Sent connect message for device {self.device_id}")
+    
+    async def send_status(self, status: str):
+        """Async wrapper for sending status"""
+        self._send_status(status)
+        logger.info(f"Sent status '{status}' for device {self.device_id}")
+    
     def register_handler(self, message_type: str, handler: Callable):
         self.message_handlers[message_type] = handler
         logger.info(f"Registered handler for message type: {message_type}")

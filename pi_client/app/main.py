@@ -186,6 +186,11 @@ async def handle_command(data: Dict[str, Any]):
     elif command == "print":
         # Handle print job from admin server
         await handle_remote_print(params)
+    elif command == "report_status":
+        # Server is requesting our status - resend connect and status
+        logger.info("Server requested status report, sending connect message")
+        await mqtt_client.send_connect_message()
+        await mqtt_client.send_status("online")
     elif command == "restart":
         logger.info("Restart requested")
 
@@ -272,6 +277,7 @@ async def lifespan(app: FastAPI):
     mqtt_client.register_handler("command", handle_command)
     mqtt_client.register_handler("print_job", handle_remote_print)
     mqtt_client.register_handler("test_print", lambda data: printer.test_print())
+    mqtt_client.register_handler("broadcast", handle_command)  # Handle broadcast messages as commands
     
     # Connect to MQTT broker
     connected = await mqtt_client.connect()

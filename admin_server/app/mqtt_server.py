@@ -69,8 +69,11 @@ class MQTTServer:
             ]
             
             for topic, qos in subscriptions:
-                self.client.subscribe(topic, qos)
-                logger.info(f"Subscribed to {topic}")
+                result = self.client.subscribe(topic, qos)
+                if result[0] == 0:
+                    logger.info(f"Successfully subscribed to {topic}")
+                else:
+                    logger.error(f"Failed to subscribe to {topic}, error code: {result[0]}")
         else:
             error_messages = {
                 1: "Incorrect protocol version",
@@ -147,6 +150,13 @@ class MQTTServer:
             
             # Start message processor
             asyncio.create_task(self._process_messages())
+            logger.info("MQTT message processor started")
+            
+            # Log initial state
+            logger.info(f"MQTT Server ready - Connected Pis: {self.connected_pis}")
+            
+            # Request status from all Pis after a short delay
+            asyncio.create_task(self._request_pi_status_after_delay())
             
             return True
             
@@ -155,6 +165,17 @@ class MQTTServer:
             import traceback
             logger.error(traceback.format_exc())
             return False
+    
+    async def _request_pi_status_after_delay(self):
+        """Request status from all Pis after server startup"""
+        await asyncio.sleep(3)  # Wait for subscriptions to be established
+        logger.info("Requesting status from all Pis...")
+        
+        # Broadcast a status request to all Pis
+        await self.broadcast_message({
+            "command": "report_status",
+            "reason": "server_startup"
+        })
     
     async def stop(self):
         self.running = False
