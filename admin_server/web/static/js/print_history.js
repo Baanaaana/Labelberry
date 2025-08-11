@@ -424,7 +424,18 @@ async function generateLabelPreview(zplContent) {
     const previewContainer = document.getElementById('label-preview');
     if (!previewContainer) return;
     
-    console.log('Generating preview for ZPL:', zplContent.substring(0, 100) + '...');
+    // Log the raw ZPL to see if it contains HTML entities
+    console.log('Raw ZPL content:', zplContent);
+    console.log('First 200 chars:', zplContent.substring(0, 200));
+    console.log('Contains HTML entities?', zplContent.includes('&lt;') || zplContent.includes('&gt;') || zplContent.includes('&amp;') || zplContent.includes('&circ;'));
+    
+    // Decode HTML entities if present
+    if (zplContent.includes('&')) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = zplContent;
+        zplContent = textarea.value;
+        console.log('Decoded ZPL:', zplContent.substring(0, 200));
+    }
     
     try {
         // Use our proxy endpoint to avoid CORS issues
