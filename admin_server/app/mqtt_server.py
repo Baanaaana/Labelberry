@@ -81,6 +81,7 @@ class MQTTServer:
             logger.info("Disconnected from MQTT broker")
     
     def _on_message(self, client, userdata, msg):
+        logger.info(f"Received MQTT message on topic: {msg.topic}")
         try:
             payload = json.loads(msg.payload.decode())
             topic_parts = msg.topic.split("/")
@@ -91,14 +92,14 @@ class MQTTServer:
                 message_type = topic_parts[3] if len(topic_parts) > 3 else "unknown"
                 
                 # Queue message for async processing
-                logger.debug(f"Received MQTT message - device: {device_id}, type: {message_type}")
+                logger.info(f"Processing MQTT message - device: {device_id}, type: {message_type}")
                 self.message_queue.put({
                     "device_id": device_id,
                     "type": message_type,
                     "payload": payload,
                     "topic": msg.topic
                 })
-                logger.debug(f"Queued message for processing, queue size: {self.message_queue.qsize()}")
+                logger.info(f"Queued message for processing, queue size: {self.message_queue.qsize()}")
             
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in MQTT message: {e}")
@@ -107,14 +108,32 @@ class MQTTServer:
     
     async def start(self):
         try:
+            logger.info(f"Attempting to connect to MQTT broker at {self.config.broker_host}:{self.config.broker_port}")
+            
+            # Log authentication details (without password)
+            if self.server_config and self.server_config.mqtt_username:
+                logger.info(f"Using MQTT authentication - Username: {self.server_config.mqtt_username}")
+            else:
+                logger.info("Using default MQTT authentication")
+            
             # Connect to MQTT broker
-            self.client.connect(self.config.broker_host, self.config.broker_port, keepalive=self.config.keepalive)
+            result = self.client.connect(self.config.broker_host, self.config.broker_port, keepalive=self.config.keepalive)
+            
+            if result != 0:
+                logger.error(f"MQTT connect returned error code: {result}")
+                return False
             
             # Start MQTT loop in background thread
             self.client.loop_start()
             self.running = True
             
-            logger.info(f"MQTT server started on {self.config.broker_host}:{self.config.broker_port}")
+            # Wait a bit for connection to establish
+            await asyncio.sleep(2)
+            
+            if self.connected:
+                logger.info(f"MQTT server successfully connected to {self.config.broker_host}:{self.config.broker_port}")
+            else:
+                logger.warning(f"MQTT server started but not yet connected to broker")
             
             # Start message processor
             asyncio.create_task(self._process_messages())
@@ -123,6 +142,8 @@ class MQTTServer:
             
         except Exception as e:
             logger.error(f"Failed to start MQTT server: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
     async def stop(self):
