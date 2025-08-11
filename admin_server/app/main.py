@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, Depends, MQTT, MQTTDisconnect, Request, Form, Header
+from fastapi import FastAPI, HTTPException, Depends, Request, Form, Header
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
