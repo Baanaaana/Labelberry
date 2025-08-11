@@ -771,6 +771,97 @@
         </div>
     </div>
 
+    <!-- Create API Key Modal -->
+    <div id="create-key-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create API Key</h2>
+                <button class="modal-close" onclick="closeCreateKeyModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="create-key-form" onsubmit="createApiKey(event); return false;">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="key-name">Key Name *</label>
+                        <input type="text" id="key-name" class="form-control" required placeholder="e.g., Production Server">
+                    </div>
+                    <div class="form-group">
+                        <label for="key-description">Description</label>
+                        <textarea id="key-description" class="form-control" rows="3" placeholder="Optional description for this API key"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateKeyModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Key</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Label Size Modal -->
+    <div id="add-label-size-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Label Size</h2>
+                <button class="modal-close" onclick="closeAddLabelSizeModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="add-label-size-form" onsubmit="addLabelSize(event); return false;">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="size-name">Name *</label>
+                        <input type="text" id="size-name" class="form-control" required placeholder="e.g., Small Shipping Label">
+                    </div>
+                    <div class="form-group">
+                        <label for="size-width">Width (mm) *</label>
+                        <input type="number" id="size-width" class="form-control" required min="1" placeholder="57">
+                    </div>
+                    <div class="form-group">
+                        <label for="size-height">Height (mm) *</label>
+                        <input type="number" id="size-height" class="form-control" required min="1" placeholder="32">
+                    </div>
+                    <div class="form-group">
+                        <label for="size-description">Description</label>
+                        <textarea id="size-description" class="form-control" rows="2" placeholder="Optional description"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddLabelSizeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Label Size</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New API Key Display Modal -->
+    <div id="new-key-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>API Key Created</h2>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning" style="margin-bottom: 20px;">
+                    <strong>Important:</strong> Copy this API key now. You won't be able to see it again!
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="new-api-key" class="form-control" readonly style="font-family: monospace;">
+                        <button class="btn btn-primary" onclick="copyApiKey()">
+                            <i data-lucide="copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeNewKeyModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 

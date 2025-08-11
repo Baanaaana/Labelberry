@@ -94,7 +94,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "37.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "38.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -1730,6 +1730,214 @@ async def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "connected_pis": len(mqtt_server.get_connected_pis())
     }
+
+
+# ============== Settings API Endpoints ==============
+
+@app.post("/api/change-username", response_model=ApiResponse)
+async def change_username(
+    data: dict,
+    request: Request,
+    _: dict = Depends(require_login)
+):
+    """Change username"""
+    try:
+        new_username = data.get('new_username')
+        password = data.get('password')
+        
+        if not new_username or not password:
+            raise HTTPException(status_code=400, detail="Username and password required")
+        
+        # Verify current password
+        current_user = request.session.get('user')
+        if not database.verify_admin_password(current_user, password):
+            raise HTTPException(status_code=401, detail="Invalid password")
+        
+        # Update username
+        if database.update_admin_username(current_user, new_username):
+            request.session['user'] = new_username
+            return ApiResponse(
+                success=True,
+                message="Username updated successfully"
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Username already exists")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to change username: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/change-password", response_model=ApiResponse)
+async def change_password(
+    data: dict,
+    request: Request,
+    _: dict = Depends(require_login)
+):
+    """Change password"""
+    try:
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        if not current_password or not new_password:
+            raise HTTPException(status_code=400, detail="Both passwords required")
+        
+        if len(new_password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        
+        # Verify current password
+        current_user = request.session.get('user')
+        if not database.verify_admin_password(current_user, current_password):
+            raise HTTPException(status_code=401, detail="Invalid current password")
+        
+        # Update password
+        if database.update_admin_password(current_user, new_password):
+            return ApiResponse(
+                success=True,
+                message="Password updated successfully"
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update password")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to change password: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/api-keys", response_model=ApiResponse)
+async def get_api_keys(_: dict = Depends(require_login)):
+    """Get all API keys"""
+    try:
+        keys = database.get_api_keys()
+        return ApiResponse(
+            success=True,
+            data={"keys": keys}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get API keys: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/api-keys", response_model=ApiResponse)
+async def create_api_key(
+    data: dict,
+    _: dict = Depends(require_login)
+):
+    """Create new API key"""
+    try:
+        name = data.get('name')
+        description = data.get('description', '')
+        
+        if not name:
+            raise HTTPException(status_code=400, detail="Key name is required")
+        
+        # Generate a secure API key
+        import secrets
+        api_key = f"lb_{secrets.token_urlsafe(32)}"
+        
+        # Save to database
+        key_id = database.create_api_key(name, api_key, description)
+        
+        return ApiResponse(
+            success=True,
+            message="API key created successfully",
+            data={"id": key_id, "key": api_key}
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to create API key: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/api-keys/{key_id}", response_model=ApiResponse)
+async def delete_api_key(
+    key_id: str,
+    _: dict = Depends(require_login)
+):
+    """Delete API key"""
+    try:
+        if database.delete_api_key(key_id):
+            return ApiResponse(
+                success=True,
+                message="API key deleted successfully"
+            )
+        else:
+            raise HTTPException(status_code=404, detail="API key not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete API key: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/label-sizes", response_model=ApiResponse)
+async def get_label_sizes(_: dict = Depends(require_login)):
+    """Get all label sizes"""
+    try:
+        sizes = database.get_label_sizes()
+        return ApiResponse(
+            success=True,
+            data={"sizes": sizes}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get label sizes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/label-sizes", response_model=ApiResponse)
+async def create_label_size(
+    data: dict,
+    _: dict = Depends(require_login)
+):
+    """Create new label size"""
+    try:
+        name = data.get('name')
+        width = data.get('width')
+        height = data.get('height')
+        description = data.get('description', '')
+        
+        if not name or not width or not height:
+            raise HTTPException(status_code=400, detail="Name, width, and height are required")
+        
+        # Save to database
+        size_id = database.create_label_size(name, width, height, description)
+        
+        return ApiResponse(
+            success=True,
+            message="Label size created successfully",
+            data={"id": size_id}
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to create label size: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/label-sizes/{size_id}", response_model=ApiResponse)
+async def delete_label_size(
+    size_id: str,
+    _: dict = Depends(require_login)
+):
+    """Delete label size"""
+    try:
+        if database.delete_label_size(size_id):
+            return ApiResponse(
+                success=True,
+                message="Label size deleted successfully"
+            )
+        else:
+            raise HTTPException(status_code=404, detail="Label size not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete label size: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

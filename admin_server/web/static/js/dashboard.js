@@ -1997,9 +1997,61 @@ function renderApiKeys(keys) {
     setTimeout(() => lucide.createIcons(), 10);
 }
 
-async function showCreateKeyModal() {
-    // Implementation would show a modal to create new API key
-    showAlert('API key creation not yet implemented', 'info');
+function showCreateKeyModal() {
+    document.getElementById('create-key-modal').style.display = 'block';
+    document.getElementById('key-name').focus();
+}
+
+function closeCreateKeyModal() {
+    document.getElementById('create-key-modal').style.display = 'none';
+    document.getElementById('create-key-form').reset();
+}
+
+async function createApiKey(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('key-name').value;
+    const description = document.getElementById('key-description').value;
+    
+    try {
+        const response = await fetch('/api/api-keys', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                description: description
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            // Show the new key in a modal
+            document.getElementById('new-api-key').value = data.data.key;
+            closeCreateKeyModal();
+            document.getElementById('new-key-modal').style.display = 'block';
+            loadApiKeys(); // Refresh the list
+        } else {
+            showAlert(data.message || 'Failed to create API key', 'error');
+        }
+    } catch (error) {
+        console.error('Error creating API key:', error);
+        showAlert('Failed to create API key', 'error');
+    }
+}
+
+function closeNewKeyModal() {
+    document.getElementById('new-key-modal').style.display = 'none';
+    document.getElementById('new-api-key').value = '';
+}
+
+function copyApiKey() {
+    const keyInput = document.getElementById('new-api-key');
+    keyInput.select();
+    document.execCommand('copy');
+    showAlert('API key copied to clipboard', 'success');
 }
 
 async function deleteApiKey(keyId) {
@@ -2078,9 +2130,53 @@ function renderLabelSizes(sizes) {
     setTimeout(() => lucide.createIcons(), 10);
 }
 
-async function showAddLabelSizeModal() {
-    // Implementation would show a modal to add new label size
-    showAlert('Label size creation not yet implemented', 'info');
+function showAddLabelSizeModal() {
+    document.getElementById('add-label-size-modal').style.display = 'block';
+    document.getElementById('size-name').focus();
+}
+
+function closeAddLabelSizeModal() {
+    document.getElementById('add-label-size-modal').style.display = 'none';
+    document.getElementById('add-label-size-form').reset();
+}
+
+async function addLabelSize(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('size-name').value;
+    const width = parseInt(document.getElementById('size-width').value);
+    const height = parseInt(document.getElementById('size-height').value);
+    const description = document.getElementById('size-description').value;
+    
+    try {
+        const response = await fetch('/api/label-sizes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                width: width,
+                height: height,
+                description: description
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showAlert('Label size added successfully', 'success');
+            closeAddLabelSizeModal();
+            loadLabelSizes(); // Refresh the list
+            // Also refresh the label size dropdowns in printer modals
+            loadLabelSizesForDropdowns();
+        } else {
+            showAlert(data.message || 'Failed to add label size', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding label size:', error);
+        showAlert('Failed to add label size', 'error');
+    }
 }
 
 async function deleteLabelSize(sizeId) {

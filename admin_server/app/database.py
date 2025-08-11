@@ -1391,3 +1391,194 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to get queue stats: {e}")
             return {}
+    
+    # ============== Settings Methods ==============
+    
+    def verify_admin_password(self, username: str, password: str) -> bool:
+        """Verify admin password"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT password_hash FROM admin_users 
+                    WHERE username = ?
+                """, (username,))
+                
+                result = cursor.fetchone()
+                if result:
+                    import bcrypt
+                    return bcrypt.checkpw(
+                        password.encode('utf-8'),
+                        result['password_hash'].encode('utf-8')
+                    )
+                return False
+        except Exception as e:
+            logger.error(f"Failed to verify admin password: {e}")
+            return False
+    
+    def update_admin_username(self, old_username: str, new_username: str) -> bool:
+        """Update admin username"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Check if new username exists
+                cursor.execute("""
+                    SELECT id FROM admin_users WHERE username = ?
+                """, (new_username,))
+                
+                if cursor.fetchone():
+                    return False  # Username already exists
+                
+                # Update username
+                cursor.execute("""
+                    UPDATE admin_users 
+                    SET username = ? 
+                    WHERE username = ?
+                """, (new_username, old_username))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Failed to update admin username: {e}")
+            return False
+    
+    def update_admin_password(self, username: str, new_password: str) -> bool:
+        """Update admin password"""
+        try:
+            import bcrypt
+            password_hash = bcrypt.hashpw(
+                new_password.encode('utf-8'),
+                bcrypt.gensalt()
+            ).decode('utf-8')
+            
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE admin_users 
+                    SET password_hash = ? 
+                    WHERE username = ?
+                """, (password_hash, username))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Failed to update admin password: {e}")
+            return False
+    
+    def get_api_keys(self) -> List[Dict]:
+        """Get all API keys"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT id, name, description, created_at, last_used
+                    FROM api_keys
+                    ORDER BY created_at DESC
+                """)
+                
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Failed to get API keys: {e}")
+            return []
+    
+    def create_api_key(self, name: str, key: str, description: str = '') -> str:
+        """Create new API key"""
+        try:
+            key_id = str(uuid.uuid4())
+            
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO api_keys (id, name, key, description, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    key_id,
+                    name,
+                    key,
+                    description,
+                    datetime.now(timezone.utc).isoformat()
+                ))
+                
+                conn.commit()
+                return key_id
+        except Exception as e:
+            logger.error(f"Failed to create API key: {e}")
+            raise
+    
+    def delete_api_key(self, key_id: str) -> bool:
+        """Delete API key"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    DELETE FROM api_keys WHERE id = ?
+                """, (key_id,))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Failed to delete API key: {e}")
+            return False
+    
+    def get_label_sizes(self) -> List[Dict]:
+        """Get all label sizes"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT * FROM label_sizes
+                    ORDER BY name
+                """)
+                
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Failed to get label sizes: {e}")
+            return []
+    
+    def create_label_size(self, name: str, width: int, height: int, description: str = '') -> str:
+        """Create new label size"""
+        try:
+            size_id = str(uuid.uuid4())
+            
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO label_sizes (id, name, width, height, description)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    size_id,
+                    name,
+                    width,
+                    height,
+                    description
+                ))
+                
+                conn.commit()
+                return size_id
+        except Exception as e:
+            logger.error(f"Failed to create label size: {e}")
+            raise
+    
+    def delete_label_size(self, size_id: str) -> bool:
+        """Delete label size"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # First, remove this label size from any printers using it
+                cursor.execute("""
+                    UPDATE pis SET label_size_id = NULL 
+                    WHERE label_size_id = ?
+                """, (size_id,))
+                
+                # Then delete the label size
+                cursor.execute("""
+                    DELETE FROM label_sizes WHERE id = ?
+                """, (size_id,))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Failed to delete label size: {e}")
+            return False

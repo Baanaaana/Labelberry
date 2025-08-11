@@ -965,6 +965,25 @@ input[type="checkbox"]:hover {
     color: white;
 }
 
+/* Alert styles for modals */
+.alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.alert-info {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
 /* Toast Notifications */
 #toast-container {
     position: fixed;
