@@ -1815,6 +1815,7 @@ async def get_api_keys(_: dict = Depends(require_login)):
         keys = database.get_api_keys()
         return ApiResponse(
             success=True,
+            message="API keys retrieved successfully",
             data={"keys": keys}
         )
     except Exception as e:
@@ -1882,6 +1883,7 @@ async def get_label_sizes(_: dict = Depends(require_login)):
         sizes = database.get_label_sizes()
         return ApiResponse(
             success=True,
+            message="Label sizes retrieved successfully",
             data={"sizes": sizes}
         )
     except Exception as e:
