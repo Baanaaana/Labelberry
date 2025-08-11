@@ -141,12 +141,26 @@ class MQTTClient:
         except Exception as e:
             logger.error(f"Error processing MQTT message: {e}")
     
+    def _get_local_ip(self):
+        """Get the local IP address of the Pi"""
+        import socket
+        try:
+            # Create a socket to determine the local IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return None
+    
     def _send_connect_message(self):
         topic = MQTTConfig.get_pi_topic(MQTTConfig.PI_CONNECT_TOPIC, self.device_id)
         payload = {
             "device_id": self.device_id,
             "timestamp": datetime.utcnow().isoformat(),
-            "printer_model": self.printer_model
+            "printer_model": self.printer_model,
+            "ip_address": self._get_local_ip()
         }
         self.client.publish(topic, json.dumps(payload), qos=1)
     

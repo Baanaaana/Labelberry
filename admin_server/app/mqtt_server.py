@@ -241,6 +241,12 @@ class MQTTServer:
             logger.info(f"Found Pi in database: id={pi.id}, friendly_name={pi.friendly_name}")
             self.database.update_pi_status(pi.id, "online")
             
+            # Update IP address if provided
+            ip_address = data.get("ip_address")
+            if ip_address:
+                self.database.update_pi_ip_address(pi.id, ip_address)
+                logger.info(f"Updated IP address for Pi {device_id}: {ip_address}")
+            
             # Log connection
             import json
             details_str = json.dumps(data) if data else None
