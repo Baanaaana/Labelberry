@@ -272,6 +272,7 @@ async def send_metrics_periodically():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Register all handlers BEFORE connecting to avoid missing early messages
     mqtt_client.register_handler("ping", handle_ping)
     mqtt_client.register_handler("config_update", handle_config_update)
     mqtt_client.register_handler("command", handle_command)
@@ -279,7 +280,7 @@ async def lifespan(app: FastAPI):
     mqtt_client.register_handler("test_print", lambda data: printer.test_print())
     mqtt_client.register_handler("broadcast", handle_command)  # Handle broadcast messages as commands
     
-    # Connect to MQTT broker
+    # Now connect to MQTT broker after handlers are registered
     connected = await mqtt_client.connect()
     if not connected:
         logger.error("Failed to connect to MQTT broker on startup, will retry in background")

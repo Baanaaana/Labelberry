@@ -132,12 +132,9 @@ class MQTTClient:
             else:
                 message_type = "unknown"
             
-            # Handle message
-            if message_type in self.message_handlers:
-                # Queue message for async processing
-                self.message_queue.put((message_type, payload))
-            else:
-                logger.warning(f"No handler for message type: {message_type}")
+            # Queue message for async processing (always queue, check handler later)
+            self.message_queue.put((message_type, payload))
+            logger.debug(f"Queued message type: {message_type}")
                 
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in MQTT message: {e}")
@@ -302,6 +299,8 @@ class MQTTClient:
                             await self.message_handlers[message_type](payload)
                         except Exception as e:
                             logger.error(f"Error handling message type {message_type}: {e}")
+                    else:
+                        logger.debug(f"No handler registered for message type: {message_type}, skipping")
                 
                 # Reconnect if disconnected
                 if not self.connected:
