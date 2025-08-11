@@ -93,7 +93,17 @@ class MQTTClient:
             # Send online status
             self._send_status("online")
         else:
-            logger.error(f"Failed to connect to MQTT broker, return code: {rc}")
+            error_messages = {
+                1: "Incorrect protocol version",
+                2: "Invalid client identifier", 
+                3: "Server unavailable",
+                4: "Bad username or password",
+                5: "Not authorized"
+            }
+            error_msg = error_messages.get(rc, f"Unknown error (code: {rc})")
+            logger.error(f"Failed to connect to MQTT broker: {error_msg}")
+            if rc == 4:
+                logger.error(f"Authentication failed - Username: {self.mqtt_username if self.mqtt_username else 'device_id: ' + self.device_id}")
             self.connected = False
     
     def _on_disconnect(self, client, userdata, rc):
@@ -158,6 +168,9 @@ class MQTTClient:
     
     async def connect(self):
         try:
+            logger.info(f"Attempting to connect to MQTT broker at {self.broker_host}:{self.broker_port}")
+            logger.info(f"Using credentials - Username: {self.mqtt_username if self.mqtt_username else 'device_id: ' + self.device_id}")
+            
             self.client.connect(self.broker_host, self.broker_port, keepalive=self.config.keepalive)
             
             # Start MQTT loop in background thread
@@ -167,10 +180,17 @@ class MQTTClient:
             # Wait a bit for connection to establish
             await asyncio.sleep(2)
             
+            if self.connected:
+                logger.info(f"Successfully connected to MQTT broker")
+            else:
+                logger.warning(f"Failed to establish connection to MQTT broker after 2 seconds")
+            
             return self.connected
             
         except Exception as e:
-            logger.error(f"Failed to connect to MQTT broker: {e}")
+            logger.error(f"Failed to connect to MQTT broker at {self.broker_host}:{self.broker_port}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
     async def disconnect(self):

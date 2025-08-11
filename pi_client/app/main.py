@@ -270,6 +270,13 @@ async def lifespan(app: FastAPI):
     mqtt_client.register_handler("ping", handle_ping)
     mqtt_client.register_handler("config_update", handle_config_update)
     mqtt_client.register_handler("command", handle_command)
+    mqtt_client.register_handler("print_job", handle_remote_print)
+    mqtt_client.register_handler("test_print", lambda data: printer.test_print())
+    
+    # Connect to MQTT broker
+    connected = await mqtt_client.connect()
+    if not connected:
+        logger.error("Failed to connect to MQTT broker on startup, will retry in background")
     
     asyncio.create_task(mqtt_client.listen())
     asyncio.create_task(process_queue())
