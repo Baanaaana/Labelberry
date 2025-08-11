@@ -136,7 +136,7 @@ function updateLabelSizeDropdowns() {
     // Build options HTML
     let optionsHTML = '<option value="">Select label size...</option>';
     labelSizes.forEach(size => {
-        optionsHTML += `<option value="${size.id}">${size.display_name}</option>`;
+        optionsHTML += `<option value="${size.id}">${size.name} (${size.width}mm x ${size.height}mm)</option>`;
     });
     
     if (registerSelect) {
