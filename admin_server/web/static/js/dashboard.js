@@ -89,21 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupAutoRefresh();
 });
 
-// Load label sizes from server
-async function loadLabelSizes() {
-    try {
-        const response = await fetch('/api/label-sizes');
-        const data = await response.json();
-        
-        if (data.success) {
-            labelSizes = data.data.sizes;
-            updateLabelSizeDropdowns();
-            updateLabelSizeFilter(); // Update the filter dropdown
-        }
-    } catch (error) {
-        console.error('Failed to load label sizes:', error);
-    }
-}
+// Function moved to line 2130 to avoid duplication
 
 // Update label size filter dropdown with available sizes
 function updateLabelSizeFilter() {
@@ -2133,7 +2119,10 @@ async function loadLabelSizes() {
         const data = await response.json();
         
         if (data.success) {
-            renderLabelSizes(data.data.sizes || []);
+            labelSizes = data.data.sizes || [];  // Update global variable
+            updateLabelSizeDropdowns();  // Update dropdowns for printer modals
+            updateLabelSizeFilter();  // Update filter dropdown
+            renderLabelSizes(labelSizes);  // Render in settings panel
         }
     } catch (error) {
         console.error('Error loading label sizes:', error);
