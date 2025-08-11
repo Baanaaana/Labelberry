@@ -177,13 +177,13 @@ class MQTTServer:
         """Handle Pi connection"""
         self.connected_pis.add(device_id)
         
-        # Update database
-        pi = await self.database.get_pi_by_device_id(device_id)
+        # Update database (synchronous calls, no await)
+        pi = self.database.get_pi_by_id(device_id)
         if pi:
-            await self.database.update_pi_status(pi.id, "online")
+            self.database.update_pi_status(pi.id, "online")
             
             # Log connection
-            await self.database.create_log_entry(
+            self.database.create_log_entry(
                 pi_id=pi.id,
                 log_type="connection",
                 message=f"Pi connected via MQTT",
@@ -201,16 +201,16 @@ class MQTTServer:
         if status == "offline":
             self.connected_pis.discard(device_id)
         
-        pi = await self.database.get_pi_by_device_id(device_id)
+        pi = self.database.get_pi_by_id(device_id)
         if pi:
-            await self.database.update_pi_status(pi.id, status)
+            self.database.update_pi_status(pi.id, status)
             logger.info(f"Pi {device_id} status: {status}")
     
     async def _handle_pi_metrics(self, device_id: str, data: Dict[str, Any]):
         """Handle Pi metrics update"""
-        pi = await self.database.get_pi_by_device_id(device_id)
+        pi = self.database.get_pi_by_id(device_id)
         if pi:
-            await self.database.create_metrics(
+            self.database.create_metrics(
                 pi_id=pi.id,
                 cpu_usage=data.get("cpu_usage", 0),
                 memory_usage=data.get("memory_usage", 0),
@@ -223,9 +223,9 @@ class MQTTServer:
     
     async def _handle_pi_log(self, device_id: str, data: Dict[str, Any]):
         """Handle Pi log entry"""
-        pi = await self.database.get_pi_by_device_id(device_id)
+        pi = self.database.get_pi_by_id(device_id)
         if pi:
-            await self.database.create_log_entry(
+            self.database.create_log_entry(
                 pi_id=pi.id,
                 log_type=data.get("log_type", "general"),
                 message=data.get("message", ""),
@@ -234,9 +234,9 @@ class MQTTServer:
     
     async def _handle_pi_error(self, device_id: str, data: Dict[str, Any]):
         """Handle Pi error"""
-        pi = await self.database.get_pi_by_device_id(device_id)
+        pi = self.database.get_pi_by_id(device_id)
         if pi:
-            await self.database.create_error_log(
+            self.database.create_error_log(
                 pi_id=pi.id,
                 error_type=data.get("error_type", "unknown"),
                 message=data.get("message", ""),
@@ -246,21 +246,21 @@ class MQTTServer:
     
     async def _handle_job_update(self, device_id: str, data: Dict[str, Any]):
         """Handle print job update"""
-        pi = await self.database.get_pi_by_device_id(device_id)
+        pi = self.database.get_pi_by_id(device_id)
         if pi:
             job_id = data.get("job_id")
             status = data.get("status")
             
             if job_id:
                 # Update job status in database
-                await self.database.update_print_job_status(job_id, status)
+                self.database.update_print_job_status(job_id, status)
                 logger.info(f"Job {job_id} on Pi {device_id}: {status}")
     
     async def _handle_config_request(self, device_id: str, data: Dict[str, Any]):
         """Handle configuration request from Pi"""
-        pi = await self.database.get_pi_by_device_id(device_id)
+        pi = self.database.get_pi_by_id(device_id)
         if pi:
-            config = await self.database.get_pi_configuration(pi.id)
+            config = self.database.get_pi_configuration(pi.id)
             if config:
                 await self.send_config_to_pi(device_id, config)
     
