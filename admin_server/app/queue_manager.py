@@ -78,13 +78,24 @@ class QueueManager:
             # Update status to 'sent'
             self.database.update_job_status(job['id'], 'sent')
             
-            # Send via MQTT
+            # Send via MQTT with proper ZPL content
+            # Use zpl_content/zpl_url columns if available, fall back to zpl_source
+            zpl_raw = job.get('zpl_content')
+            zpl_url = job.get('zpl_url')
+            
+            # Fallback to zpl_source if new columns are empty (backward compatibility)
+            if not zpl_raw and not zpl_url and job.get('zpl_source'):
+                if job['zpl_source'].startswith('http'):
+                    zpl_url = job['zpl_source']
+                else:
+                    zpl_raw = job['zpl_source']
+            
             success = await self.mqtt_server.send_print_job(
                 pi_id,
                 {
                     "job_id": job['id'],
-                    "zpl_raw": job['zpl_source'] if not job['zpl_source'].startswith('http') else None,
-                    "zpl_url": job['zpl_source'] if job['zpl_source'].startswith('http') else None,
+                    "zpl_raw": zpl_raw,
+                    "zpl_url": zpl_url,
                     "priority": job.get('priority', 5)
                 }
             )
