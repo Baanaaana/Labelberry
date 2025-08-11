@@ -91,12 +91,14 @@ class MQTTServer:
                 message_type = topic_parts[3] if len(topic_parts) > 3 else "unknown"
                 
                 # Queue message for async processing
+                logger.debug(f"Received MQTT message - device: {device_id}, type: {message_type}")
                 self.message_queue.put({
                     "device_id": device_id,
                     "type": message_type,
                     "payload": payload,
                     "topic": msg.topic
                 })
+                logger.debug(f"Queued message for processing, queue size: {self.message_queue.qsize()}")
             
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in MQTT message: {e}")
@@ -134,7 +136,7 @@ class MQTTServer:
         while self.running:
             try:
                 if not self.message_queue.empty():
-                    message = self.message_queue.get(timeout=0.1)
+                    message = self.message_queue.get(block=False)
                     await self._handle_pi_message(message)
                 
                 await asyncio.sleep(0.1)
@@ -150,6 +152,8 @@ class MQTTServer:
         device_id = message["device_id"]
         msg_type = message["type"]
         payload = message["payload"]
+        
+        logger.info(f"Processing message from Pi {device_id}: type={msg_type}")
         
         try:
             if msg_type == "connect":
