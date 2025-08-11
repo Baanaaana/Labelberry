@@ -129,6 +129,11 @@ class MQTTClient:
                 message_type = "test_print"
             elif "broadcast" in msg.topic:
                 message_type = "broadcast"
+            elif "job" in msg.topic or "status" in msg.topic or "metrics" in msg.topic:
+                # These are Pi->Server messages, we shouldn't receive them
+                # but if we do (e.g., retained messages), ignore them
+                logger.debug(f"Ignoring Pi->Server message on topic: {msg.topic}")
+                return
             else:
                 message_type = "unknown"
             
@@ -240,7 +245,7 @@ class MQTTClient:
                 topic = MQTTConfig.get_pi_topic(MQTTConfig.PI_ERROR_TOPIC, self.device_id)
             elif message_type == "log":
                 topic = MQTTConfig.get_pi_topic(MQTTConfig.PI_LOG_TOPIC, self.device_id)
-            elif message_type == "job_complete":
+            elif message_type == "job_complete" or message_type == "job_status":
                 topic = MQTTConfig.get_pi_topic(MQTTConfig.PI_JOB_UPDATE_TOPIC, self.device_id)
             elif message_type == "config_request":
                 topic = MQTTConfig.get_pi_topic(MQTTConfig.PI_CONFIG_REQUEST_TOPIC, self.device_id)
