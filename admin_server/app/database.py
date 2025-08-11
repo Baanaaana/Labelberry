@@ -1575,7 +1575,14 @@ class Database:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT * FROM label_sizes
+                    SELECT 
+                        id,
+                        name,
+                        width_mm as width,
+                        height_mm as height,
+                        is_default,
+                        created_at
+                    FROM label_sizes
                     ORDER BY name
                 """)
                 
@@ -1587,23 +1594,21 @@ class Database:
     def create_label_size(self, name: str, width: int, height: int, description: str = '') -> str:
         """Create new label size"""
         try:
-            size_id = str(uuid.uuid4())
-            
             with self.get_connection() as conn:
                 cursor = conn.cursor()
+                # Note: id is AUTO_INCREMENT, so we don't provide it
                 cursor.execute("""
-                    INSERT INTO label_sizes (id, name, width, height, description)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO label_sizes (name, width_mm, height_mm)
+                    VALUES (?, ?, ?)
                 """, (
-                    size_id,
                     name,
                     width,
-                    height,
-                    description
+                    height
                 ))
                 
                 conn.commit()
-                return size_id
+                # Return the last inserted row id
+                return str(cursor.lastrowid)
         except Exception as e:
             logger.error(f"Failed to create label size: {e}")
             raise

@@ -479,14 +479,35 @@ a.icon-btn:hover i {
     color: #6b7280;
 }
 
-.status-online {
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-online,
+.status-success {
     background: #d3f9d8;
     color: #2b8a3e;
 }
 
-.status-offline {
+.status-offline,
+.status-error {
     background: #ffe3e3;
     color: #c92a2a;
+}
+
+.status-warning {
+    background: #fff4e6;
+    color: #e67700;
+}
+
+.status-info {
+    background: #e7f5ff;
+    color: #1971c2;
 }
 
 .printer-details {

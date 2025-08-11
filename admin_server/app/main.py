@@ -94,7 +94,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "40.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "42.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -1594,13 +1594,13 @@ async def add_label_size(
     try:
         data = await request.json()
         name = data.get("name")
-        width_mm = data.get("width_mm")
-        height_mm = data.get("height_mm")
+        width = data.get("width")
+        height = data.get("height")
         
-        if not all([name, width_mm, height_mm]):
+        if not all([name, width, height]):
             raise HTTPException(status_code=400, detail="Name, width, and height are required")
         
-        size_id = database.add_label_size(name, width_mm, height_mm)
+        size_id = database.add_label_size(name, width, height)
         
         if size_id:
             return ApiResponse(

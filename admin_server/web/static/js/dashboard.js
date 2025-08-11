@@ -117,7 +117,7 @@ function updateLabelSizeFilter() {
     filterSelect.innerHTML = `
         <option value="">All Label Sizes</option>
         ${labelSizes.map(size => 
-            `<option value="${size.id}">${size.name} (${size.width_mm}mm x ${size.height_mm}mm)</option>`
+            `<option value="${size.id}">${size.name} (${size.width}mm x ${size.height}mm)</option>`
         ).join('')}
         <option value="none">No Label Size Set</option>
     `;
@@ -1026,13 +1026,13 @@ async function copyCurlCommand(printerId, printerName, labelSizeId) {
         
         if (labelSize) {
             // Generate ZPL based on label size
-            if (labelSize.name.toLowerCase().includes('small') || (labelSize.width_mm <= 60 && labelSize.height_mm <= 40)) {
+            if (labelSize.name.toLowerCase().includes('small') || (labelSize.width <= 60 && labelSize.height <= 40)) {
                 // Small label (57mm x 32mm or similar)
                 zplContent = `^XA
 ^PW448
 ^LL252
 ^FO20,20^A0N,25,25^FDLabelBerry API Test^FS
-^FO20,50^A0N,20,20^FD${labelSize.width_mm}mm x ${labelSize.height_mm}mm^FS
+^FO20,50^A0N,20,20^FD${labelSize.width}mm x ${labelSize.height}mm^FS
 ^FO20,80^GB408,1,2^FS
 ^FO20,90^A0N,18,18^FDPrinter: ${printerName}^FS
 ^FO20,115^A0N,18,18^FDDate: ${new Date().toLocaleDateString()}^FS
@@ -1045,7 +1045,7 @@ async function copyCurlCommand(printerId, printerName, labelSizeId) {
 ^PW812
 ^LL1218
 ^FO50,50^A0N,40,40^FDLabelBerry API Test^FS
-^FO50,100^A0N,30,30^FD${labelSize.width_mm}mm x ${labelSize.height_mm}mm^FS
+^FO50,100^A0N,30,30^FD${labelSize.width}mm x ${labelSize.height}mm^FS
 ^FO50,150^GB712,2,2^FS
 ^FO50,170^A0N,25,25^FDPrinter: ${printerName}^FS
 ^FO50,210^A0N,25,25^FDDate: ${new Date().toLocaleDateString()}^FS
