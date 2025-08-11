@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException, Depends, Request, Form, Header
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -863,6 +863,77 @@ async def reprint_job(
         raise
     except Exception as e:
         logger.error(f"Failed to queue reprint job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/generate-label-preview")
+async def generate_label_preview(
+    request: Request,
+    _: dict = Depends(require_login)
+):
+    """Generate a label preview using Labelary API"""
+    try:
+        # Get ZPL content from request body
+        zpl_content = await request.body()
+        zpl_content = zpl_content.decode('utf-8')
+        
+        if not zpl_content:
+            raise HTTPException(status_code=400, detail="No ZPL content provided")
+        
+        # Validate ZPL has proper markers
+        if not zpl_content.strip().startswith('^XA'):
+            raise HTTPException(status_code=400, detail="Invalid ZPL: missing ^XA start marker")
+        if not zpl_content.strip().endswith('^XZ'):
+            raise HTTPException(status_code=400, detail="Invalid ZPL: missing ^XZ end marker")
+        
+        # Call Labelary API to generate preview
+        # Default to 4x6 inch label at 203 dpi
+        dpmm = 8  # 203 dpi = 8 dots per mm
+        width = 4  # inches
+        height = 6  # inches
+        
+        labelary_url = f"http://api.labelary.com/v1/printers/{dpmm}dpmm/labels/{width}x{height}/0/"
+        
+        headers = {
+            'Accept': 'image/png',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        
+        response = requests.post(
+            labelary_url,
+            data=zpl_content.encode('utf-8'),
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            # Return the PNG image
+            from fastapi.responses import Response
+            return Response(
+                content=response.content,
+                media_type="image/png",
+                headers={"Cache-Control": "public, max-age=3600"}
+            )
+        else:
+            # Try to get error message from Labelary
+            error_msg = response.text if response.text else f"Labelary API error: {response.status_code}"
+            
+            # Check for common issues
+            if "ERROR" in error_msg.upper() or response.status_code == 400:
+                # Check if it's a test/config label with no visible content
+                if any(marker in zpl_content for marker in ['^FDPrinter:', '^FDDevice:', '^FDStatus:', 'Test Print', 'Test - Small']):
+                    raise HTTPException(
+                        status_code=400, 
+                        detail="Preview not available - ZPL may only contain positioning or configuration commands without visible elements"
+                    )
+                raise HTTPException(status_code=400, detail=f"Invalid ZPL: {error_msg}")
+            
+            raise HTTPException(status_code=response.status_code, detail=error_msg)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate label preview: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
