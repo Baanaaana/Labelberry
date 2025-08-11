@@ -98,12 +98,19 @@ class Database:
                     ("admin", password_hash)
                 )
             
-            # Also ensure admin exists in admin_users table with bcrypt
+            # Also ensure admin exists in admin_users table
             cursor.execute("SELECT COUNT(*) FROM admin_users WHERE username = 'admin'")
             if cursor.fetchone()[0] == 0:
-                import bcrypt
-                # Hash the default password with bcrypt for better security
-                password_hash = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                try:
+                    import bcrypt
+                    # Hash the default password with bcrypt for better security
+                    password_hash = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                except ImportError:
+                    import hashlib
+                    # Fallback to SHA256 if bcrypt is not installed
+                    password_hash = hashlib.sha256("admin123".encode()).hexdigest()
+                    logger.warning("bcrypt not installed, using SHA256 for password hashing. Install bcrypt for better security.")
+                
                 cursor.execute(
                     "INSERT INTO admin_users (username, password_hash) VALUES (?, ?)",
                     ("admin", password_hash)
@@ -1425,11 +1432,25 @@ class Database:
                 
                 result = cursor.fetchone()
                 if result:
-                    import bcrypt
-                    return bcrypt.checkpw(
-                        password.encode('utf-8'),
-                        result['password_hash'].encode('utf-8')
-                    )
+                    stored_hash = result['password_hash']
+                    
+                    # Try bcrypt first
+                    try:
+                        import bcrypt
+                        # Check if it's a bcrypt hash (starts with $2)
+                        if stored_hash.startswith('$2'):
+                            return bcrypt.checkpw(
+                                password.encode('utf-8'),
+                                stored_hash.encode('utf-8')
+                            )
+                    except ImportError:
+                        pass
+                    
+                    # Fallback to SHA256
+                    import hashlib
+                    password_hash = hashlib.sha256(password.encode()).hexdigest()
+                    return password_hash == stored_hash
+                    
                 return False
         except Exception as e:
             logger.error(f"Failed to verify admin password: {e}")
@@ -1465,11 +1486,18 @@ class Database:
     def update_admin_password(self, username: str, new_password: str) -> bool:
         """Update admin password"""
         try:
-            import bcrypt
-            password_hash = bcrypt.hashpw(
-                new_password.encode('utf-8'),
-                bcrypt.gensalt()
-            ).decode('utf-8')
+            # Try to use bcrypt if available
+            try:
+                import bcrypt
+                password_hash = bcrypt.hashpw(
+                    new_password.encode('utf-8'),
+                    bcrypt.gensalt()
+                ).decode('utf-8')
+            except ImportError:
+                # Fallback to SHA256
+                import hashlib
+                password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+                logger.warning("bcrypt not installed, using SHA256 for password hashing")
             
             with self.get_connection() as conn:
                 cursor = conn.cursor()
