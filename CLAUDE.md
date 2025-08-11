@@ -10,23 +10,24 @@ LabelBerry is a Raspberry Pi-based label printing system for Zebra printers with
    - FastAPI application running on each Raspberry Pi
    - Connects to Zebra printers via USB
    - Receives print requests with ZPL (either URL or raw)
-   - Maintains WebSocket connection to admin server
+   - Maintains MQTT connection to admin server
    - Local CLI for configuration
 
 2. **Admin Server** (`/admin_server`)
    - Runs on Ubuntu 24.04 server (separate machine)
    - Web interface for managing all Raspberry Pis
    - SQLite database for configuration and monitoring
-   - WebSocket server for real-time communication
+   - MQTT broker (Mosquitto) for real-time communication
    - REST API for configuration management
 
 3. **Shared Components** (`/shared`)
    - Common data models and utilities
+   - MQTT topic configuration
 
 ## Technology Stack
 - **Language**: Python 3.9+ with FastAPI
 - **Database**: SQLite
-- **Communication**: WebSocket + REST API fallback
+- **Communication**: MQTT (Mosquitto broker) + REST API
 - **Authentication**: API Key based
 - **Queue**: Simple FIFO queue
 - **Printer Connection**: USB
@@ -45,8 +46,8 @@ LabelBerry is a Raspberry Pi-based label printing system for Zebra printers with
 - **Admin Server**: `curl -sSL https://raw.githubusercontent.com/Baanaaana/Labelberry/main/install-server.sh | bash`
 
 ### Installation Script Versioning
-- **install-pi.sh**: Version 1.0.0 (Initial release with USB printer support)
-- **install-server.sh**: Version 1.0.0 (Initial release)
+- **install-pi.sh**: Version 1.0.9 (MQTT support added)
+- **install-server.sh**: Version 1.0.3 (MQTT broker integration)
 - **Version Policy**: Increment by 0.0.1 for each change (e.g., 1.0.0 → 1.0.1 → 1.0.2)
 - **Version Location**: At the top of each script in header comments and SCRIPT_VERSION variable
 - **Version Format**: MAJOR.MINOR.PATCH following semantic versioning
@@ -82,7 +83,7 @@ LabelBerry/
 - `GET /api/pis/{id}` - Get Pi details
 - `PUT /api/pis/{id}/config` - Update Pi configuration
 - `GET /api/pis/{id}/metrics` - Get Pi metrics
-- `WS /ws/pi/{id}` - WebSocket for Pi connection
+- MQTT Topics - See MQTT section below
 
 ## Database Schema
 - **pis**: Raspberry Pi devices registry
@@ -109,12 +110,12 @@ LabelBerry/
 - Write unit tests for all modules
 - Test error conditions and edge cases
 - Ensure printer communication is mocked in tests
-- Test WebSocket reconnection logic
+- Test MQTT reconnection logic
 
 ### Security
 - Always validate API keys
 - Sanitize ZPL input
-- Use HTTPS/WSS in production
+- Use HTTPS/TLS for MQTT in production
 - Never log sensitive information
 - Implement rate limiting
 
@@ -182,7 +183,7 @@ sudo journalctl -u labelberry-admin -f
 
 ### Common Issues
 1. **Printer not detected**: Check USB connection and permissions
-2. **WebSocket disconnects**: Check network connectivity
+2. **MQTT disconnects**: Check network connectivity and broker status
 3. **Print jobs stuck**: Check printer status and queue
 4. **API key errors**: Verify key in configuration
 
@@ -199,6 +200,45 @@ Repository: https://github.com/Baanaaana/LabelBerry
 - Focus on reliability over features
 - Keep resource usage low for Raspberry Pi
 
+## MQTT Architecture
+
+### MQTT Broker
+- **Software**: Mosquitto
+- **Port**: 1883 (standard MQTT)
+- **Authentication**: Username/password per device
+- **QoS**: Level 1 (at least once delivery)
+
+### MQTT Topics
+
+#### Pi → Server Topics
+- `labelberry/pi/{device_id}/status` - Pi online/offline status
+- `labelberry/pi/{device_id}/metrics` - Performance metrics
+- `labelberry/pi/{device_id}/log` - Log messages
+- `labelberry/pi/{device_id}/error` - Error reports
+- `labelberry/pi/{device_id}/job` - Print job status updates
+- `labelberry/pi/{device_id}/connect` - Initial connection
+- `labelberry/pi/{device_id}/config/request` - Configuration request
+
+#### Server → Pi Topics
+- `labelberry/server/{device_id}/config` - Configuration updates
+- `labelberry/server/{device_id}/command` - Commands (clear queue, restart)
+- `labelberry/server/{device_id}/print` - Print job requests
+- `labelberry/server/{device_id}/test` - Test print command
+- `labelberry/broadcast` - Broadcast to all Pis
+
+### MQTT Configuration
+
+#### Admin Server
+- Mosquitto broker installed and configured
+- Admin user: `admin` (password: `admin_password`)
+- Each Pi gets unique credentials on registration
+
+#### Pi Client
+- Connects using device_id as username
+- API key as password
+- Auto-reconnect with exponential backoff
+- Last Will Testament for offline detection
+
 ## Testing Checklist
 - [ ] Test with real Zebra printer
 - [ ] Test with multiple Pis connected
@@ -206,3 +246,5 @@ Repository: https://github.com/Baanaaana/LabelBerry
 - [ ] Test configuration updates
 - [ ] Test queue overflow scenarios
 - [ ] Test invalid ZPL handling
+- [ ] Test MQTT broker restart
+- [ ] Test MQTT message persistence

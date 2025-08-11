@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.2"
+SCRIPT_VERSION="1.0.4"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -24,7 +24,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}[1/12] Checking system requirements...${NC}"
+echo -e "${YELLOW}[1/13] Checking system requirements...${NC}"
 if ! lsb_release -d | grep -q "Ubuntu"; then
     echo -e "${YELLOW}Warning: This doesn't appear to be Ubuntu${NC}"
     read -p "Do you want to continue anyway? (y/N): " -n 1 -r </dev/tty
@@ -34,7 +34,7 @@ if ! lsb_release -d | grep -q "Ubuntu"; then
     fi
 fi
 
-echo -e "${YELLOW}[2/12] Checking Python version...${NC}"
+echo -e "${YELLOW}[2/13] Checking Python version...${NC}"
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}Python 3 is not installed${NC}"
     exit 1
@@ -48,7 +48,7 @@ if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1
 fi
 echo -e "${GREEN}Python $PYTHON_VERSION found${NC}"
 
-echo -e "${YELLOW}[3/12] Installing system dependencies...${NC}"
+echo -e "${YELLOW}[3/13] Installing system dependencies...${NC}"
 apt-get update
 apt-get install -y \
     python3-pip \
@@ -57,9 +57,11 @@ apt-get install -y \
     sqlite3 \
     build-essential \
     python3-dev \
-    uuid-runtime
+    uuid-runtime \
+    mosquitto \
+    mosquitto-clients
 
-echo -e "${YELLOW}[4/12] Creating installation directory...${NC}"
+echo -e "${YELLOW}[4/13] Creating installation directory...${NC}"
 INSTALL_DIR="/opt/labelberry-admin"
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}Installation directory already exists${NC}"
@@ -77,17 +79,17 @@ if [ -d "$INSTALL_DIR" ]; then
 fi
 mkdir -p "$INSTALL_DIR"
 
-echo -e "${YELLOW}[5/12] Cloning repository...${NC}"
+echo -e "${YELLOW}[5/13] Cloning repository...${NC}"
 cd "$INSTALL_DIR"
 git clone --sparse https://github.com/Baanaaana/LabelBerry.git .
 git sparse-checkout init --cone
 git sparse-checkout set admin_server shared
 
-echo -e "${YELLOW}[6/12] Creating virtual environment...${NC}"
+echo -e "${YELLOW}[6/13] Creating virtual environment...${NC}"
 python3 -m venv venv
 source venv/bin/activate
 
-echo -e "${YELLOW}[7/12] Installing Python packages...${NC}"
+echo -e "${YELLOW}[7/13] Installing Python packages...${NC}"
 pip install --upgrade pip
 pip install -r admin_server/requirements.txt
 
@@ -96,12 +98,57 @@ touch admin_server/__init__.py
 touch admin_server/app/__init__.py
 touch shared/__init__.py
 
-echo -e "${YELLOW}[8/12] Creating directories...${NC}"
+echo -e "${YELLOW}[8/13] Configuring MQTT connection...${NC}"
+echo ""
+echo -e "${BLUE}MQTT Broker Configuration${NC}"
+echo "Choose MQTT broker option:"
+echo "1) Use external MQTT broker (recommended if you have one)"
+echo "2) Install local Mosquitto broker on this server"
+read -p "Enter choice (1 or 2): " MQTT_CHOICE </dev/tty
+
+if [ "$MQTT_CHOICE" = "2" ]; then
+    echo -e "${YELLOW}Installing Mosquitto broker...${NC}"
+    apt-get install -y mosquitto mosquitto-clients
+    
+    # Configure Mosquitto
+    cat > /etc/mosquitto/conf.d/labelberry.conf <<EOF
+listener 1883
+allow_anonymous false
+password_file /etc/mosquitto/passwd
+log_dest file /var/log/mosquitto/mosquitto.log
+log_type all
+EOF
+    
+    # Create MQTT user
+    read -p "Enter MQTT username (default: labelberry): " MQTT_USER </dev/tty
+    MQTT_USER=${MQTT_USER:-labelberry}
+    read -s -p "Enter MQTT password: " MQTT_PASS </dev/tty
+    echo
+    
+    touch /etc/mosquitto/passwd
+    mosquitto_passwd -b /etc/mosquitto/passwd $MQTT_USER "$MQTT_PASS"
+    
+    systemctl restart mosquitto
+    systemctl enable mosquitto
+    
+    MQTT_HOST="localhost"
+    MQTT_PORT="1883"
+else
+    echo -e "${YELLOW}Configuring external MQTT broker...${NC}"
+    read -p "Enter MQTT broker host/IP: " MQTT_HOST </dev/tty
+    read -p "Enter MQTT broker port (default 1883): " MQTT_PORT </dev/tty
+    MQTT_PORT=${MQTT_PORT:-1883}
+    read -p "Enter MQTT username: " MQTT_USER </dev/tty
+    read -s -p "Enter MQTT password: " MQTT_PASS </dev/tty
+    echo
+fi
+
+echo -e "${YELLOW}[9/13] Creating directories...${NC}"
 mkdir -p /etc/labelberry
 mkdir -p /var/lib/labelberry
 mkdir -p /var/log/labelberry
 
-echo -e "${YELLOW}[9/12] Creating configuration...${NC}"
+echo -e "${YELLOW}[10/13] Creating configuration...${NC}"
 if [ ! -f "/etc/labelberry/server.conf" ]; then
     read -p "Enter the port for the admin server (default 8080): " PORT </dev/tty
     PORT=${PORT:-8080}
@@ -115,6 +162,11 @@ log_file: /var/log/labelberry/server.log
 cors_origins: ["*"]
 rate_limit: 100
 session_timeout: 3600
+# MQTT Configuration
+mqtt_broker: $MQTT_HOST
+mqtt_port: $MQTT_PORT
+mqtt_username: $MQTT_USER
+mqtt_password: $MQTT_PASS
 EOF
     
     echo -e "${GREEN}Configuration created${NC}"
@@ -123,7 +175,7 @@ else
     PORT=$(grep "port:" /etc/labelberry/server.conf | cut -d' ' -f2)
 fi
 
-echo -e "${YELLOW}[10/12] Creating systemd service...${NC}"
+echo -e "${YELLOW}[11/13] Creating systemd service...${NC}"
 cat > /etc/systemd/system/labelberry-admin.service <<EOF
 [Unit]
 Description=LabelBerry Admin Server
@@ -147,7 +199,7 @@ EOF
 systemctl daemon-reload
 systemctl enable labelberry-admin.service
 
-echo -e "${YELLOW}[11/11] Checking service status...${NC}"
+echo -e "${YELLOW}[12/13] Checking service status...${NC}"
 
 # Check if service is already running
 if systemctl is-active --quiet labelberry-admin.service; then
@@ -165,12 +217,20 @@ SERVER_IP=$(hostname -I | awk '{print $1}')
 PORT=${PORT:-8080}
 
 echo ""
+echo -e "${YELLOW}[13/13] Finalizing installation...${NC}"
+
 echo -e "${GREEN}===============================================${NC}"
 echo -e "${GREEN}    Installation Complete!                     ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
 echo -e "${YELLOW}Access the dashboard at:${NC}"
 echo "   http://${SERVER_IP}:${PORT}"
+echo ""
+echo -e "${YELLOW}MQTT Configuration:${NC}"
+echo "   Host: $MQTT_HOST"
+echo "   Port: $MQTT_PORT"
+echo "   Username: $MQTT_USER"
+echo "   Password: [configured]"
 echo ""
 echo -e "${YELLOW}Service Status:${NC}"
 echo "   sudo systemctl status labelberry-admin"

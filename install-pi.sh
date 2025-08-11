@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.8"
+SCRIPT_VERSION="1.1.0"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -25,7 +25,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}[1/10] Checking system requirements...${NC}"
+echo -e "${YELLOW}[1/11] Checking system requirements...${NC}"
 if ! grep -q "Raspberry Pi" /proc/cpuinfo && ! grep -q "BCM" /proc/cpuinfo; then
     echo -e "${YELLOW}Warning: This doesn't appear to be a Raspberry Pi${NC}"
     read -p "Do you want to continue anyway? (y/N): " -n 1 -r </dev/tty
@@ -35,7 +35,7 @@ if ! grep -q "Raspberry Pi" /proc/cpuinfo && ! grep -q "BCM" /proc/cpuinfo; then
     fi
 fi
 
-echo -e "${YELLOW}[2/10] Checking Python version...${NC}"
+echo -e "${YELLOW}[2/11] Checking Python version...${NC}"
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}Python 3 is not installed${NC}"
     exit 1
@@ -60,7 +60,8 @@ apt-get install -y \
     build-essential \
     python3-dev \
     uuid-runtime \
-    usbutils
+    usbutils \
+    mosquitto-clients
 
 echo -e "${YELLOW}[4/11] Detecting Zebra printers...${NC}"
 echo ""
@@ -269,6 +270,20 @@ else
     read -p "Enter the admin server URL (e.g., http://192.168.1.100:8080): " ADMIN_SERVER </dev/tty
     echo ""
     
+    echo -e "${YELLOW}Configuring MQTT connection...${NC}"
+    read -p "Enter MQTT broker host/IP (press Enter to use admin server host): " MQTT_HOST </dev/tty
+    if [ -z "$MQTT_HOST" ]; then
+        # Extract host from admin server URL
+        MQTT_HOST=$(echo $ADMIN_SERVER | sed -e 's|^[^/]*//||' -e 's|:.*$||')
+        echo -e "${GREEN}Using admin server host: $MQTT_HOST${NC}"
+    fi
+    read -p "Enter MQTT broker port (default 1883): " MQTT_PORT </dev/tty
+    MQTT_PORT=${MQTT_PORT:-1883}
+    read -p "Enter MQTT username: " MQTT_USER </dev/tty
+    read -s -p "Enter MQTT password: " MQTT_PASS </dev/tty
+    echo ""
+    echo ""
+    
     # Test connection to admin server
     echo -e "${YELLOW}Testing connection to admin server...${NC}"
     if curl -s -f -o /dev/null --connect-timeout 5 "$ADMIN_SERVER/api/health" 2>/dev/null || curl -s -f -o /dev/null --connect-timeout 5 "$ADMIN_SERVER" 2>/dev/null; then
@@ -300,6 +315,11 @@ api_key: multi-printer-mode
 admin_server: $ADMIN_SERVER
 printer_device: /dev/usblp0
 queue_size: 100
+# MQTT Configuration
+mqtt_broker: $MQTT_HOST
+mqtt_port: $MQTT_PORT
+mqtt_username: $MQTT_USER
+mqtt_password: $MQTT_PASS
 retry_attempts: 3
 retry_delay: 5
 log_level: INFO
@@ -429,6 +449,11 @@ admin_server: $ADMIN_SERVER
 printer_device: ${PRINTER_DEVICES[0]}
 printer_model: $PRINTER_MODEL
 queue_size: 100
+# MQTT Configuration
+mqtt_broker: $MQTT_HOST
+mqtt_port: $MQTT_PORT
+mqtt_username: $MQTT_USER
+mqtt_password: $MQTT_PASS
 retry_attempts: 3
 retry_delay: 5
 log_level: INFO

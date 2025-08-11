@@ -51,7 +51,12 @@ class ConfigManager:
             "retry_attempts": 3,
             "retry_delay": 5,
             "log_level": "INFO",
-            "metrics_interval": 60
+            "metrics_interval": 60,
+            # MQTT defaults
+            "mqtt_broker": None,
+            "mqtt_port": 1883,
+            "mqtt_username": None,
+            "mqtt_password": None
         }
         
         with open(self.config_path, 'w') as f:

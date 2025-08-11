@@ -21,7 +21,7 @@ from shared.models import (
 from .config import ConfigManager
 from .printer import ZebraPrinter
 from .queue import PrintQueue
-from .websocket_client import WebSocketClient
+from .mqtt_client import MQTTClient
 from .monitoring import MonitoringService
 
 
@@ -38,12 +38,7 @@ config = config_manager.get_config()
 printer = ZebraPrinter(config.printer_device)
 print_queue = PrintQueue(max_size=config.queue_size)
 monitoring = MonitoringService(config.device_id)
-ws_client = WebSocketClient(
-    config.admin_server, 
-    config.device_id, 
-    config.api_key,
-    printer_model=config.printer_model
-)
+mqtt_client = MQTTClient(config)
 
 
 async def process_queue():
@@ -83,7 +78,7 @@ async def process_print_job(job: PrintJob) -> bool:
         logger.info(f"Processing job {job.id}")
         
         # Notify server that job is being processed
-        await ws_client.send_message("job_status", {
+        await mqtt_client.send_message("job_status", {
             "job_id": job.id,
             "status": "processing"
         })
@@ -104,7 +99,7 @@ async def process_print_job(job: PrintJob) -> bool:
             error_message = f"Failed to download ZPL: {str(e)}"
             logger.error(error_message)
             
-            await ws_client.send_message("job_complete", {
+            await mqtt_client.send_message("job_complete", {
                 "job_id": job.id,
                 "status": "failed",
                 "error_type": error_type,
@@ -120,7 +115,7 @@ async def process_print_job(job: PrintJob) -> bool:
                 error_message = "Printer is not connected and reconnection failed"
                 logger.error(error_message)
                 
-                await ws_client.send_message("job_complete", {
+                await mqtt_client.send_message("job_complete", {
                     "job_id": job.id,
                     "status": "failed",
                     "error_type": error_type,
@@ -137,7 +132,7 @@ async def process_print_job(job: PrintJob) -> bool:
         if success:
             print_queue.complete_job(job.id, success=True)
             logger.info(f"Job {job.id} completed successfully")
-            await ws_client.send_message("job_complete", {
+            await mqtt_client.send_message("job_complete", {
                 "job_id": job.id,
                 "status": "completed"
             })
@@ -149,7 +144,7 @@ async def process_print_job(job: PrintJob) -> bool:
             logger.error(f"Job {job.id} failed to print")
             
             # Send failure status to server
-            await ws_client.send_message("job_complete", {
+            await mqtt_client.send_message("job_complete", {
                 "job_id": job.id,
                 "status": "failed",
                 "error_type": error_type,
@@ -162,7 +157,7 @@ async def process_print_job(job: PrintJob) -> bool:
     except Exception as e:
         logger.error(f"Job processing error: {e}")
         print_queue.complete_job(job.id, success=False, error_message=str(e))
-        await ws_client.send_error("job_error", str(e))
+        await mqtt_client.send_error("job_error", str(e))
         return False
 
 
@@ -219,14 +214,14 @@ async def handle_remote_print(print_data: Dict[str, Any]):
         
         # If this is a queued job from server, acknowledge receipt
         if job_id:
-            await ws_client.send_message("job_status", {
+            await mqtt_client.send_message("job_status", {
                 "job_id": job_id,
                 "status": "pending"
             })
         
         if print_queue.add_job(job):
             logger.info(f"Remote print job {job.id} added to queue (from server queue: {bool(job_id)})")
-            await ws_client.send_log("print_queued", f"Remote print job queued", {
+            await mqtt_client.send_log("print_queued", f"Remote print job queued", {
                 "job_id": job.id,
                 "source": "server_queue" if job_id else "direct"
             })
@@ -234,24 +229,24 @@ async def handle_remote_print(print_data: Dict[str, Any]):
             logger.error("Failed to add remote print job - queue full")
             if job_id:
                 # Report failure back to server for queued job
-                await ws_client.send_message("job_complete", {
+                await mqtt_client.send_message("job_complete", {
                     "job_id": job_id,
                     "status": "failed",
                     "error_type": "queue_full",
                     "error_message": "Pi local queue is full"
                 })
-            await ws_client.send_error("queue_full", "Print queue is full")
+            await mqtt_client.send_error("queue_full", "Print queue is full")
             
     except Exception as e:
         logger.error(f"Error handling remote print: {e}")
         if print_data.get("job_id"):
-            await ws_client.send_message("job_complete", {
+            await mqtt_client.send_message("job_complete", {
                 "job_id": print_data.get("job_id"),
                 "status": "failed",
                 "error_type": "generic_error",
                 "error_message": str(e)
             })
-        await ws_client.send_error("print_error", str(e))
+        await mqtt_client.send_error("print_error", str(e))
 
 
 async def send_metrics_periodically():
@@ -264,7 +259,7 @@ async def send_metrics_periodically():
                 printer_status="connected" if printer.is_connected else "disconnected"
             )
             
-            await ws_client.send_metrics(metrics)
+            await mqtt_client.send_metrics(metrics)
             
         except Exception as e:
             logger.error(f"Metrics sending error: {e}")
@@ -272,11 +267,11 @@ async def send_metrics_periodically():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ws_client.register_handler("ping", handle_ping)
-    ws_client.register_handler("config_update", handle_config_update)
-    ws_client.register_handler("command", handle_command)
+    mqtt_client.register_handler("ping", handle_ping)
+    mqtt_client.register_handler("config_update", handle_config_update)
+    mqtt_client.register_handler("command", handle_command)
     
-    asyncio.create_task(ws_client.listen())
+    asyncio.create_task(mqtt_client.listen())
     asyncio.create_task(process_queue())
     asyncio.create_task(send_metrics_periodically())
     
@@ -284,7 +279,7 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    await ws_client.disconnect()
+    await mqtt_client.disconnect()
     printer.disconnect()
     logger.info("LabelBerry Pi Client stopped")
 
@@ -342,7 +337,7 @@ async def get_status():
             "printer": printer.get_status(),
             "queue": print_queue.get_status(),
             "system": monitoring.get_system_info(),
-            "websocket_connected": ws_client.ws and not ws_client.ws.closed
+            "websocket_connected": mqtt_client.ws and not mqtt_client.ws.closed
         }
         
         return ApiResponse(

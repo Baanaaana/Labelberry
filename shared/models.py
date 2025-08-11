@@ -78,6 +78,11 @@ class PiConfig(BaseModel):
     retry_delay: int = 5
     log_level: str = "INFO"
     metrics_interval: int = 60
+    # MQTT settings
+    mqtt_broker: Optional[str] = None  # If None, derives from admin_server
+    mqtt_port: int = 1883
+    mqtt_username: Optional[str] = None
+    mqtt_password: Optional[str] = None
 
 
 class PiMetrics(BaseModel):

@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Request, Form, Header
+from fastapi import FastAPI, HTTPException, Depends, MQTT, MQTTDisconnect, Request, Form, Header
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
@@ -25,8 +25,9 @@ from shared.models import (
     ApiResponse, PiStatus, PiConfig, PrintJobStatus
 )
 from .database import Database
-from .websocket_server import ConnectionManager
+from .mqtt_server import MQTTServer
 from .queue_manager import QueueManager
+from .config import ServerConfig
 
 
 logging.basicConfig(
@@ -36,18 +37,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-database = Database()
-connection_manager = ConnectionManager(database)
-queue_manager = QueueManager(database, connection_manager)
-
-# Set the queue manager reference in connection manager
-connection_manager.queue_manager = queue_manager
+server_config = ServerConfig()
+database = Database(server_config.database_path)
+mqtt_server = MQTTServer(database, server_config)
+queue_manager = QueueManager(database, mqtt_server)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("LabelBerry Admin Server started")
     database.save_server_log("server_started", "Admin Server started", "INFO")
+    
+    # Start MQTT server
+    await mqtt_server.start()
     
     # Start queue manager
     await queue_manager.start()
@@ -56,6 +58,9 @@ async def lifespan(app: FastAPI):
     
     # Stop queue manager
     await queue_manager.stop()
+    
+    # Stop MQTT server
+    await mqtt_server.stop()
     
     database.save_server_log("server_stopped", "Admin Server stopped", "INFO")
     logger.info("LabelBerry Admin Server stopped")
@@ -298,9 +303,9 @@ async def list_pis():
         pi_list = []
         for pi in pis:
             pi_dict = pi.model_dump()
-            is_connected = connection_manager.is_connected(pi.id)
-            pi_dict["websocket_connected"] = is_connected
-            # Override status based on actual WebSocket connection
+            is_connected = mqtt_server.is_connected(pi.id)
+            pi_dict["mqtt_connected"] = is_connected
+            # Override status based on actual MQTT connection
             if is_connected:
                 pi_dict["status"] = "online"
             
@@ -331,9 +336,9 @@ async def get_pi_details(pi_id: str):
             raise HTTPException(status_code=404, detail="Pi not found")
         
         pi_dict = pi.model_dump()
-        is_connected = connection_manager.is_connected(pi_id)
-        pi_dict["websocket_connected"] = is_connected
-        # Override status based on actual WebSocket connection
+        is_connected = mqtt_server.is_connected(pi_id)
+        pi_dict["mqtt_connected"] = is_connected
+        # Override status based on actual MQTT connection
         if is_connected:
             pi_dict["status"] = "online"
         pi_dict["config"] = database.get_pi_config(pi_id)
@@ -469,9 +474,9 @@ async def delete_pi(pi_id: str):
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
-        # Disconnect WebSocket if connected
-        if connection_manager.is_connected(pi_id):
-            connection_manager.disconnect(pi_id)
+        # Disconnect MQTT if connected
+        if mqtt_server.is_connected(pi_id):
+            mqtt_server.disconnect(pi_id)
         
         # Delete from database
         if database.delete_pi(pi_id):
@@ -498,8 +503,8 @@ async def update_pi_config(pi_id: str, config: Dict[str, Any]):
             raise HTTPException(status_code=404, detail="Pi not found")
         
         if database.update_pi_config(pi_id, config):
-            if connection_manager.is_connected(pi_id):
-                await connection_manager.send_config_update(pi_id, config)
+            if mqtt_server.is_connected(pi_id):
+                await mqtt_server.send_config_update(pi_id, config)
             
             return ApiResponse(
                 success=True,
@@ -564,10 +569,10 @@ async def send_command(pi_id: str, command: Dict[str, Any]):
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
-        if not connection_manager.is_connected(pi_id):
+        if not mqtt_server.is_connected(pi_id):
             raise HTTPException(status_code=503, detail="Pi is not connected")
         
-        success = await connection_manager.send_command(
+        success = await mqtt_server.send_command(
             pi_id,
             command.get("command"),
             command.get("params")
@@ -600,8 +605,8 @@ async def send_test_print_to_pi(
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
-        # Send print command through WebSocket if connected
-        if connection_manager.is_connected(pi_id):
+        # Send print command through MQTT if connected
+        if mqtt_server.is_connected(pi_id):
             # Create a temporary job to track the test print
             import uuid
             test_job_id = str(uuid.uuid4())
@@ -629,7 +634,7 @@ async def send_test_print_to_pi(
                 "priority": print_data.get("priority", 5)
             }
             
-            success = await connection_manager.send_command(
+            success = await mqtt_server.send_command(
                 pi_id,
                 "print",
                 test_print_data
@@ -650,7 +655,7 @@ async def send_test_print_to_pi(
                     data={"pi_id": pi_id}
                 )
         
-        # If WebSocket not connected, try HTTP
+        # If MQTT not connected, try HTTP
         if hasattr(pi, 'local_ip') and pi.local_ip:
             try:
                 response = requests.post(
@@ -1009,8 +1014,8 @@ async def retry_failed_job(job_id: str, _: dict = Depends(require_login)):
         
         # If Pi is online, send immediately
         pi_id = job['pi_id']
-        if connection_manager.is_connected(pi_id):
-            success = await connection_manager.send_command(
+        if mqtt_server.is_connected(pi_id):
+            success = await mqtt_server.send_command(
                 pi_id,
                 "print",
                 {
@@ -1073,9 +1078,9 @@ async def send_print_to_pi(
         )
         
         # Smart routing: Check if Pi is connected
-        if connection_manager.is_connected(pi_id):
+        if mqtt_server.is_connected(pi_id):
             # Pi is online - try to send directly
-            success = await connection_manager.send_command(
+            success = await mqtt_server.send_command(
                 pi_id,
                 "print",
                 {
@@ -1206,7 +1211,7 @@ async def get_pi_jobs(pi_id: str, limit: int = 100):
 async def get_dashboard_stats():
     try:
         stats = database.get_dashboard_stats()
-        stats["connected_pis"] = len(connection_manager.get_connected_pis())
+        stats["connected_pis"] = len(mqtt_server.get_connected_pis())
         
         return ApiResponse(
             success=True,
@@ -1218,61 +1223,7 @@ async def get_dashboard_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.websocket("/ws/pi/{pi_id}")
-async def websocket_endpoint(websocket: WebSocket, pi_id: str):
-    logger.info(f"WebSocket connection attempt from Pi {pi_id}")
-    
-    auth_header = websocket.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        logger.warning(f"Pi {pi_id} WebSocket rejected - missing auth header")
-        await websocket.close(code=1008, reason="Unauthorized")
-        return
-    
-    api_key = auth_header.replace("Bearer ", "")
-    pi = database.get_pi_by_api_key(api_key)
-    
-    if not pi:
-        logger.warning(f"Pi {pi_id} WebSocket rejected - API key not found in database")
-        logger.warning(f"  Provided API key: {api_key[:20]}..." if len(api_key) > 20 else f"  Provided API key: {api_key}")
-        # Also check if this device ID exists with a different API key
-        existing_pi = database.get_pi_by_id(pi_id)
-        if existing_pi:
-            logger.warning(f"  Device {pi_id} exists in database but with different API key")
-            logger.warning(f"  Expected API key: {existing_pi.api_key[:20]}..." if len(existing_pi.api_key) > 20 else f"  Expected API key: {existing_pi.api_key}")
-        else:
-            logger.warning(f"  Device {pi_id} not found in database at all")
-        await websocket.close(code=1008, reason="Invalid API key")
-        return
-    
-    if pi.id != pi_id:
-        logger.warning(f"Pi {pi_id} WebSocket rejected - API key belongs to different device")
-        logger.warning(f"  API key belongs to device: {pi.id}")
-        logger.warning(f"  Requested device: {pi_id}")
-        await websocket.close(code=1008, reason="Device ID mismatch")
-        return
-    
-    # Get client IP address
-    client_ip = None
-    if websocket.client:
-        client_ip = websocket.client.host
-        logger.info(f"Pi {pi_id} connecting from IP: {client_ip}")
-        # Update the IP address in the database
-        database.update_pi_ip_address(pi_id, client_ip)
-        logger.info(f"Updated IP address for Pi {pi_id} to {client_ip}")
-    else:
-        logger.warning(f"Could not determine IP address for Pi {pi_id}")
-    
-    logger.info(f"Pi {pi_id} WebSocket authenticated - connecting...")
-    await connection_manager.connect(pi_id, websocket)
-    
-    try:
-        await connection_manager.handle_pi_message(pi_id, websocket)
-    except WebSocketDisconnect:
-        logger.info(f"Pi {pi_id} WebSocket disconnected")
-        connection_manager.disconnect(pi_id)
-    except Exception as e:
-        logger.error(f"WebSocket error for Pi {pi_id}: {e}")
-        connection_manager.disconnect(pi_id)
+# MQTT endpoint removed - using MQTT instead
 
 
 @app.post("/api/keys", response_model=ApiResponse)
@@ -1685,7 +1636,7 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "connected_pis": len(connection_manager.get_connected_pis())
+        "connected_pis": len(mqtt_server.get_connected_pis())
     }
 
 

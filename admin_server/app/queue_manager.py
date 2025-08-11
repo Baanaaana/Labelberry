@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 class QueueManager:
     """Manages the server-side print job queue"""
     
-    def __init__(self, database, connection_manager):
+    def __init__(self, database, mqtt_server):
         self.database = database
-        self.connection_manager = connection_manager
+        self.mqtt_server = mqtt_server
         self.running = False
         self.processing_delay = 5  # Seconds between sending jobs (controlled rate)
         self.retry_delays = {
@@ -51,7 +51,7 @@ class QueueManager:
         while self.running:
             try:
                 # Get all connected Pis
-                connected_pis = self.connection_manager.get_connected_pis()
+                connected_pis = self.mqtt_server.get_connected_pis()
                 
                 for pi_id in connected_pis:
                     # Check if enough time has passed since last job sent
@@ -78,10 +78,9 @@ class QueueManager:
             # Update status to 'sent'
             self.database.update_job_status(job['id'], 'sent')
             
-            # Send via WebSocket
-            success = await self.connection_manager.send_command(
+            # Send via MQTT
+            success = await self.mqtt_server.send_print_job(
                 pi_id,
-                "print",
                 {
                     "job_id": job['id'],
                     "zpl_raw": job['zpl_source'] if not job['zpl_source'].startswith('http') else None,
