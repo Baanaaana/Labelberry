@@ -292,6 +292,14 @@ class Database:
                 cursor.execute("ALTER TABLE print_jobs ADD COLUMN zpl_url TEXT")
                 logger.info("Added zpl_url column to print_jobs table")
             
+            # Add missing columns to api_keys if they don't exist (migration)
+            cursor.execute("PRAGMA table_info(api_keys)")
+            api_keys_columns = [col[1] for col in cursor.fetchall()]
+            
+            if 'key' not in api_keys_columns:
+                cursor.execute("ALTER TABLE api_keys ADD COLUMN key TEXT UNIQUE")
+                logger.info("Added key column to api_keys table")
+            
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pis_api_key ON pis (api_key)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_pi_id ON print_jobs (pi_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_status ON print_jobs (status)")
