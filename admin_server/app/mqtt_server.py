@@ -360,6 +360,19 @@ class MQTTServer:
         """Send test print command to Pi"""
         return await self.send_message_to_pi(device_id, "test_print", {"test": True})
     
+    async def send_command(self, device_id: str, command: str, params: Dict[str, Any] = None):
+        """Send a command to Pi"""
+        command_data = {
+            "command": command,
+            "params": params or {}
+        }
+        
+        # Special handling for print commands - route them as print jobs
+        if command == "print":
+            return await self.send_print_job(device_id, params or {})
+        else:
+            return await self.send_message_to_pi(device_id, "command", command_data)
+    
     async def broadcast_message(self, data: Dict[str, Any]):
         """Broadcast message to all Pis"""
         if not self.connected:

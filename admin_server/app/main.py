@@ -634,11 +634,8 @@ async def send_test_print_to_pi(
                 "priority": print_data.get("priority", 5)
             }
             
-            success = await mqtt_server.send_command(
-                pi_id,
-                "print",
-                test_print_data
-            )
+            # Send as a print job with the test data
+            success = await mqtt_server.send_print_job(pi_id, test_print_data)
             
             if success:
                 database.save_server_log("test_print", f"Test print sent to '{pi.friendly_name}'", "INFO")
