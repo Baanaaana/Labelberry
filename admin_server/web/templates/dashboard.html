@@ -123,7 +123,7 @@
                             <i data-lucide="send"></i>
                             <span>Broadcast Print</span>
                         </a>
-                        <a href="#" id="nav-queue" class="nav-item" onclick="showQueueModal(); return false;">
+                        <a href="#queue" id="nav-queue" class="nav-item" onclick="toggleQueuePanel(); return false;">
                             <i data-lucide="list-ordered"></i>
                             <span>Queue Management</span>
                         </a>
@@ -185,11 +185,6 @@
             <div id="settings-panel" class="panel flex-grow" style="display: none;">
                 <div class="panel-header">
                     <h2>Settings</h2>
-                    <div class="panel-actions">
-                        <button class="icon-btn" onclick="toggleSettingsPanel()" title="Close Settings">
-                            <i data-lucide="x"></i>
-                        </button>
-                    </div>
                 </div>
                 <div class="panel-content">
                     <!-- Settings Navigation -->
@@ -671,89 +666,86 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Queue Management Modal -->
-    <div id="queue-modal" class="modal">
-        <div class="modal-content" style="max-width: 1400px;">
-            <div class="modal-header">
-                <h2>Queue Management</h2>
-                <button class="modal-close" onclick="closeQueueModal()">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group" style="padding: 0;">
-                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-                        <select id="queue-pi-filter" onchange="loadQueue()" class="form-control" style="flex: 1;">
-                            <option value="">All Printers</option>
-                        </select>
-                        <button class="btn btn-primary" onclick="refreshQueue()">
-                            <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
-                            Refresh
-                        </button>
-                        <button class="btn btn-danger" onclick="clearQueue()">
-                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
-                            Clear Queue
-                        </button>
-                    </div>
+            <!-- Queue Management Panel (initially hidden) -->
+            <div id="queue-panel" class="panel flex-grow" style="display: none;">
+                <div class="panel-header">
+                    <h2>Queue Management</h2>
                 </div>
-                
-                <!-- Queue Stats -->
-                <div class="stats-grid" style="margin-bottom: 24px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
-                    <div class="stat-card">
-                        <div class="stat-value" id="queue-total">0</div>
-                        <div class="stat-label">Total Jobs</div>
+                <div class="panel-content">
+                    <div class="form-group" style="padding: 0;">
+                        <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                            <select id="queue-pi-filter" onchange="loadQueue()" class="form-control" style="flex: 1;">
+                                <option value="">All Printers</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="refreshQueue()">
+                                <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                                Refresh
+                            </button>
+                            <button class="btn btn-danger" onclick="clearQueue()">
+                                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                                Clear Queue
+                            </button>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="queue-queued">0</div>
-                        <div class="stat-label">Queued</div>
+                    
+                    <!-- Queue Stats -->
+                    <div class="stats-grid" style="margin-bottom: 24px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                        <div class="stat-card">
+                            <div class="stat-value" id="queue-total">0</div>
+                            <div class="stat-label">Total Jobs</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="queue-queued">0</div>
+                            <div class="stat-label">Queued</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="queue-processing">0</div>
+                            <div class="stat-label">Processing</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="queue-completed">0</div>
+                            <div class="stat-label">Completed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="queue-failed">0</div>
+                            <div class="stat-label">Failed</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="queue-processing">0</div>
-                        <div class="stat-label">Processing</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="queue-completed">0</div>
-                        <div class="stat-label">Completed</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="queue-failed">0</div>
-                        <div class="stat-label">Failed</div>
-                    </div>
-                </div>
-                
-                <!-- Queue Table -->
-                <div style="background: var(--bg-primary); border-radius: 8px; padding: 16px;">
-                    <h3 style="margin: 0 0 16px 0; font-size: 16px;">Active Print Jobs</h3>
-                    <div style="overflow-x: auto;">
-                        <table id="queue-table" style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="border-bottom: 2px solid var(--border-color);">
-                                    <th style="text-align: left; padding: 12px;">Position</th>
-                                    <th style="text-align: left; padding: 12px;">Job ID</th>
-                                    <th style="text-align: left; padding: 12px;">Printer</th>
-                                    <th style="text-align: left; padding: 12px;">Status</th>
-                                    <th style="text-align: left; padding: 12px;">Priority</th>
-                                    <th style="text-align: left; padding: 12px;">Created</th>
-                                    <th style="text-align: left; padding: 12px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="queue-tbody">
-                                <!-- Queue items will be added here -->
-                            </tbody>
-                        </table>
-                        <div id="queue-empty" style="text-align: center; padding: 40px; color: var(--text-secondary); display: none;">
-                            <i data-lucide="inbox" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
-                            <p>No active jobs</p>
-                            <p style="font-size: 13px; margin-top: 8px;">All jobs have been completed or there are no pending jobs</p>
+                    
+                    <!-- Queue Table -->
+                    <div style="background: var(--bg-primary); border-radius: 8px; padding: 16px;">
+                        <h3 style="margin: 0 0 16px 0; font-size: 16px;">Active Print Jobs</h3>
+                        <div style="overflow-x: auto;">
+                            <table id="queue-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid var(--border-color);">
+                                        <th style="text-align: left; padding: 12px;">Position</th>
+                                        <th style="text-align: left; padding: 12px;">Job ID</th>
+                                        <th style="text-align: left; padding: 12px;">Printer</th>
+                                        <th style="text-align: left; padding: 12px;">Status</th>
+                                        <th style="text-align: left; padding: 12px;">Priority</th>
+                                        <th style="text-align: left; padding: 12px;">Created</th>
+                                        <th style="text-align: left; padding: 12px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="queue-tbody">
+                                    <!-- Queue items will be added here -->
+                                </tbody>
+                            </table>
+                            <div id="queue-empty" style="text-align: center; padding: 40px; color: var(--text-secondary); display: none;">
+                                <i data-lucide="inbox" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                                <p>No active jobs</p>
+                                <p style="font-size: 13px; margin-top: 8px;">All jobs have been completed or there are no pending jobs</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Queue Management Modal (removed - now inline) -->
 
     <!-- Job Details Modal -->
     <div id="job-details-modal" class="modal">

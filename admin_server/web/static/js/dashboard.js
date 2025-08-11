@@ -1505,16 +1505,17 @@ window.onclick = function(event) {
 let currentJobId = null;
 let queueData = null;
 
+// Deprecated - queue is now inline panel
+// Keeping for compatibility if called elsewhere
 function showQueueModal() {
-    document.getElementById('queue-modal').style.display = 'flex';
-    setNavActive('nav-queue', true);
-    loadQueuePrinters();
-    loadQueue();
+    toggleQueuePanel();
 }
 
 function closeQueueModal() {
-    document.getElementById('queue-modal').style.display = 'none';
-    setNavActive('nav-queue', false);
+    // Navigate back to printers
+    document.getElementById('printers-panel').style.display = 'block';
+    document.getElementById('queue-panel').style.display = 'none';
+    document.getElementById('nav-queue').classList.remove('active');
 }
 
 async function loadQueuePrinters() {
@@ -1802,17 +1803,20 @@ async function cancelJobFromQueue(jobId) {
     await cancelJob();
 }
 
-// Settings Panel Functions
+// Panel Navigation Functions
 function toggleSettingsPanel() {
     const printersPanel = document.getElementById('printers-panel');
     const settingsPanel = document.getElementById('settings-panel');
+    const queuePanel = document.getElementById('queue-panel');
     const navSettings = document.getElementById('nav-settings');
     
     if (settingsPanel.style.display === 'none') {
-        // Show settings, hide printers
+        // Show settings, hide others
         printersPanel.style.display = 'none';
+        queuePanel.style.display = 'none';
         settingsPanel.style.display = 'block';
         navSettings.classList.add('active');
+        document.getElementById('nav-queue').classList.remove('active');
         
         // Load settings data
         loadLabelSizes();
@@ -1822,6 +1826,31 @@ function toggleSettingsPanel() {
         printersPanel.style.display = 'block';
         settingsPanel.style.display = 'none';
         navSettings.classList.remove('active');
+    }
+}
+
+function toggleQueuePanel() {
+    const printersPanel = document.getElementById('printers-panel');
+    const settingsPanel = document.getElementById('settings-panel');
+    const queuePanel = document.getElementById('queue-panel');
+    const navQueue = document.getElementById('nav-queue');
+    
+    if (queuePanel.style.display === 'none') {
+        // Show queue, hide others
+        printersPanel.style.display = 'none';
+        settingsPanel.style.display = 'none';
+        queuePanel.style.display = 'block';
+        navQueue.classList.add('active');
+        document.getElementById('nav-settings').classList.remove('active');
+        
+        // Load queue data
+        loadQueuePrinters();
+        loadQueue();
+    } else {
+        // Show printers, hide queue
+        printersPanel.style.display = 'block';
+        queuePanel.style.display = 'none';
+        navQueue.classList.remove('active');
     }
 }
 
