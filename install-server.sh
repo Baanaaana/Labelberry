@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.4"
+SCRIPT_VERSION="1.0.5"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -98,7 +98,12 @@ touch admin_server/__init__.py
 touch admin_server/app/__init__.py
 touch shared/__init__.py
 
-echo -e "${YELLOW}[8/13] Configuring MQTT connection...${NC}"
+echo -e "${YELLOW}[8/13] Creating directories...${NC}"
+mkdir -p /etc/labelberry
+mkdir -p /var/lib/labelberry
+mkdir -p /var/log/labelberry
+
+echo -e "${YELLOW}[9/13] Configuring MQTT connection...${NC}"
 echo ""
 echo -e "${BLUE}MQTT Broker Configuration${NC}"
 echo "Choose MQTT broker option:"
@@ -143,19 +148,21 @@ else
     echo
 fi
 
-echo -e "${YELLOW}[9/13] Creating directories...${NC}"
-mkdir -p /etc/labelberry
-mkdir -p /var/lib/labelberry
-mkdir -p /var/log/labelberry
-
 echo -e "${YELLOW}[10/13] Creating configuration...${NC}"
 if [ ! -f "/etc/labelberry/server.conf" ]; then
     read -p "Enter the port for the admin server (default 8080): " PORT </dev/tty
     PORT=${PORT:-8080}
-    
-    cat > /etc/labelberry/server.conf <<EOF
+else
+    echo -e "${YELLOW}Configuration already exists, updating MQTT settings...${NC}"
+    PORT=$(grep "port:" /etc/labelberry/server.conf | cut -d' ' -f2)
+    # Backup existing config
+    cp /etc/labelberry/server.conf /etc/labelberry/server.conf.backup
+fi
+
+# Always create/update the config file with MQTT settings
+cat > /etc/labelberry/server.conf <<EOF
 host: 0.0.0.0
-port: $PORT
+port: ${PORT:-8080}
 database_path: /var/lib/labelberry/db.sqlite
 log_level: INFO
 log_file: /var/log/labelberry/server.log
@@ -168,12 +175,8 @@ mqtt_port: $MQTT_PORT
 mqtt_username: $MQTT_USER
 mqtt_password: $MQTT_PASS
 EOF
-    
-    echo -e "${GREEN}Configuration created${NC}"
-else
-    echo -e "${YELLOW}Configuration already exists, skipping...${NC}"
-    PORT=$(grep "port:" /etc/labelberry/server.conf | cut -d' ' -f2)
-fi
+
+echo -e "${GREEN}Configuration created/updated with MQTT settings${NC}"
 
 echo -e "${YELLOW}[11/13] Creating systemd service...${NC}"
 cat > /etc/systemd/system/labelberry-admin.service <<EOF
