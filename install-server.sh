@@ -6,11 +6,12 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.5"
+SCRIPT_VERSION="1.0.6"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${GREEN}===============================================${NC}"
@@ -104,48 +105,78 @@ mkdir -p /var/lib/labelberry
 mkdir -p /var/log/labelberry
 
 echo -e "${YELLOW}[9/13] Configuring MQTT connection...${NC}"
-echo ""
-echo -e "${BLUE}MQTT Broker Configuration${NC}"
-echo "Choose MQTT broker option:"
-echo "1) Use external MQTT broker (recommended if you have one)"
-echo "2) Install local Mosquitto broker on this server"
-read -p "Enter choice (1 or 2): " MQTT_CHOICE </dev/tty
 
-if [ "$MQTT_CHOICE" = "2" ]; then
-    echo -e "${YELLOW}Installing Mosquitto broker...${NC}"
-    apt-get install -y mosquitto mosquitto-clients
-    
-    # Configure Mosquitto
-    cat > /etc/mosquitto/conf.d/labelberry.conf <<EOF
+# Check if we have existing MQTT configuration
+EXISTING_MQTT_CONFIG=false
+if [ -f "/etc/labelberry/server.conf" ]; then
+    if grep -q "mqtt_broker:" /etc/labelberry/server.conf; then
+        EXISTING_MQTT_CONFIG=true
+        echo -e "${GREEN}Existing MQTT configuration found${NC}"
+        echo "Current MQTT settings:"
+        grep "mqtt_broker:" /etc/labelberry/server.conf | sed 's/^/  /'
+        grep "mqtt_port:" /etc/labelberry/server.conf | sed 's/^/  /'
+        grep "mqtt_username:" /etc/labelberry/server.conf | sed 's/^/  /'
+        echo ""
+        read -p "Do you want to keep the existing MQTT configuration? (Y/n): " -n 1 -r </dev/tty
+        echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            # Extract existing MQTT settings
+            MQTT_HOST=$(grep "mqtt_broker:" /etc/labelberry/server.conf | cut -d' ' -f2)
+            MQTT_PORT=$(grep "mqtt_port:" /etc/labelberry/server.conf | cut -d' ' -f2)
+            MQTT_USER=$(grep "mqtt_username:" /etc/labelberry/server.conf | cut -d' ' -f2)
+            MQTT_PASS=$(grep "mqtt_password:" /etc/labelberry/server.conf | cut -d' ' -f2)
+            echo -e "${GREEN}Keeping existing MQTT configuration${NC}"
+        else
+            EXISTING_MQTT_CONFIG=false
+        fi
+    fi
+fi
+
+# Only prompt for MQTT settings if we don't have existing config or user chose to reconfigure
+if [ "$EXISTING_MQTT_CONFIG" = false ]; then
+    echo ""
+    echo -e "${BLUE}MQTT Broker Configuration${NC}"
+    echo "Choose MQTT broker option:"
+    echo "1) Use external MQTT broker (recommended if you have one)"
+    echo "2) Install local Mosquitto broker on this server"
+    read -p "Enter choice (1 or 2): " MQTT_CHOICE </dev/tty
+
+    if [ "$MQTT_CHOICE" = "2" ]; then
+        echo -e "${YELLOW}Installing Mosquitto broker...${NC}"
+        apt-get install -y mosquitto mosquitto-clients
+        
+        # Configure Mosquitto
+        cat > /etc/mosquitto/conf.d/labelberry.conf <<EOF
 listener 1883
 allow_anonymous false
 password_file /etc/mosquitto/passwd
 log_dest file /var/log/mosquitto/mosquitto.log
 log_type all
 EOF
-    
-    # Create MQTT user
-    read -p "Enter MQTT username (default: labelberry): " MQTT_USER </dev/tty
-    MQTT_USER=${MQTT_USER:-labelberry}
-    read -s -p "Enter MQTT password: " MQTT_PASS </dev/tty
-    echo
-    
-    touch /etc/mosquitto/passwd
-    mosquitto_passwd -b /etc/mosquitto/passwd $MQTT_USER "$MQTT_PASS"
-    
-    systemctl restart mosquitto
-    systemctl enable mosquitto
-    
-    MQTT_HOST="localhost"
-    MQTT_PORT="1883"
-else
-    echo -e "${YELLOW}Configuring external MQTT broker...${NC}"
-    read -p "Enter MQTT broker host/IP: " MQTT_HOST </dev/tty
-    read -p "Enter MQTT broker port (default 1883): " MQTT_PORT </dev/tty
-    MQTT_PORT=${MQTT_PORT:-1883}
-    read -p "Enter MQTT username: " MQTT_USER </dev/tty
-    read -s -p "Enter MQTT password: " MQTT_PASS </dev/tty
-    echo
+        
+        # Create MQTT user
+        read -p "Enter MQTT username (default: labelberry): " MQTT_USER </dev/tty
+        MQTT_USER=${MQTT_USER:-labelberry}
+        read -s -p "Enter MQTT password: " MQTT_PASS </dev/tty
+        echo
+        
+        touch /etc/mosquitto/passwd
+        mosquitto_passwd -b /etc/mosquitto/passwd $MQTT_USER "$MQTT_PASS"
+        
+        systemctl restart mosquitto
+        systemctl enable mosquitto
+        
+        MQTT_HOST="localhost"
+        MQTT_PORT="1883"
+    else
+        echo -e "${YELLOW}Configuring external MQTT broker...${NC}"
+        read -p "Enter MQTT broker host/IP: " MQTT_HOST </dev/tty
+        read -p "Enter MQTT broker port (default 1883): " MQTT_PORT </dev/tty
+        MQTT_PORT=${MQTT_PORT:-1883}
+        read -p "Enter MQTT username: " MQTT_USER </dev/tty
+        read -s -p "Enter MQTT password: " MQTT_PASS </dev/tty
+        echo
+    fi
 fi
 
 echo -e "${YELLOW}[10/13] Creating configuration...${NC}"
