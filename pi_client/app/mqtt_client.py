@@ -39,7 +39,7 @@ class MQTTClient:
         self.config.broker_host = self.broker_host
         
         # MQTT client setup
-        self.client_id = f"{self.config.client_id_prefix}_pi_{device_id}"
+        self.client_id = f"{self.config.client_id_prefix}_pi_{self.device_id}"
         self.client = mqtt.Client(client_id=self.client_id, protocol=mqtt.MQTTv311)
         
         # Message handlers
