@@ -25,7 +25,6 @@ from shared.models import (
     ApiResponse, PiStatus, PiConfig, PrintJobStatus
 )
 from .database import Database
-from .mqtt_server import MQTTServer
 from .queue_manager import QueueManager
 from .config import ServerConfig
 
@@ -39,8 +38,16 @@ logger = logging.getLogger(__name__)
 
 server_config = ServerConfig()
 database = Database(server_config.database_path)
-mqtt_server = MQTTServer(database, server_config)
-queue_manager = QueueManager(database, mqtt_server)
+
+# Only initialize MQTT if not in local mode
+if os.getenv("LABELBERRY_LOCAL_MODE", "false").lower() != "true":
+    from .mqtt_server import MQTTServer
+    mqtt_server = MQTTServer(database, server_config)
+    queue_manager = QueueManager(database, mqtt_server)
+else:
+    mqtt_server = None
+    queue_manager = None
+    logger.info("Running in local mode - MQTT disabled")
 
 
 @asynccontextmanager
@@ -48,19 +55,21 @@ async def lifespan(app: FastAPI):
     logger.info("LabelBerry Admin Server started")
     database.save_server_log("server_started", "Admin Server started", "INFO")
     
-    # Start MQTT server
-    await mqtt_server.start()
-    
-    # Start queue manager
-    await queue_manager.start()
+    if mqtt_server:
+        # Start MQTT server
+        await mqtt_server.start()
+        
+        # Start queue manager
+        await queue_manager.start()
     
     yield
     
-    # Stop queue manager
-    await queue_manager.stop()
-    
-    # Stop MQTT server
-    await mqtt_server.stop()
+    if mqtt_server:
+        # Stop queue manager
+        await queue_manager.stop()
+        
+        # Stop MQTT server
+        await mqtt_server.stop()
     
     database.save_server_log("server_stopped", "Admin Server stopped", "INFO")
     logger.info("LabelBerry Admin Server stopped")
@@ -1252,7 +1261,7 @@ async def send_print_to_pi(
                     )
         
         # Pi is offline or send failed - queue the job
-        if queue_manager.add_job_to_queue(
+        if queue_manager and queue_manager.add_job_to_queue(
             job,
             zpl_content=print_data.get("zpl_raw"),
             zpl_url=print_data.get("zpl_url")
@@ -1277,6 +1286,13 @@ async def send_print_to_pi(
                     "status": "queued",
                     "queue_position": queue_position
                 }
+            )
+        elif not queue_manager:
+            # In local mode without queue manager
+            return ApiResponse(
+                success=False,
+                message="Queue manager not available in local mode",
+                data={"job_id": job.id}
             )
         else:
             raise HTTPException(status_code=500, detail="Failed to queue print job")

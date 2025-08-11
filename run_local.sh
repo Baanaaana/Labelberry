@@ -18,13 +18,16 @@ source venv/bin/activate
 
 # Install dependencies
 echo "Installing dependencies..."
-pip install -q fastapi uvicorn jinja2 python-multipart websockets requests itsdangerous
+pip install -q -r admin_server/requirements.txt
+pip install -q -r shared/requirements.txt 2>/dev/null || true
 
 # Create local data directory
 mkdir -p data
 
-# Set environment variable to use local database
+# Set environment variables for local development
 export LABELBERRY_DB_PATH="$(pwd)/data/labelberry.db"
+export LABELBERRY_LOCAL_MODE="true"
+export DEBUG="true"
 
 # Run the server
 echo "Starting server on http://localhost:8080"
