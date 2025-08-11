@@ -1440,14 +1440,16 @@ class Database:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT INTO api_keys (id, name, key, description, created_at)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO api_keys (id, name, key, description, created_at, last_used, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
                     key_id,
                     name,
                     key,
                     description,
-                    datetime.now(timezone.utc).isoformat()
+                    datetime.now(timezone.utc).isoformat(),
+                    None,  # last_used
+                    1      # is_active (true)
                 ))
                 
                 conn.commit()
