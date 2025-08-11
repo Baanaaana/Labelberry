@@ -94,7 +94,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "36.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "37.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -275,11 +275,12 @@ async def root(request: Request):
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
-    """Settings page"""
+    """Settings page - redirect to dashboard with settings panel open"""
     # Check if user is logged in
     if "user" not in request.session:
-        return RedirectResponse(url="/login?next=/settings", status_code=302)
-    return templates.TemplateResponse("settings.html", {"request": request})
+        return RedirectResponse(url="/login", status_code=302)
+    # Redirect to dashboard - settings are now inline
+    return RedirectResponse(url="/#settings", status_code=302)
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

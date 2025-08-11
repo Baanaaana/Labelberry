@@ -893,6 +893,78 @@ input[type="checkbox"]:hover {
     background: #e03131;
 }
 
+/* Settings Panel Styles */
+.settings-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.settings-tab {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.settings-tab:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.settings-tab.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.settings-tab i {
+    width: 16px;
+    height: 16px;
+}
+
+.settings-content {
+    padding: 20px 0;
+}
+
+.settings-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.settings-card h4 {
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.settings-card .form-group {
+    margin-bottom: 16px;
+}
+
+.settings-card .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.nav-item.active {
+    background: var(--primary-color);
+    color: white;
+}
+
 /* Toast Notifications */
 #toast-container {
     position: fixed;

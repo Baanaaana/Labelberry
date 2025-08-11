@@ -1802,3 +1802,307 @@ async function cancelJobFromQueue(jobId) {
     currentJobId = jobId;
     await cancelJob();
 }
+
+// Settings Panel Functions
+function toggleSettingsPanel() {
+    const printersPanel = document.getElementById('printers-panel');
+    const settingsPanel = document.getElementById('settings-panel');
+    const navSettings = document.getElementById('nav-settings');
+    
+    if (settingsPanel.style.display === 'none') {
+        // Show settings, hide printers
+        printersPanel.style.display = 'none';
+        settingsPanel.style.display = 'block';
+        navSettings.classList.add('active');
+        
+        // Load settings data
+        loadLabelSizes();
+        loadApiKeys();
+    } else {
+        // Show printers, hide settings
+        printersPanel.style.display = 'block';
+        settingsPanel.style.display = 'none';
+        navSettings.classList.remove('active');
+    }
+}
+
+function switchSettingsTab(tab, element) {
+    // Update tab buttons
+    document.querySelectorAll('.settings-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    element.classList.add('active');
+    
+    // Hide all content sections
+    document.querySelectorAll('.settings-content').forEach(content => {
+        content.style.display = 'none';
+    });
+    
+    // Show selected content
+    const contentId = tab + '-settings';
+    const contentElement = document.getElementById(contentId);
+    if (contentElement) {
+        contentElement.style.display = 'block';
+    }
+    
+    // Load data if needed
+    if (tab === 'api-keys') {
+        loadApiKeys();
+    } else if (tab === 'label-sizes') {
+        loadLabelSizes();
+    }
+}
+
+// Account Settings Functions
+async function changeUsername(event) {
+    event.preventDefault();
+    
+    const newUsername = document.getElementById('new-username').value;
+    const password = document.getElementById('username-password').value;
+    
+    try {
+        const response = await fetch('/api/change-username', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_username: newUsername,
+                password: password
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showAlert('Username changed successfully', 'success');
+            document.getElementById('username-form').reset();
+        } else {
+            showAlert(data.message || 'Failed to change username', 'error');
+        }
+    } catch (error) {
+        console.error('Error changing username:', error);
+        showAlert('Failed to change username', 'error');
+    }
+}
+
+async function changePassword(event) {
+    event.preventDefault();
+    
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+    
+    if (newPassword !== confirmPassword) {
+        showAlert('Passwords do not match', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showAlert('Password changed successfully', 'success');
+            document.getElementById('password-form').reset();
+        } else {
+            showAlert(data.message || 'Failed to change password', 'error');
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showAlert('Failed to change password', 'error');
+    }
+}
+
+// System Settings Functions
+async function savePreferences(event) {
+    event.preventDefault();
+    
+    const timezone = document.getElementById('timezone-select').value;
+    const refreshInterval = document.getElementById('refresh-interval').value;
+    
+    // Save to localStorage
+    dashboardSettings.timezone = timezone;
+    dashboardSettings.refreshInterval = parseInt(refreshInterval);
+    localStorage.setItem('labelberrySettings', JSON.stringify(dashboardSettings));
+    
+    // Update refresh interval
+    if (dashboardSettings.refreshInterval > 0) {
+        startAutoRefresh();
+    } else {
+        stopAutoRefresh();
+    }
+    
+    showAlert('Preferences saved', 'success');
+}
+
+// API Keys Functions
+async function loadApiKeys() {
+    try {
+        const response = await fetch('/api/api-keys');
+        const data = await response.json();
+        
+        if (data.success) {
+            renderApiKeys(data.data.keys || []);
+        }
+    } catch (error) {
+        console.error('Error loading API keys:', error);
+    }
+}
+
+function renderApiKeys(keys) {
+    const container = document.getElementById('api-keys-list');
+    
+    if (!keys || keys.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <i data-lucide="key" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                <p>No API keys configured</p>
+                <p style="font-size: 13px; margin-top: 8px;">Create an API key to enable programmatic access</p>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="api-keys-table" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+                ${keys.map(key => `
+                    <div class="api-key-row" style="padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 500; margin-bottom: 4px;">${key.name}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">
+                                Created: ${new Date(key.created_at).toLocaleDateString()}
+                                ${key.last_used ? ` • Last used: ${new Date(key.last_used).toLocaleDateString()}` : ''}
+                            </div>
+                        </div>
+                        <button class="btn btn-danger btn-sm" onclick="deleteApiKey('${key.id}')">
+                            <i data-lucide="trash-2"></i>
+                            Delete
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    // Re-initialize icons
+    setTimeout(() => lucide.createIcons(), 10);
+}
+
+async function showCreateKeyModal() {
+    // Implementation would show a modal to create new API key
+    showAlert('API key creation not yet implemented', 'info');
+}
+
+async function deleteApiKey(keyId) {
+    if (!confirm('Are you sure you want to delete this API key?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/api-keys/${keyId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showAlert('API key deleted', 'success');
+            loadApiKeys();
+        } else {
+            showAlert(data.message || 'Failed to delete API key', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting API key:', error);
+        showAlert('Failed to delete API key', 'error');
+    }
+}
+
+// Label Sizes Functions
+async function loadLabelSizes() {
+    try {
+        const response = await fetch('/api/label-sizes');
+        const data = await response.json();
+        
+        if (data.success) {
+            renderLabelSizes(data.data.sizes || []);
+        }
+    } catch (error) {
+        console.error('Error loading label sizes:', error);
+    }
+}
+
+function renderLabelSizes(sizes) {
+    const container = document.getElementById('label-sizes-list');
+    
+    if (!sizes || sizes.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <i data-lucide="ruler" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                <p>No label sizes configured</p>
+                <p style="font-size: 13px; margin-top: 8px;">Add label sizes to organize your printers</p>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="label-sizes-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
+                ${sizes.map(size => `
+                    <div class="label-size-card" style="border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                            <div>
+                                <div style="font-weight: 500;">${size.name}</div>
+                                <div style="font-size: 14px; color: var(--text-secondary); margin-top: 4px;">
+                                    ${size.width}mm × ${size.height}mm
+                                </div>
+                            </div>
+                            <button class="icon-btn btn-sm" onclick="deleteLabelSize('${size.id}')" title="Delete">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </div>
+                        ${size.description ? `<div style="font-size: 12px; color: var(--text-secondary);">${size.description}</div>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    // Re-initialize icons
+    setTimeout(() => lucide.createIcons(), 10);
+}
+
+async function showAddLabelSizeModal() {
+    // Implementation would show a modal to add new label size
+    showAlert('Label size creation not yet implemented', 'info');
+}
+
+async function deleteLabelSize(sizeId) {
+    if (!confirm('Are you sure you want to delete this label size?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/label-sizes/${sizeId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showAlert('Label size deleted', 'success');
+            loadLabelSizes();
+        } else {
+            showAlert(data.message || 'Failed to delete label size', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting label size:', error);
+        showAlert('Failed to delete label size', 'error');
+    }
+}

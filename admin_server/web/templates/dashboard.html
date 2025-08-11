@@ -143,7 +143,7 @@
                             <i data-lucide="book-open"></i>
                             <span>API Documentation</span>
                         </a>
-                        <a href="/settings" class="nav-item">
+                        <a href="#settings" id="nav-settings" class="nav-item" onclick="toggleSettingsPanel(); return false;">
                             <i data-lucide="settings"></i>
                             <span>Settings</span>
                         </a>
@@ -152,7 +152,7 @@
             </div>
 
             <!-- Printers List -->
-            <div class="panel flex-grow">
+            <div id="printers-panel" class="panel flex-grow">
                 <div class="panel-header">
                     <h2 id="printers-panel-title">Printers</h2>
                     <div class="panel-actions">
@@ -177,6 +177,168 @@
                     </div>
                     <div id="printers-list" class="printers-list">
                         <!-- Printer items will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Panel (initially hidden) -->
+            <div id="settings-panel" class="panel flex-grow" style="display: none;">
+                <div class="panel-header">
+                    <h2>Settings</h2>
+                    <div class="panel-actions">
+                        <button class="icon-btn" onclick="toggleSettingsPanel()" title="Close Settings">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <!-- Settings Navigation -->
+                    <div class="settings-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; flex-wrap: wrap;">
+                        <button class="settings-tab active" onclick="switchSettingsTab('account', this)">
+                            <i data-lucide="user"></i>
+                            Account
+                        </button>
+                        <button class="settings-tab" onclick="switchSettingsTab('system', this)">
+                            <i data-lucide="settings"></i>
+                            System
+                        </button>
+                        <button class="settings-tab" onclick="switchSettingsTab('api-keys', this)">
+                            <i data-lucide="key"></i>
+                            API Keys
+                        </button>
+                        <button class="settings-tab" onclick="switchSettingsTab('label-sizes', this)">
+                            <i data-lucide="ruler"></i>
+                            Label Sizes
+                        </button>
+                    </div>
+
+                    <!-- Account Section (Account + Security combined) -->
+                    <div id="account-settings" class="settings-content active">
+                        <h3 style="margin-top: 0;">Account & Security</h3>
+                        
+                        <!-- Username -->
+                        <div class="settings-card" style="margin-bottom: 20px;">
+                            <h4>Username</h4>
+                            <p style="color: var(--text-secondary); margin-bottom: 16px;">Change your login username</p>
+                            <form id="username-form" onsubmit="changeUsername(event); return false;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                                    <div class="form-group">
+                                        <label for="new-username">New Username</label>
+                                        <input type="text" id="new-username" class="form-control" placeholder="Enter new username" minlength="3">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="username-password">Current Password</label>
+                                        <input type="password" id="username-password" class="form-control" placeholder="Enter current password" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Change Username</button>
+                            </form>
+                        </div>
+
+                        <!-- Password -->
+                        <div class="settings-card">
+                            <h4>Change Password</h4>
+                            <p style="color: var(--text-secondary); margin-bottom: 16px;">Update your account password</p>
+                            <form id="password-form" onsubmit="changePassword(event); return false;">
+                                <div class="form-group">
+                                    <label for="current-password">Current Password</label>
+                                    <input type="password" id="current-password" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-password">New Password</label>
+                                    <input type="password" id="new-password" class="form-control" minlength="6" required>
+                                    <small style="color: var(--text-secondary);">Minimum 6 characters</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="confirm-password">Confirm New Password</label>
+                                    <input type="password" id="confirm-password" class="form-control" minlength="6" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Password</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- System Section (Preferences + About combined) -->
+                    <div id="system-settings" class="settings-content" style="display: none;">
+                        <h3 style="margin-top: 0;">System Settings</h3>
+                        
+                        <!-- Preferences -->
+                        <div class="settings-card" style="margin-bottom: 20px;">
+                            <h4>Display Preferences</h4>
+                            <form id="preferences-form" onsubmit="savePreferences(event); return false;">
+                                <div class="form-group">
+                                    <label for="timezone-select">Timezone</label>
+                                    <select id="timezone-select" class="form-control">
+                                        <option value="Europe/Amsterdam">Amsterdam (CET/CEST)</option>
+                                        <option value="America/New_York">New York (EST/EDT)</option>
+                                        <option value="UTC">UTC</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="refresh-interval">Auto-refresh Interval</label>
+                                    <select id="refresh-interval" class="form-control">
+                                        <option value="5000">5 seconds</option>
+                                        <option value="10000">10 seconds</option>
+                                        <option value="30000">30 seconds</option>
+                                        <option value="0">Disabled</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Preferences</button>
+                            </form>
+                        </div>
+
+                        <!-- About -->
+                        <div class="settings-card">
+                            <h4>About LabelBerry</h4>
+                            <div class="info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                                <div class="info-item">
+                                    <span style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Version</span>
+                                    <span style="font-weight: 500;">1.0.0</span>
+                                </div>
+                                <div class="info-item">
+                                    <span style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Server Status</span>
+                                    <span class="status-badge status-online">Online</span>
+                                </div>
+                                <div class="info-item">
+                                    <span style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Database</span>
+                                    <span style="font-weight: 500;">SQLite</span>
+                                </div>
+                                <div class="info-item">
+                                    <span style="color: var(--text-secondary); display: block; margin-bottom: 4px;">GitHub</span>
+                                    <a href="https://github.com/Baanaaana/LabelBerry" target="_blank" style="color: var(--primary-color); text-decoration: none;">
+                                        View Repository
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API Keys Section -->
+                    <div id="api-keys-settings" class="settings-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0;">API Keys</h3>
+                            <button class="btn btn-primary" onclick="showCreateKeyModal()">
+                                <i data-lucide="plus"></i>
+                                Create New Key
+                            </button>
+                        </div>
+                        <div id="api-keys-list">
+                            <!-- API keys will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Label Sizes Section -->
+                    <div id="label-sizes-settings" class="settings-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0;">Label Sizes</h3>
+                            <button class="btn btn-primary" onclick="showAddLabelSizeModal()">
+                                <i data-lucide="plus"></i>
+                                Add Label Size
+                            </button>
+                        </div>
+                        <div id="label-sizes-list">
+                            <!-- Label sizes will be loaded here -->
+                        </div>
                     </div>
                 </div>
             </div>
