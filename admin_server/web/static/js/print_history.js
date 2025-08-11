@@ -780,7 +780,7 @@ function getStatusClass(status) {
 function getSourceIcon(source) {
     switch (source) {
         case 'api': return '<i data-lucide="terminal" style="width: 14px; height: 14px;"></i>';
-        case 'test': return '<i data-lucide="flask" style="width: 14px; height: 14px;"></i>';
+        case 'test': return '<i data-lucide="test-tube" style="width: 14px; height: 14px;"></i>';
         case 'broadcast': return '<i data-lucide="send" style="width: 14px; height: 14px;"></i>';
         default: return '<i data-lucide="file" style="width: 14px; height: 14px;"></i>';
     }
