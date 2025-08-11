@@ -210,11 +210,14 @@ class MQTTServer:
     
     async def _handle_pi_connect(self, device_id: str, data: Dict[str, Any]):
         """Handle Pi connection"""
+        logger.info(f"Pi connect message received - device_id: {device_id}, data: {data}")
         self.connected_pis.add(device_id)
+        logger.info(f"Connected Pis after adding: {self.connected_pis}")
         
         # Update database (synchronous calls, no await)
         pi = self.database.get_pi_by_id(device_id)
         if pi:
+            logger.info(f"Found Pi in database: id={pi.id}, friendly_name={pi.friendly_name}")
             self.database.update_pi_status(pi.id, "online")
             
             # Log connection

@@ -94,7 +94,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "26.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "27.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -623,8 +623,13 @@ async def send_test_print_to_pi(
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
+        # Check MQTT connection and log status
+        is_mqtt_connected = mqtt_server.is_connected(pi_id)
+        connected_pis = mqtt_server.get_connected_pis()
+        logger.info(f"Test print for Pi {pi_id}: MQTT connected={is_mqtt_connected}, Connected Pis: {connected_pis}")
+        
         # Send print command through MQTT if connected
-        if mqtt_server.is_connected(pi_id):
+        if is_mqtt_connected:
             # Create a temporary job to track the test print
             import uuid
             test_job_id = str(uuid.uuid4())
