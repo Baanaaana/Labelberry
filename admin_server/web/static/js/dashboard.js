@@ -161,6 +161,19 @@ function setupAutoRefresh() {
     }
 }
 
+// Start auto-refresh
+function startAutoRefresh() {
+    setupAutoRefresh();
+}
+
+// Stop auto-refresh
+function stopAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+}
+
 // Track print job result
 async function trackPrintJob(jobId, piId) {
     let attempts = 0;
@@ -2169,7 +2182,7 @@ async function addLabelSize(event) {
             closeAddLabelSizeModal();
             loadLabelSizes(); // Refresh the list
             // Also refresh the label size dropdowns in printer modals
-            loadLabelSizesForDropdowns();
+            updateLabelSizeDropdowns();
         } else {
             showAlert(data.message || 'Failed to add label size', 'error');
         }

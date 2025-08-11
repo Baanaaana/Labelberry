@@ -67,19 +67,27 @@ class Database:
             # Create API keys table for admin server API access
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS api_keys (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    key_hash TEXT UNIQUE NOT NULL,
+                    id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
+                    key TEXT UNIQUE NOT NULL,
                     description TEXT,
-                    created_by TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_used TIMESTAMP,
-                    is_active BOOLEAN DEFAULT 1,
-                    permissions TEXT DEFAULT 'print'
+                    is_active BOOLEAN DEFAULT 1
                 )
             """)
             
-            # Create default admin user if not exists
+            # Create admin_users table for web interface authentication
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS admin_users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # Create default admin user if not exists (in both tables for compatibility)
             cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
             if cursor.fetchone()[0] == 0:
                 import hashlib
@@ -87,6 +95,17 @@ class Database:
                 password_hash = hashlib.sha256("admin123".encode()).hexdigest()
                 cursor.execute(
                     "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                    ("admin", password_hash)
+                )
+            
+            # Also ensure admin exists in admin_users table with bcrypt
+            cursor.execute("SELECT COUNT(*) FROM admin_users WHERE username = 'admin'")
+            if cursor.fetchone()[0] == 0:
+                import bcrypt
+                # Hash the default password with bcrypt for better security
+                password_hash = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                cursor.execute(
+                    "INSERT INTO admin_users (username, password_hash) VALUES (?, ?)",
                     ("admin", password_hash)
                 )
             
