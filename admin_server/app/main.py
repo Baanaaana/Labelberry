@@ -94,7 +94,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "25.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "26.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -596,11 +596,29 @@ async def send_command(pi_id: str, command: Dict[str, Any]):
 @app.post("/api/pis/{pi_id}/test-print", response_model=ApiResponse)
 async def send_test_print_to_pi(
     pi_id: str, 
-    print_data: Dict[str, Any],
+    print_data: Optional[Dict[str, Any]] = None,
     _: dict = Depends(require_login)  # Require dashboard login instead of API key
 ):
     """Send test print job to Pi - Requires dashboard login"""
     try:
+        # Use default test label if no data provided
+        if not print_data:
+            from datetime import datetime
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            print_data = {
+                "zpl_raw": f"""^XA
+^PW448
+^LL252
+^FO20,20^A0N,25,25^FDLabelBerry Test Print^FS
+^FO20,50^A0N,20,20^FDPrinter Test Successful^FS
+^FO20,80^A0N,18,18^FD{current_time}^FS
+^FO20,110^GB400,2,2^FS
+^FO20,120^A0N,16,16^FDDevice: Connected^FS
+^FO20,145^A0N,16,16^FDMQTT: Active^FS
+^FO20,170^A0N,16,16^FDStatus: Ready^FS
+^FO20,200^BY2,3,40^BCN,,Y,N^FD12345678^FS
+^XZ"""
+            }
         pi = database.get_pi_by_id(pi_id)
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
