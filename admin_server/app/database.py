@@ -297,8 +297,12 @@ class Database:
             api_keys_columns = [col[1] for col in cursor.fetchall()]
             
             if 'key' not in api_keys_columns:
-                cursor.execute("ALTER TABLE api_keys ADD COLUMN key TEXT UNIQUE")
+                # Can't add UNIQUE to existing table, so add without constraint
+                cursor.execute("ALTER TABLE api_keys ADD COLUMN key TEXT")
                 logger.info("Added key column to api_keys table")
+                # Create unique index separately
+                cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(key)")
+                logger.info("Added unique index on api_keys.key")
             
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pis_api_key ON pis (api_key)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_pi_id ON print_jobs (pi_id)")
