@@ -65,16 +65,17 @@ class Database:
                 )
             """)
             
-            # Create API keys table for admin server API access
+            # Drop and recreate API keys table to fix schema issues
+            cursor.execute("DROP TABLE IF EXISTS api_keys")
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS api_keys (
+                CREATE TABLE api_keys (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
                     key TEXT UNIQUE NOT NULL,
                     description TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_used TIMESTAMP,
-                    is_active BOOLEAN DEFAULT 1
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    last_used TEXT,
+                    is_active INTEGER DEFAULT 1
                 )
             """)
             
@@ -292,17 +293,6 @@ class Database:
                 cursor.execute("ALTER TABLE print_jobs ADD COLUMN zpl_url TEXT")
                 logger.info("Added zpl_url column to print_jobs table")
             
-            # Add missing columns to api_keys if they don't exist (migration)
-            cursor.execute("PRAGMA table_info(api_keys)")
-            api_keys_columns = [col[1] for col in cursor.fetchall()]
-            
-            if 'key' not in api_keys_columns:
-                # Can't add UNIQUE to existing table, so add without constraint
-                cursor.execute("ALTER TABLE api_keys ADD COLUMN key TEXT")
-                logger.info("Added key column to api_keys table")
-                # Create unique index separately
-                cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(key)")
-                logger.info("Added unique index on api_keys.key")
             
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pis_api_key ON pis (api_key)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_print_jobs_pi_id ON print_jobs (pi_id)")
