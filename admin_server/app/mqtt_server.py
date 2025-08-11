@@ -280,19 +280,22 @@ class MQTTServer:
         
         pi = self.database.get_pi_by_id(device_id)
         if pi:
-            # Create PiMetrics object from the data
-            metrics = PiMetrics(
-                pi_id=device_id,
-                cpu_usage=data.get("cpu_usage", 0),
-                memory_usage=data.get("memory_usage", 0),
-                disk_usage=data.get("disk_usage", 0),
-                temperature=data.get("temperature", 0),
-                print_queue_size=data.get("print_queue_size", 0),
-                jobs_completed=data.get("jobs_completed", 0),
-                jobs_failed=data.get("jobs_failed", 0)
-            )
-            self.database.save_metrics(metrics)
-            logger.debug(f"Saved metrics for Pi {device_id}")
+            try:
+                # Create PiMetrics object from the data with correct field names
+                metrics = PiMetrics(
+                    pi_id=device_id,
+                    cpu_usage=data.get("cpu_usage", 0.0),
+                    memory_usage=data.get("memory_usage", 0.0),
+                    queue_size=data.get("queue_size", 0),  # Changed from print_queue_size
+                    jobs_completed=data.get("jobs_completed", 0),
+                    jobs_failed=data.get("jobs_failed", 0),
+                    printer_status=data.get("printer_status", "unknown"),  # Added required field
+                    uptime_seconds=data.get("uptime_seconds", 0)  # Added required field
+                )
+                self.database.save_metrics(metrics)
+                logger.debug(f"Saved metrics for Pi {device_id}")
+            except Exception as e:
+                logger.error(f"Failed to create PiMetrics object: {e}, data: {data}")
     
     async def _handle_pi_log(self, device_id: str, data: Dict[str, Any]):
         """Handle Pi log entry"""
