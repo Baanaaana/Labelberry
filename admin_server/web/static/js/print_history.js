@@ -293,7 +293,7 @@ async function viewJobDetails(jobId) {
             <div class="zpl-section zpl-code-section">
                 <h3>ZPL Content</h3>
                 <div class="zpl-content">
-                    <pre>${escapeHtml(job.zpl_content)}</pre>
+                    <pre id="zpl-content-display"></pre>
                 </div>
             </div>
             <div class="zpl-section zpl-preview-section">
@@ -340,8 +340,16 @@ async function viewJobDetails(jobId) {
             }
         });
         
+        // Set the ZPL content display separately to avoid escaping issues
+        const zplDisplay = document.getElementById('zpl-content-display');
+        if (zplDisplay && job.zpl_content) {
+            // Use textContent to avoid HTML interpretation
+            zplDisplay.textContent = job.zpl_content;
+        }
+        
         // Generate label preview if ZPL content or URL is available (after DOM is ready)
         if (job.zpl_content) {
+            // Pass the raw ZPL content directly, not escaped
             generateLabelPreview(job.zpl_content).catch(err => {
                 console.error('Error generating preview:', err);
             });
@@ -424,18 +432,10 @@ async function generateLabelPreview(zplContent) {
     const previewContainer = document.getElementById('label-preview');
     if (!previewContainer) return;
     
-    // Log the raw ZPL to see if it contains HTML entities
-    console.log('Raw ZPL content:', zplContent);
-    console.log('First 200 chars:', zplContent.substring(0, 200));
-    console.log('Contains HTML entities?', zplContent.includes('&lt;') || zplContent.includes('&gt;') || zplContent.includes('&amp;') || zplContent.includes('&circ;'));
-    
-    // Decode HTML entities if present
-    if (zplContent.includes('&')) {
-        const textarea = document.createElement('textarea');
-        textarea.innerHTML = zplContent;
-        zplContent = textarea.value;
-        console.log('Decoded ZPL:', zplContent.substring(0, 200));
-    }
+    // Log for debugging
+    console.log('ZPL content (first 200):', zplContent.substring(0, 200));
+    console.log('ZPL starts with ^XA?', zplContent.trim().startsWith('^XA'));
+    console.log('ZPL ends with ^XZ?', zplContent.trim().endsWith('^XZ'));
     
     try {
         // Use our proxy endpoint to avoid CORS issues
