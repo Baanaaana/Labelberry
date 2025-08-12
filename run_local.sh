@@ -7,19 +7,41 @@ echo "================================"
 
 cd "$(dirname "$0")"
 
+# Find the best Python version available (prefer 3.11 or 3.12)
+PYTHON_CMD=""
+for cmd in python3.11 python3.12 python3.10 python3; do
+    if command -v $cmd &> /dev/null; then
+        PYTHON_CMD=$cmd
+        break
+    fi
+done
+
+if [ -z "$PYTHON_CMD" ]; then
+    echo "Error: Python 3 not found"
+    exit 1
+fi
+
+echo "Using Python: $PYTHON_CMD"
+
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
-    python3 -m venv venv
+    $PYTHON_CMD -m venv venv
 fi
 
 # Activate virtual environment
 source venv/bin/activate
 
-# Install dependencies
+# Upgrade pip first
+pip install --upgrade pip -q
+
+# Install minimal dependencies for local testing
 echo "Installing dependencies..."
-pip install -q -r admin_server/requirements.txt
-pip install -q -r shared/requirements.txt 2>/dev/null || true
+pip install -q fastapi uvicorn jinja2 python-multipart pyyaml requests itsdangerous aiohttp
+# Try to install pydantic with compatible version
+pip install -q "pydantic==2.5.0" || pip install -q "pydantic<2.0"
+# Install paho-mqtt if not already installed
+pip install -q paho-mqtt 2>/dev/null || true
 
 # Create local data directory
 mkdir -p data

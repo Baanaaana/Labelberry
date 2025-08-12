@@ -25,7 +25,6 @@ from shared.models import (
     ApiResponse, PiStatus, PiConfig, PrintJobStatus
 )
 from .database import Database
-from .queue_manager import QueueManager
 from .config import ServerConfig
 
 
@@ -41,9 +40,15 @@ database = Database(server_config.database_path)
 
 # Only initialize MQTT if not in local mode
 if os.getenv("LABELBERRY_LOCAL_MODE", "false").lower() != "true":
-    from .mqtt_server import MQTTServer
-    mqtt_server = MQTTServer(database, server_config)
-    queue_manager = QueueManager(database, mqtt_server)
+    try:
+        from .mqtt_server import MQTTServer
+        from .queue_manager import QueueManager
+        mqtt_server = MQTTServer(database, server_config)
+        queue_manager = QueueManager(database, mqtt_server)
+    except ImportError as e:
+        logger.warning(f"Could not import MQTT/Queue modules: {e}")
+        mqtt_server = None
+        queue_manager = None
 else:
     mqtt_server = None
     queue_manager = None
