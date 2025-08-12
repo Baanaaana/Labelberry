@@ -54,6 +54,15 @@ env/
 *.db
 *.backup
 
+# Environment files - NEVER commit these!
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+**/.env
+**/.env.*
+
 # Config files with sensitive data
 client.conf
 server.conf
