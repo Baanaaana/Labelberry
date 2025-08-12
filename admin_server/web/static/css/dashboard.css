@@ -731,7 +731,8 @@ a.icon-btn:hover i {
     margin: 0;
 }
 
-.modal-close {
+.modal-close,
+.btn-close {
     width: 32px;
     height: 32px;
     border: none;
@@ -743,10 +744,15 @@ a.icon-btn:hover i {
     border-radius: 6px;
     transition: all 0.2s;
     flex-shrink: 0;
+    color: var(--text-secondary);
+    font-size: 24px;
+    line-height: 1;
 }
 
-.modal-close:hover {
+.modal-close:hover,
+.btn-close:hover {
     background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .modal-close i {

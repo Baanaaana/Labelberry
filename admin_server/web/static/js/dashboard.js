@@ -1549,8 +1549,10 @@ async function loadQueue() {
         
         if (result.success) {
             queueData = result.data;
-            renderQueueStats(result.data.stats);
-            renderQueueTable(result.data.jobs);
+            renderQueueStats(result.data.stats || {});
+            renderQueueTable(result.data.jobs || []);
+        } else {
+            showAlert(result.message || 'Failed to load queue', 'error');
         }
     } catch (error) {
         console.error('Error loading queue:', error);
@@ -1569,6 +1571,11 @@ function renderQueueStats(stats) {
 function renderQueueTable(jobs) {
     const tbody = document.getElementById('queue-tbody');
     const emptyDiv = document.getElementById('queue-empty');
+    
+    if (!tbody || !emptyDiv) {
+        console.error('Queue table elements not found!');
+        return;
+    }
     
     if (!jobs || jobs.length === 0) {
         tbody.style.display = 'none';
@@ -1807,16 +1814,13 @@ async function cancelJobFromQueue(jobId) {
 function toggleSettingsPanel() {
     const printersPanel = document.getElementById('printers-panel');
     const settingsPanel = document.getElementById('settings-panel');
-    const queuePanel = document.getElementById('queue-panel');
     const navSettings = document.getElementById('nav-settings');
     
     if (settingsPanel.style.display === 'none') {
-        // Show settings, hide others
+        // Show settings, hide printers
         printersPanel.style.display = 'none';
-        queuePanel.style.display = 'none';
         settingsPanel.style.display = 'block';
         navSettings.classList.add('active');
-        document.getElementById('nav-queue').classList.remove('active');
         
         // Load settings data
         loadLabelSizes();
@@ -1829,32 +1833,15 @@ function toggleSettingsPanel() {
     }
 }
 
-function toggleQueuePanel() {
-    const printersPanel = document.getElementById('printers-panel');
-    const settingsPanel = document.getElementById('settings-panel');
-    const queuePanel = document.getElementById('queue-panel');
-    const navQueue = document.getElementById('nav-queue');
-    
-    if (queuePanel.style.display === 'none') {
-        // Show queue, hide others
-        printersPanel.style.display = 'none';
-        settingsPanel.style.display = 'none';
-        queuePanel.style.display = 'block';
-        navQueue.classList.add('active');
-        document.getElementById('nav-settings').classList.remove('active');
-        
-        // Render Lucide icons
-        setTimeout(() => lucide.createIcons(), 10);
-        
-        // Load queue data
-        loadQueuePrinters();
-        loadQueue();
-    } else {
-        // Show printers, hide queue
-        printersPanel.style.display = 'block';
-        queuePanel.style.display = 'none';
-        navQueue.classList.remove('active');
-    }
+function openQueueModal() {
+    document.getElementById('queue-modal').style.display = 'block';
+    loadQueuePrinters();
+    loadQueue();
+    setTimeout(() => lucide.createIcons(), 10);
+}
+
+function closeQueueModal() {
+    document.getElementById('queue-modal').style.display = 'none';
 }
 
 function switchSettingsTab(tab, element) {

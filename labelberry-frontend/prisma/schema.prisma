@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Pi {
+  id            String         @id @default(uuid())
+  deviceId      String         @unique @map("device_id")
+  friendlyName  String         @map("friendly_name")
+  apiKey        String         @unique @map("api_key")
+  ipAddress     String?        @map("ip_address")
+  status        String         @default("offline")
+  lastSeen      DateTime?      @map("last_seen")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  
+  configuration Configuration?
+  printJobs     PrintJob[]
+  metrics       Metric[]
+  errorLogs     ErrorLog[]
+  
+  @@map("pis")
+}
+
+model Configuration {
+  id                String   @id @default(uuid())
+  piId              String   @unique @map("pi_id")
+  pi                Pi       @relation(fields: [piId], references: [id], onDelete: Cascade)
+  
+  printerDevice     String   @default("/dev/usb/lp0") @map("printer_device")
+  labelSize         String   @default("4x6") @map("label_size")
+  defaultDarkness   Int      @default(15) @map("default_darkness")
+  defaultSpeed      Int      @default(4) @map("default_speed")
+  autoReconnect     Boolean  @default(true) @map("auto_reconnect")
+  maxQueueSize      Int      @default(100) @map("max_queue_size")
+  retryAttempts     Int      @default(3) @map("retry_attempts")
+  retryDelay        Int      @default(5) @map("retry_delay")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  @@map("configurations")
+}
+
+model PrintJob {
+  id              String   @id @default(uuid())
+  piId            String   @map("pi_id")
+  pi              Pi       @relation(fields: [piId], references: [id], onDelete: Cascade)
+  
+  zplSource       String   @map("zpl_source")
+  zplContent      String?  @db.Text @map("zpl_content")
+  status          String   @default("pending")
+  errorMessage    String?  @map("error_message")
+  createdAt       DateTime @default(now()) @map("created_at")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  retryCount      Int      @default(0) @map("retry_count")
+  
+  @@index([piId, status])
+  @@index([createdAt])
+  @@map("print_jobs")
+}
+
+model Metric {
+  id                String   @id @default(uuid())
+  piId              String   @map("pi_id")
+  pi                Pi       @relation(fields: [piId], references: [id], onDelete: Cascade)
+  
+  cpuUsage          Float    @map("cpu_usage")
+  memoryUsage       Float    @map("memory_usage")
+  diskUsage         Float    @map("disk_usage")
+  temperature       Float?
+  jobsProcessed     Int      @map("jobs_processed")
+  jobsFailed        Int      @map("jobs_failed")
+  avgPrintTime      Float    @map("avg_print_time")
+  uptime            Int
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  
+  @@index([piId, createdAt])
+  @@map("metrics")
+}
+
+model ErrorLog {
+  id          String   @id @default(uuid())
+  piId        String   @map("pi_id")
+  pi          Pi       @relation(fields: [piId], references: [id], onDelete: Cascade)
+  
+  errorType   String   @map("error_type")
+  message     String   @db.Text
+  stackTrace  String?  @db.Text @map("stack_trace")
+  context     Json?
+  resolved    Boolean  @default(false)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  resolvedAt  DateTime? @map("resolved_at")
+  
+  @@index([piId, createdAt])
+  @@index([resolved])
+  @@map("error_logs")
+}
+
+model ApiKey {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  lastUsed    DateTime? @map("last_used")
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@index([key])
+  @@map("api_keys")
+}
+
+model LabelSize {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  width     Float
+  height    Float
+  unit      String   @default("inch")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("label_sizes")
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("system_settings")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  role      String   @default("admin")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("users")
+}

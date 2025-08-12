@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Metrics - LabelBerry</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css?v={{ static_version }}">
+    <link rel="stylesheet" href="/static/css/performance_metrics.css?v={{ static_version }}">
+    <link rel="icon" type="image/png" href="/static/icons/labelberry-icon.png">
+    <link rel="manifest" href="/static/manifest.json">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="/static/icons/labelberry-icon.svg" alt="LabelBerry" class="logo">
+                <h1>LabelBerry</h1>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-item">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/print-history" class="nav-item">
+                    <i data-lucide="history"></i>
+                    <span>Print History</span>
+                </a>
+                <a href="/performance-metrics" class="nav-item active">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Performance Metrics</span>
+                </a>
+                <a href="/api-docs" class="nav-item">
+                    <i data-lucide="book-open"></i>
+                    <span>API Documentation</span>
+                </a>
+                <div class="nav-divider"></div>
+                <a href="/logout" class="nav-item">
+                    <i data-lucide="log-out"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <h1>Performance Metrics</h1>
+                <div class="top-bar-actions">
+                    <select id="pi-filter" class="form-control" style="width: 200px;">
+                        <option value="">All Printers</option>
+                    </select>
+                    <select id="time-range" class="form-control" style="width: 150px;">
+                        <option value="1h">Last Hour</option>
+                        <option value="24h" selected>Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="refreshMetrics()">
+                        <i data-lucide="refresh-cw"></i>
+                        Refresh
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <!-- Overview Stats -->
+                <div class="stats-grid" style="margin-bottom: 24px;">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #10b98120;">
+                            <i data-lucide="printer" style="color: #10b981;"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-prints">0</div>
+                            <div class="stat-label">Total Prints</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #3b82f620;">
+                            <i data-lucide="check-circle" style="color: #3b82f6;"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="success-rate">0%</div>
+                            <div class="stat-label">Success Rate</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #fbbf2420;">
+                            <i data-lucide="clock" style="color: #fbbf24;"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="avg-print-time">0s</div>
+                            <div class="stat-label">Avg Print Time</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #ef444420;">
+                            <i data-lucide="alert-circle" style="color: #ef4444;"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-errors">0</div>
+                            <div class="stat-label">Total Errors</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-grid">
+                    <!-- Print Volume Chart -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Print Volume Over Time</h2>
+                        </div>
+                        <div class="panel-content">
+                            <canvas id="volume-chart" height="300"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Success/Failure Chart -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Success vs Failure Rate</h2>
+                        </div>
+                        <div class="panel-content">
+                            <canvas id="success-chart" height="300"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Printer Performance Table -->
+                    <div class="panel" style="grid-column: 1 / -1;">
+                        <div class="panel-header">
+                            <h2>Printer Performance</h2>
+                        </div>
+                        <div class="panel-content">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Printer Name</th>
+                                        <th>Total Jobs</th>
+                                        <th>Successful</th>
+                                        <th>Failed</th>
+                                        <th>Success Rate</th>
+                                        <th>Avg Print Time</th>
+                                        <th>Uptime</th>
+                                        <th>Last Activity</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="printer-performance-tbody">
+                                    <tr>
+                                        <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                            Loading metrics...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Error Log -->
+                    <div class="panel" style="grid-column: 1 / -1;">
+                        <div class="panel-header">
+                            <h2>Recent Errors</h2>
+                        </div>
+                        <div class="panel-content">
+                            <div id="error-log" style="max-height: 400px; overflow-y: auto;">
+                                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                    No errors in selected time range
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/static/js/performance_metrics.js?v={{ static_version }}"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons({
+            attrs: {
+                width: 20,
+                height: 20
+            }
+        });
+    </script>
+</body>
+</html>

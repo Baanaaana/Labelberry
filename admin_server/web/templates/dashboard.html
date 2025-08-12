@@ -123,7 +123,7 @@
                             <i data-lucide="send"></i>
                             <span>Broadcast Print</span>
                         </a>
-                        <a href="#queue" id="nav-queue" class="nav-item" onclick="toggleQueuePanel(); return false;">
+                        <a href="#queue" id="nav-queue" class="nav-item" onclick="openQueueModal(); return false;">
                             <i data-lucide="list-ordered"></i>
                             <span>Queue Management</span>
                         </a>
@@ -135,7 +135,7 @@
                             <i data-lucide="file-text"></i>
                             <span>System Logs</span>
                         </a>
-                        <a href="#" id="nav-metrics" class="nav-item" onclick="showMetrics(); return false;">
+                        <a href="/performance-metrics" id="nav-metrics" class="nav-item">
                             <i data-lucide="bar-chart-2"></i>
                             <span>Performance Metrics</span>
                         </a>
@@ -357,9 +357,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Add New Printer</h2>
-                <button class="modal-close" onclick="closeRegisterModal()">
-                    <i data-lucide="x"></i>
-                </button>
+                <button class="btn-close" onclick="closeRegisterModal()">&times;</button>
             </div>
             <form id="register-form" onsubmit="registerPi(event)">
                 <div class="form-group">
@@ -401,9 +399,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Send Print Job to <span id="print-pi-name"></span></h2>
-                <button class="modal-close" onclick="closePrintModal()">
-                    <i data-lucide="x"></i>
-                </button>
+                <button class="btn-close" onclick="closePrintModal()">&times;</button>
             </div>
             <form id="print-form" onsubmit="sendPrint(event)">
                 <div class="form-tabs">
@@ -454,9 +450,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Edit Printer</h2>
-                <button class="modal-close" onclick="closeEditModal()">
-                    <i data-lucide="x"></i>
-                </button>
+                <button class="btn-close" onclick="closeEditModal()">&times;</button>
             </div>
             <form id="edit-form" onsubmit="updatePi(event)">
                 <input type="hidden" id="edit-pi-id">
@@ -491,9 +485,7 @@
         <div class="modal-content compact">
             <div class="modal-header">
                 <h2>Delete Printer</h2>
-                <button class="modal-close" onclick="closeDeleteModal()">
-                    <i data-lucide="x"></i>
-                </button>
+                <button class="btn-close" onclick="closeDeleteModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete <strong id="delete-pi-name"></strong>?</p>
@@ -512,9 +504,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Broadcast Print to All Printers</h2>
-                <button class="modal-close" onclick="closeBroadcastModal()">
-                    <i data-lucide="x"></i>
-                </button>
+                <button class="btn-close" onclick="closeBroadcastModal()">&times;</button>
             </div>
             <form id="broadcast-form" onsubmit="sendBroadcast(event)">
                 <div class="form-group">
@@ -561,9 +551,7 @@
         <div class="modal-content" style="max-width: 1400px;">
             <div class="modal-header">
                 <h2>System Logs</h2>
-                <button class="modal-close" onclick="closeLogsModal()">
-                    <i data-lucide="x"></i>
-                </button>
+                <button class="btn-close" onclick="closeLogsModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group" style="padding: 0;">
@@ -589,174 +577,13 @@
         </div>
     </div>
 
-    <!-- Metrics Modal -->
-    <div id="metrics-modal" class="modal">
-        <div class="modal-content" style="max-width: 1400px;">
-            <div class="modal-header">
-                <h2>Performance Metrics</h2>
-                <button class="modal-close" onclick="closeMetricsModal()">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group" style="padding: 0;">
-                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-                        <select id="metrics-pi-filter" onchange="loadMetrics()" class="form-control" style="flex: 1;">
-                            <option value="">All Printers</option>
-                        </select>
-                        <select id="metrics-time-range" onchange="loadMetrics()" class="form-control" style="width: 150px;">
-                            <option value="1">Last Hour</option>
-                            <option value="6">Last 6 Hours</option>
-                            <option value="24" selected>Last 24 Hours</option>
-                            <option value="168">Last Week</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- Metrics Summary Cards -->
-                <div class="stats-grid" style="margin-bottom: 24px;">
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <span class="stat-title">Avg CPU Usage</span>
-                            <i data-lucide="cpu" class="stat-icon blue"></i>
-                        </div>
-                        <div class="stat-value" id="avg-cpu">0%</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <span class="stat-title">Avg Memory</span>
-                            <i data-lucide="hard-drive" class="stat-icon purple"></i>
-                        </div>
-                        <div class="stat-value" id="avg-memory">0%</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <span class="stat-title">Total Jobs</span>
-                            <i data-lucide="file-text" class="stat-icon green"></i>
-                        </div>
-                        <div class="stat-value" id="total-jobs">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <span class="stat-title">Success Rate</span>
-                            <i data-lucide="check-circle" class="stat-icon green"></i>
-                        </div>
-                        <div class="stat-value" id="success-rate">0%</div>
-                    </div>
-                </div>
-                
-                <!-- Metrics Table -->
-                <div style="background: var(--bg-primary); border-radius: 8px; padding: 16px;">
-                    <h3 style="margin: 0 0 16px 0; font-size: 16px;">Detailed Metrics</h3>
-                    <div style="overflow-x: auto;">
-                        <table id="metrics-table" style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="border-bottom: 2px solid var(--border-color);">
-                                    <th style="text-align: left; padding: 8px;">Printer</th>
-                                    <th style="text-align: center; padding: 8px;">CPU %</th>
-                                    <th style="text-align: center; padding: 8px;">Memory %</th>
-                                    <th style="text-align: center; padding: 8px;">Queue</th>
-                                    <th style="text-align: center; padding: 8px;">Jobs</th>
-                                    <th style="text-align: center; padding: 8px;">Failed</th>
-                                    <th style="text-align: left; padding: 8px;">Last Update</th>
-                                </tr>
-                            </thead>
-                            <tbody id="metrics-tbody">
-                                <!-- Metrics rows will be added here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Queue Management Panel (initially hidden) -->
-            <div id="queue-panel" class="panel flex-grow" style="display: none;">
-                <div class="panel-header">
-                    <h2>Queue Management</h2>
-                </div>
-                <div class="panel-content">
-                    <div class="form-group" style="padding: 0;">
-                        <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-                            <select id="queue-pi-filter" onchange="loadQueue()" class="form-control" style="flex: 1;">
-                                <option value="">All Printers</option>
-                            </select>
-                            <button class="btn btn-primary" onclick="refreshQueue()">
-                                <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
-                                Refresh
-                            </button>
-                            <button class="btn btn-danger" onclick="clearQueue()">
-                                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
-                                Clear Queue
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Queue Stats -->
-                    <div class="stats-grid" style="margin-bottom: 24px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
-                        <div class="stat-card">
-                            <div class="stat-value" id="queue-total">0</div>
-                            <div class="stat-label">Total Jobs</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="queue-queued">0</div>
-                            <div class="stat-label">Queued</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="queue-processing">0</div>
-                            <div class="stat-label">Processing</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="queue-completed">0</div>
-                            <div class="stat-label">Completed</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="queue-failed">0</div>
-                            <div class="stat-label">Failed</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Queue Table -->
-                    <div style="background: var(--bg-primary); border-radius: 8px; padding: 16px;">
-                        <h3 style="margin: 0 0 16px 0; font-size: 16px;">Active Print Jobs</h3>
-                        <div style="overflow-x: auto;">
-                            <table id="queue-table" style="width: 100%; border-collapse: collapse;">
-                                <thead>
-                                    <tr style="border-bottom: 2px solid var(--border-color);">
-                                        <th style="text-align: left; padding: 12px;">Position</th>
-                                        <th style="text-align: left; padding: 12px;">Job ID</th>
-                                        <th style="text-align: left; padding: 12px;">Printer</th>
-                                        <th style="text-align: left; padding: 12px;">Status</th>
-                                        <th style="text-align: left; padding: 12px;">Priority</th>
-                                        <th style="text-align: left; padding: 12px;">Created</th>
-                                        <th style="text-align: left; padding: 12px;">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="queue-tbody">
-                                    <!-- Queue items will be added here -->
-                                </tbody>
-                            </table>
-                            <div id="queue-empty" style="text-align: center; padding: 40px; color: var(--text-secondary); display: none;">
-                                <i data-lucide="inbox" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
-                                <p>No active jobs</p>
-                                <p style="font-size: 13px; margin-top: 8px;">All jobs have been completed or there are no pending jobs</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Queue Management Modal (removed - now inline) -->
 
     <!-- Job Details Modal -->
     <div id="job-details-modal" class="modal">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
                 <h2>Job Details</h2>
-                <button class="modal-close" onclick="closeJobDetailsModal()">
-                    <i data-lucide="x"></i>
-                </button>
+                <button class="btn-close" onclick="closeJobDetailsModal()">&times;</button>
             </div>
             <div class="modal-body" id="job-details-content">
                 <!-- Job details will be populated here -->
@@ -780,9 +607,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Create API Key</h2>
-                <button class="modal-close" onclick="closeCreateKeyModal()">
-                    <i data-lucide="x"></i>
-                </button>
+                <button class="btn-close" onclick="closeCreateKeyModal()">&times;</button>
             </div>
             <form id="create-key-form" onsubmit="createApiKey(event); return false;">
                 <div class="modal-body">
@@ -808,9 +633,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Add Label Size</h2>
-                <button class="modal-close" onclick="closeAddLabelSizeModal()">
-                    <i data-lucide="x"></i>
-                </button>
+                <button class="btn-close" onclick="closeAddLabelSizeModal()">&times;</button>
             </div>
             <form id="add-label-size-form" onsubmit="addLabelSize(event); return false;">
                 <div class="modal-body">
@@ -899,5 +722,85 @@
             }), 10);
         };
     </script>
+    
+    <!-- Queue Management Modal -->
+    <div id="queue-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 1200px; width: 90%;">
+            <div class="modal-header">
+                <h2>Queue Management</h2>
+                <button class="btn-close" onclick="closeQueueModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Queue Controls -->
+                <div class="form-group" style="padding: 0;">
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <select id="queue-pi-filter" onchange="loadQueue()" class="form-control" style="flex: 1;">
+                            <option value="">All Printers</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="refreshQueue()">
+                            <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                            Refresh
+                        </button>
+                        <button class="btn btn-danger" onclick="clearQueue()">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                            Clear Queue
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Queue Stats -->
+                <div class="stats-grid" style="margin-bottom: 24px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-total">0</div>
+                        <div class="stat-label">Total Jobs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-queued">0</div>
+                        <div class="stat-label">Queued</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-processing">0</div>
+                        <div class="stat-label">Processing</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-completed">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="queue-failed">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                </div>
+                
+                <!-- Queue Table -->
+                <div style="background: var(--bg-primary); border-radius: 8px; padding: 16px;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 16px;">Active Print Jobs</h3>
+                    <div style="overflow-x: auto;">
+                        <table id="queue-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 12px;">Position</th>
+                                    <th style="text-align: left; padding: 12px;">Job ID</th>
+                                    <th style="text-align: left; padding: 12px;">Printer</th>
+                                    <th style="text-align: left; padding: 12px;">Status</th>
+                                    <th style="text-align: left; padding: 12px;">Priority</th>
+                                    <th style="text-align: left; padding: 12px;">Created</th>
+                                    <th style="text-align: left; padding: 12px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queue-tbody">
+                                <!-- Queue items will be added here -->
+                            </tbody>
+                        </table>
+                        <div id="queue-empty" style="text-align: center; padding: 40px; color: var(--text-secondary); display: none;">
+                            <i data-lucide="inbox" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                            <p>No active jobs</p>
+                            <p style="font-size: 13px; margin-top: 8px;">All jobs have been completed or there are no pending jobs</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -24,8 +24,8 @@ from shared.models import (
     PiDevice, PrintJob, PiMetrics, ErrorLog,
     ApiResponse, PiStatus, PiConfig, PrintJobStatus
 )
-from .database import Database
 from .config import ServerConfig
+from .database_wrapper import get_database
 
 
 logging.basicConfig(
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 server_config = ServerConfig()
-database = Database(server_config.database_path)
+database = get_database()
 
 # Only initialize MQTT if not in local mode
 if os.getenv("LABELBERRY_LOCAL_MODE", "false").lower() != "true":
@@ -58,6 +58,9 @@ else:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("LabelBerry Admin Server started")
+    
+    # Initialize database connection
+    await database.init()
     database.save_server_log("server_started", "Admin Server started", "INFO")
     
     if mqtt_server:
@@ -76,6 +79,8 @@ async def lifespan(app: FastAPI):
         # Stop MQTT server
         await mqtt_server.stop()
     
+    # Close database connection
+    await database.close()
     database.save_server_log("server_stopped", "Admin Server stopped", "INFO")
     logger.info("LabelBerry Admin Server stopped")
 
@@ -108,7 +113,7 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "te
 
 # Add cache busting version for static files
 import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "51.0"
+STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "62.0"
 templates.env.globals['static_version'] = STATIC_VERSION
 
 
@@ -307,26 +312,33 @@ async def dashboard(request: Request):
 @app.get("/api/pis", response_model=ApiResponse)
 async def list_pis():
     try:
-        pis = database.get_all_pis()
-        label_sizes = database.get_label_sizes()
+        pis = await database.get_all_pis_async()
+        label_sizes = await database.get_label_sizes_async()
         
         # Create a map of label sizes by ID
         label_size_map = {}
         for ls in label_sizes:
-            label_size_map[ls['id']] = ls
+            label_size_map[ls.get('id')] = ls
         
         pi_list = []
         for pi in pis:
-            pi_dict = pi.model_dump()
-            is_connected = mqtt_server.is_connected(pi.id)
+            # Handle dict from database
+            if isinstance(pi, dict):
+                pi_dict = pi
+            else:
+                pi_dict = pi.model_dump()
+            
+            pi_id = pi_dict.get('id') or pi_dict.get('device_id')
+            is_connected = mqtt_server.is_connected(pi_id) if mqtt_server else False
             pi_dict["mqtt_connected"] = is_connected
             # Override status based on actual MQTT connection
             if is_connected:
                 pi_dict["status"] = "online"
             
             # Add label size details if available
-            if pi.label_size_id and pi.label_size_id in label_size_map:
-                pi_dict["label_size"] = label_size_map[pi.label_size_id]
+            label_size_id = pi_dict.get('label_size_id')
+            if label_size_id and label_size_id in label_size_map:
+                pi_dict["label_size"] = label_size_map[label_size_id]
             else:
                 pi_dict["label_size"] = None
                 
@@ -485,16 +497,24 @@ async def update_pi(pi_id: str, updates: Dict[str, Any]):
 @app.delete("/api/pis/{pi_id}", response_model=ApiResponse)
 async def delete_pi(pi_id: str):
     try:
-        pi = database.get_pi_by_id(pi_id)
+        logger.info(f"Attempting to delete Pi: {pi_id}, is_postgres: {database.is_postgres}")
+        
+        # Use async version of get_pi_by_id if PostgreSQL
+        if database.is_postgres:
+            pi = await database.get_pi_by_id_async(pi_id)
+        else:
+            pi = database.get_pi_by_id(pi_id)
+            
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
         # Disconnect MQTT if connected
-        if mqtt_server.is_connected(pi_id):
+        if mqtt_server and mqtt_server.is_connected(pi_id):
             mqtt_server.disconnect(pi_id)
         
-        # Delete from database
-        if database.delete_pi(pi_id):
+        # Delete from database - always use async version in async endpoint
+        deleted = await database.delete_pi_async(pi_id)
+        if deleted:
             database.save_server_log("printer_deleted", f"Printer '{pi.friendly_name}' deleted", "WARNING")
             return ApiResponse(
                 success=True,
@@ -835,6 +855,18 @@ async def print_history_page(request: Request):
     if "user" not in request.session:
         return RedirectResponse(url="/login?next=/print-history", status_code=302)
     return templates.TemplateResponse("print_history.html", {
+        "request": request,
+        "user": request.session["user"]
+    })
+
+
+@app.get("/performance-metrics", response_class=HTMLResponse)
+async def performance_metrics_page(request: Request):
+    """Performance metrics page"""
+    # Check if user is logged in
+    if "user" not in request.session:
+        return RedirectResponse(url="/login?next=/performance-metrics", status_code=302)
+    return templates.TemplateResponse("performance_metrics.html", {
         "request": request,
         "user": request.session["user"]
     })

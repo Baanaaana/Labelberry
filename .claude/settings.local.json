@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npx --yes shadcn@latest init -d)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(mv:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm run build:*)",
+      "Bash(pip install:*)"
     ],
     "deny": []
   }
