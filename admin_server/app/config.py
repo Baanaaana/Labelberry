@@ -5,9 +5,12 @@ from typing import Optional, Dict, Any
 
 
 class ServerConfig:
-    def __init__(self, config_path: str = "/etc/labelberry/server.conf"):
+    def __init__(self, config_path: str = None):
         import logging
         self.logger = logging.getLogger(__name__)
+        # Check environment variable first
+        if config_path is None:
+            config_path = os.environ.get("LABELBERRY_CONFIG_PATH", "/etc/labelberry/server.conf")
         self.config_path = Path(config_path)
         self.logger.info(f"Loading config from: {self.config_path}")
         self.config = self.load_config()
