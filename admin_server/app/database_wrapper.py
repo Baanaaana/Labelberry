@@ -154,20 +154,41 @@ class DatabaseWrapper:
         if self.is_postgres:
             return await self.db.get_pi_by_id(pi_id)
         else:
+            self._init_sqlite()
             return self.db.get_pi_by_id(pi_id)
     
-    def register_pi(self, device_id: str, friendly_name: str, api_key: str = None) -> Dict[str, Any]:
-        """Register a new Pi device"""
+    def register_pi(self, device_or_id, friendly_name: str = None, api_key: str = None) -> Dict[str, Any]:
+        """Register a new Pi device - accepts PiDevice object or individual params"""
+        # Handle both PiDevice object and individual parameters
+        if hasattr(device_or_id, 'id'):  # It's a PiDevice object
+            device = device_or_id
+            device_id = device.id
+            friendly_name = device.friendly_name
+            api_key = device.api_key
+        else:  # It's individual parameters
+            device_id = device_or_id
+            
         if self.is_postgres:
             return self._run_async(self.db.register_pi(device_id, friendly_name, api_key))
         else:
+            self._init_sqlite()
             return self.db.register_pi(device_id, friendly_name, api_key)
     
-    async def register_pi_async(self, device_id: str, friendly_name: str, api_key: str = None) -> Dict[str, Any]:
-        """Register a new Pi device (async)"""
+    async def register_pi_async(self, device_or_id, friendly_name: str = None, api_key: str = None) -> Dict[str, Any]:
+        """Register a new Pi device (async) - accepts PiDevice object or individual params"""
+        # Handle both PiDevice object and individual parameters
+        if hasattr(device_or_id, 'id'):  # It's a PiDevice object
+            device = device_or_id
+            device_id = device.id
+            friendly_name = device.friendly_name
+            api_key = device.api_key
+        else:  # It's individual parameters
+            device_id = device_or_id
+            
         if self.is_postgres:
             return await self.db.register_pi(device_id, friendly_name, api_key)
         else:
+            self._init_sqlite()
             return self.db.register_pi(device_id, friendly_name, api_key)
     
     def update_pi_status(self, device_id: str, status: str, ip_address: str = None):
@@ -182,6 +203,7 @@ class DatabaseWrapper:
         if self.is_postgres:
             await self.db.update_pi_status(device_id, status, ip_address)
         else:
+            self._init_sqlite()
             self.db.update_pi_status(device_id, status, ip_address)
     
     def update_pi_config(self, pi_id: str, config: Dict[str, Any]):
@@ -197,6 +219,24 @@ class DatabaseWrapper:
             await self.db.update_pi_config(pi_id, config)
         else:
             self.db.update_pi_config(pi_id, config)
+    
+    def update_pi(self, pi_id: str, updates: Dict[str, Any]) -> bool:
+        """Update Pi device details"""
+        if self.is_postgres:
+            return self._run_async(self.db.update_pi_config(pi_id, updates))
+        else:
+            self._init_sqlite()
+            return self.db.update_pi_config(pi_id, updates)
+    
+    async def update_pi_async(self, pi_id: str, updates: Dict[str, Any]) -> bool:
+        """Update Pi device details (async)"""
+        if self.is_postgres:
+            await self.db.update_pi_config(pi_id, updates)
+            return True
+        else:
+            self._init_sqlite()
+            self.db.update_pi_config(pi_id, updates)
+            return True
     
     def delete_pi(self, pi_id: str) -> bool:
         """Delete a Pi device (sync version for SQLite)"""
@@ -268,6 +308,18 @@ class DatabaseWrapper:
         else:
             return self.db.get_job_by_id(job_id)
     
+    async def get_job_by_id_async(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Get print job by ID (async)"""
+        if self.is_postgres:
+            pool = await self.db.get_connection()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow("""
+                    SELECT * FROM print_jobs WHERE id = $1
+                """, job_id)
+                return dict(row) if row else None
+        else:
+            return self.db.get_job_by_id(job_id)
+    
     # Metrics Management
     def save_metrics(self, metrics):
         """Save Pi metrics"""
@@ -325,6 +377,33 @@ class DatabaseWrapper:
             return await self.db.get_error_logs(pi_id, resolved, limit)
         else:
             return self.db.get_error_logs(pi_id, resolved, limit)
+    
+    async def get_logs_async(self, pi_id: str = None, log_type: str = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get logs (async)"""
+        if self.is_postgres:
+            pool = await self.db.get_connection()
+            async with pool.acquire() as conn:
+                query = "SELECT * FROM server_logs WHERE 1=1"
+                params = []
+                
+                # Note: server_logs uses event_type instead of log_type
+                if log_type:
+                    query += " AND event_type = $" + str(len(params) + 1)
+                    params.append(log_type)
+                
+                # Note: server_logs doesn't have pi_id, but we can search in details
+                if pi_id:
+                    query += " AND details LIKE $" + str(len(params) + 1)
+                    params.append(f'%{pi_id}%')
+                
+                query += " ORDER BY created_at DESC LIMIT $" + str(len(params) + 1)
+                params.append(limit)
+                
+                rows = await conn.fetch(query, *params)
+                return [dict(row) for row in rows]
+        else:
+            # For SQLite, implement basic log retrieval
+            return []
     
     # API Key Management
     def create_api_key(self, name: str, description: str = None) -> Dict[str, Any]:
@@ -448,6 +527,207 @@ class DatabaseWrapper:
             return False
         else:
             return self.db.update_username(old_username, new_username)
+    
+    # System Settings Management (PostgreSQL)
+    async def get_system_settings(self) -> Dict[str, Any]:
+        """Get system settings including MQTT configuration"""
+        if self.is_postgres:
+            return await self.db.get_system_settings()
+        else:
+            # For SQLite, return default MQTT settings
+            return {
+                'mqtt_broker': 'localhost',
+                'mqtt_port': '1883',
+                'mqtt_username': '',
+                'mqtt_password': ''
+            }
+    
+    async def update_mqtt_settings(self, mqtt_settings: Dict[str, Any]):
+        """Update MQTT settings"""
+        if self.is_postgres:
+            return await self.db.update_mqtt_settings(mqtt_settings)
+        else:
+            # For SQLite, store in server settings table
+            for key, value in mqtt_settings.items():
+                self.set_server_setting(key, value)
+    
+    async def init_pool(self):
+        """Initialize database connection pool (PostgreSQL only)"""
+        if self.is_postgres:
+            return await self.db.init_pool()
+    
+    async def get_connection(self):
+        """Get database connection pool (PostgreSQL only)"""
+        if self.is_postgres:
+            return await self.db.get_connection()
+        else:
+            raise NotImplementedError("get_connection is only available for PostgreSQL")
+    
+    def get_dashboard_stats(self) -> Dict[str, Any]:
+        """Get dashboard statistics"""
+        if self.is_postgres:
+            return self._run_async(self.get_dashboard_stats_async())
+        else:
+            # For SQLite, use the existing method
+            return self.db.get_dashboard_stats()
+    
+    async def get_dashboard_stats_async(self) -> Dict[str, Any]:
+        """Get dashboard statistics (async)"""
+        if self.is_postgres:
+            pool = await self.db.get_connection()
+            async with pool.acquire() as conn:
+                # Get total and online printers
+                total_pis = await conn.fetchval("SELECT COUNT(*) FROM pis")
+                online_pis = await conn.fetchval("SELECT COUNT(*) FROM pis WHERE status = 'online'")
+                
+                # Get jobs in last 24 hours
+                jobs_24h = await conn.fetchval("""
+                    SELECT COUNT(*) FROM print_jobs 
+                    WHERE created_at > NOW() - INTERVAL '24 hours'
+                """)
+                
+                # Get failed jobs in last 24 hours
+                failed_24h = await conn.fetchval("""
+                    SELECT COUNT(*) FROM print_jobs 
+                    WHERE status = 'failed' 
+                    AND created_at > NOW() - INTERVAL '24 hours'
+                """)
+                
+                # Get average print time from completed jobs (in milliseconds)
+                avg_print_time = await conn.fetchval("""
+                    SELECT AVG(EXTRACT(EPOCH FROM (completed_at - created_at)) * 1000)
+                    FROM print_jobs 
+                    WHERE status = 'completed' 
+                    AND completed_at IS NOT NULL
+                    AND created_at > NOW() - INTERVAL '24 hours'
+                """) or 0
+                
+                # Get current queue length (pending jobs)
+                queue_length = await conn.fetchval("""
+                    SELECT COUNT(*) FROM print_jobs 
+                    WHERE status IN ('pending', 'processing')
+                """)
+                
+                return {
+                    "totalPrinters": total_pis,
+                    "onlinePrinters": online_pis,
+                    "totalJobsToday": jobs_24h,
+                    "failedJobsToday": failed_24h,
+                    "avgPrintTime": round(avg_print_time) if avg_print_time else 0,
+                    "queueLength": queue_length
+                }
+        else:
+            # For SQLite, use the existing method
+            stats = self.db.get_dashboard_stats()
+            # Convert to frontend format
+            return {
+                "totalPrinters": stats.get("total_pis", 0),
+                "onlinePrinters": stats.get("online_pis", 0),
+                "totalJobsToday": stats.get("jobs_24h", 0),
+                "failedJobsToday": stats.get("failed_24h", 0),
+                "avgPrintTime": 0,  # Not calculated in SQLite version
+                "queueLength": 0  # Not calculated in SQLite version
+            }
+    
+    # Additional async methods needed for MQTT handlers
+    async def get_pi_config_async(self, pi_id: str) -> Optional[Dict[str, Any]]:
+        """Get Pi configuration (async)"""
+        if self.is_postgres:
+            pool = await self.db.get_connection()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow("""
+                    SELECT * FROM configurations WHERE pi_id = $1
+                """, pi_id)
+                return dict(row) if row else None
+        else:
+            # For SQLite, use sync method
+            return self.db.get_pi_config(pi_id)
+    
+    async def save_log_async(self, pi_id: str, log_type: str, message: str, level: str = "INFO", details: str = None):
+        """Save Pi log entry (async)"""
+        if self.is_postgres:
+            pool = await self.db.get_connection()
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO server_logs (event_type, message, level, details, created_at)
+                    VALUES ($1, $2, $3, $4, $5)
+                """, log_type, f"Pi {pi_id}: {message}", level, details, datetime.now())
+        else:
+            # For SQLite, use sync method
+            self.db.save_log(pi_id, log_type, message, details)
+    
+    async def save_error_log_async(self, error_log):
+        """Save error log (async)"""
+        if self.is_postgres:
+            # Handle both traceback and stack_trace attribute names
+            stack_trace = getattr(error_log, 'traceback', None) or getattr(error_log, 'stack_trace', None)
+            await self.db.log_error(error_log.pi_id, error_log.error_type, error_log.message, stack_trace)
+        else:
+            self.db.save_error_log(error_log)
+    
+    async def update_job_status_async(self, job_id: str, status: str, error_message: str = None, error_type: str = None):
+        """Update job status (async)"""
+        if self.is_postgres:
+            await self.db.update_print_job(job_id, status, error_message)
+        else:
+            self.db.update_job_status(job_id, status)
+    
+    def update_job_status(self, job_id: str, status: str, error_message: str = None, error_type: str = None):
+        """Update job status (sync)"""
+        if self.is_postgres:
+            self._run_async(self.db.update_print_job(job_id, status, error_message))
+        else:
+            self._init_sqlite()
+            self.db.update_job_status(job_id, status)
+    
+    async def get_queued_jobs(self, pi_id: str = None, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get queued jobs for processing"""
+        if self.is_postgres:
+            pool = await self.db.get_connection()
+            async with pool.acquire() as conn:
+                if pi_id:
+                    rows = await conn.fetch("""
+                        SELECT * FROM print_jobs 
+                        WHERE status = 'pending' 
+                        AND pi_id = $1
+                        ORDER BY created_at ASC 
+                        LIMIT $2
+                    """, pi_id, limit)
+                else:
+                    rows = await conn.fetch("""
+                        SELECT * FROM print_jobs 
+                        WHERE status = 'pending' 
+                        ORDER BY created_at ASC 
+                        LIMIT $1
+                    """, limit)
+                return [dict(row) for row in rows]
+        else:
+            # For SQLite, return empty list as queue management is not fully implemented
+            return []
+    
+    def get_queued_jobs_sync(self, pi_id: str = None, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get queued jobs for processing (sync version)"""
+        if self.is_postgres:
+            return self._run_async(self.get_queued_jobs(pi_id, limit))
+        else:
+            # For SQLite, return empty list as queue management is not fully implemented
+            return []
+    
+    def expire_old_jobs(self, hours: int = 24) -> int:
+        """Expire old jobs"""
+        # Not implemented yet, return 0
+        return 0
+    
+    def get_queue_stats(self, pi_id: str = None) -> Dict[str, Any]:
+        """Get queue statistics"""
+        # Return basic stats for now
+        return {
+            'queued': 0,
+            'sent': 0,
+            'failed': 0,
+            'completed': 0,
+            'total': 0
+        }
 
 
 # Create singleton instance

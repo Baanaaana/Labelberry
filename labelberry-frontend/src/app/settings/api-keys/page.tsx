@@ -51,6 +51,8 @@ export default function ApiKeysPage() {
     name: "",
     description: ""
   })
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [keyToDelete, setKeyToDelete] = useState<{ id: string; name: string } | null>(null)
 
   const fetchApiKeys = async () => {
     try {
@@ -90,8 +92,36 @@ export default function ApiKeysPage() {
     // Could add a toast notification here
   }
 
-  const deleteApiKey = (keyId: string) => {
-    setApiKeys(prev => prev.filter(k => k.id !== keyId))
+  const handleDeleteClick = (keyId: string, keyName: string) => {
+    setKeyToDelete({ id: keyId, name: keyName })
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!keyToDelete) return
+    
+    try {
+      const response = await fetch(`/api/api-keys/${keyToDelete.id}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        // Successfully deleted, update the UI
+        setApiKeys(prev => prev.filter(k => k.id !== keyToDelete.id))
+        setDeleteDialogOpen(false)
+        setKeyToDelete(null)
+      } else {
+        // Handle error - you might want to add toast notification here
+        console.error('Failed to delete API key')
+      }
+    } catch (error) {
+      console.error('Failed to delete API key:', error)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false)
+    setKeyToDelete(null)
   }
 
   const createApiKey = () => {
@@ -236,7 +266,7 @@ export default function ApiKeysPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => deleteApiKey(apiKey.id)}
+                      onClick={() => handleDeleteClick(apiKey.id, apiKey.name)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -247,6 +277,25 @@ export default function ApiKeysPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the API key &quot;{keyToDelete?.name}&quot;? This action cannot be undone and any applications using this key will stop working.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Delete API Key
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )

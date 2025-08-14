@@ -60,7 +60,7 @@ class QueueManager:
                         continue
                     
                     # Get next queued job for this Pi
-                    jobs = self.database.get_queued_jobs(pi_id, limit=1)
+                    jobs = await self.database.get_queued_jobs(pi_id, limit=1)
                     if jobs:
                         job = jobs[0]
                         await self.send_job_to_pi(pi_id, job)
@@ -76,7 +76,7 @@ class QueueManager:
         """Send a queued job to a Pi"""
         try:
             # Update status to 'sent'
-            self.database.update_job_status(job['id'], 'sent')
+            await self.database.update_job_status_async(job['id'], 'sent')
             
             # Send via MQTT with proper ZPL content
             # Use zpl_content/zpl_url columns if available, fall back to zpl_source
@@ -112,14 +112,14 @@ class QueueManager:
                 return True
             else:
                 # Failed to send, revert to queued
-                self.database.update_job_status(job['id'], 'queued')
+                await self.database.update_job_status_async(job['id'], 'queued')
                 logger.error(f"Failed to send job {job['id']} to Pi {pi_id}")
                 return False
                 
         except Exception as e:
             logger.error(f"Error sending job to Pi: {e}")
             # Revert to queued status
-            self.database.update_job_status(job['id'], 'queued')
+            await self.database.update_job_status_async(job['id'], 'queued')
             return False
     
     async def handle_job_result(self, pi_id: str, job_id: str, status: str, 
@@ -200,21 +200,25 @@ class QueueManager:
         while self.running:
             try:
                 # Get all failed jobs that might need retry
-                with self.database.get_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        SELECT * FROM print_jobs 
-                        WHERE status = 'failed' 
-                        AND retry_count < max_retries
-                        AND error_type IS NOT NULL
-                    """)
-                    
-                    for row in cursor.fetchall():
-                        job = dict(row)
-                        if await self.is_ready_for_retry(job):
-                            # Requeue the job
-                            self.database.update_job_status(job['id'], 'queued')
-                            logger.info(f"Requeued job {job['id']} for retry")
+                if self.database.is_postgres:
+                    pool = await self.database.get_connection()
+                    async with pool.acquire() as conn:
+                        rows = await conn.fetch("""
+                            SELECT * FROM print_jobs 
+                            WHERE status = 'failed' 
+                            AND retry_count < max_retries
+                            AND error_type IS NOT NULL
+                        """)
+                        
+                        for row in rows:
+                            job = dict(row)
+                            if await self.is_ready_for_retry(job):
+                                # Requeue the job
+                                await self.database.update_job_status_async(job['id'], 'queued')
+                                logger.info(f"Requeued job {job['id']} for retry")
+                else:
+                    # SQLite not implemented for retries yet
+                    pass
                 
                 await asyncio.sleep(30)  # Check every 30 seconds
                 
@@ -277,7 +281,7 @@ class QueueManager:
         
         # Add queue position info for queued jobs
         if pi_id:
-            queued_jobs = self.database.get_queued_jobs(pi_id, limit=100)
+            queued_jobs = self.database.get_queued_jobs_sync(pi_id, limit=100)
             stats['queue'] = []
             for i, job in enumerate(queued_jobs):
                 stats['queue'].append({

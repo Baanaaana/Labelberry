@@ -5,7 +5,7 @@ import uuid
 import asyncpg
 import asyncio
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 import hashlib
@@ -68,7 +68,7 @@ class PostgresDatabase:
                         updated_at = EXCLUDED.updated_at
                     RETURNING *
                 """, str(uuid.uuid4()), device_id, friendly_name, api_key, 'offline', 
-                    datetime.now(timezone.utc), datetime.now(timezone.utc))
+                    datetime.now(), datetime.now())
                 
                 # Create default configuration
                 await conn.execute("""
@@ -79,7 +79,7 @@ class PostgresDatabase:
                     ON CONFLICT (pi_id) DO NOTHING
                 """, str(uuid.uuid4()), pi['id'], '/dev/usb/lp0', '4x6', 
                     15, 4, True, 100, 3, 5, 
-                    datetime.now(timezone.utc), datetime.now(timezone.utc))
+                    datetime.now(), datetime.now())
                 
                 return dict(pi)
             except Exception as e:
@@ -91,7 +91,12 @@ class PostgresDatabase:
         pool = await self.get_connection()
         async with pool.acquire() as conn:
             rows = await conn.fetch("""
-                SELECT p.*, c.* 
+                SELECT 
+                    p.id, p.device_id, p.friendly_name, p.api_key, p.ip_address, 
+                    p.status, p.last_seen, p.created_at, p.updated_at, p.printer_model,
+                    c.id as config_id, c.pi_id, c.printer_device, c.label_size, 
+                    c.default_darkness, c.default_speed, c.auto_reconnect, 
+                    c.max_queue_size, c.retry_attempts, c.retry_delay
                 FROM pis p
                 LEFT JOIN configurations c ON p.id = c.pi_id
                 ORDER BY p.friendly_name
@@ -103,7 +108,12 @@ class PostgresDatabase:
         pool = await self.get_connection()
         async with pool.acquire() as conn:
             row = await conn.fetchrow("""
-                SELECT p.*, c.* 
+                SELECT 
+                    p.id, p.device_id, p.friendly_name, p.api_key, p.ip_address, 
+                    p.status, p.last_seen, p.created_at, p.updated_at, p.printer_model,
+                    c.id as config_id, c.pi_id, c.printer_device, c.label_size, 
+                    c.default_darkness, c.default_speed, c.auto_reconnect, 
+                    c.max_queue_size, c.retry_attempts, c.retry_delay
                 FROM pis p
                 LEFT JOIN configurations c ON p.id = c.pi_id
                 WHERE p.id = $1 OR p.device_id = $1
@@ -118,14 +128,36 @@ class PostgresDatabase:
                 UPDATE pis 
                 SET status = $1, ip_address = $2, last_seen = $3, updated_at = $4
                 WHERE device_id = $5
-            """, status, ip_address, datetime.now(timezone.utc), 
-                datetime.now(timezone.utc), device_id)
+            """, status, ip_address, datetime.now(), 
+                datetime.now(), device_id)
     
     async def update_pi_config(self, pi_id: str, config: Dict[str, Any]):
-        """Update Pi configuration"""
+        """Update Pi configuration and details"""
         pool = await self.get_connection()
         async with pool.acquire() as conn:
-            # Build dynamic update query based on provided fields
+            # Update pis table fields if present
+            if 'printer_model' in config or 'friendly_name' in config:
+                pi_updates = []
+                pi_values = []
+                pi_param_count = 1
+                
+                if 'printer_model' in config:
+                    pi_updates.append(f"printer_model = ${pi_param_count}")
+                    pi_values.append(config['printer_model'])
+                    pi_param_count += 1
+                    
+                if 'friendly_name' in config:
+                    pi_updates.append(f"friendly_name = ${pi_param_count}")
+                    pi_values.append(config['friendly_name'])
+                    pi_param_count += 1
+                    
+                if pi_updates:
+                    pi_values.append(pi_id)
+                    query = f"""UPDATE pis SET {', '.join(pi_updates)}, updated_at = NOW() 
+                               WHERE id = ${pi_param_count} OR device_id = ${pi_param_count}"""
+                    await conn.execute(query, *pi_values)
+            
+            # Build dynamic update query for configuration fields
             update_fields = []
             values = []
             param_count = 1
@@ -140,7 +172,7 @@ class PostgresDatabase:
             
             if update_fields:
                 update_fields.append(f"updated_at = ${param_count}")
-                values.append(datetime.now(timezone.utc))
+                values.append(datetime.now())
                 param_count += 1
                 
                 values.append(pi_id)  # WHERE clause
@@ -160,14 +192,25 @@ class PostgresDatabase:
             try:
                 # Start a transaction
                 async with conn.transaction():
+                    # First get the actual database ID if we're given a device_id
+                    pi_row = await conn.fetchrow("""
+                        SELECT id FROM pis WHERE id = $1 OR device_id = $1
+                    """, pi_id)
+                    
+                    if not pi_row:
+                        logger.warning(f"Pi {pi_id} not found for deletion")
+                        return False
+                    
+                    actual_id = pi_row['id']
+                    
                     # Delete related data first (cascade delete)
-                    await conn.execute("DELETE FROM metrics WHERE pi_id = $1", pi_id)
-                    await conn.execute("DELETE FROM print_jobs WHERE pi_id = $1", pi_id)
-                    await conn.execute("DELETE FROM error_logs WHERE pi_id = $1", pi_id)
-                    await conn.execute("DELETE FROM configurations WHERE pi_id = $1", pi_id)
+                    await conn.execute("DELETE FROM metrics WHERE pi_id = $1", actual_id)
+                    await conn.execute("DELETE FROM print_jobs WHERE pi_id = $1", actual_id)
+                    await conn.execute("DELETE FROM error_logs WHERE pi_id = $1", actual_id)
+                    await conn.execute("DELETE FROM configurations WHERE pi_id = $1", actual_id)
                     
                     # Delete the Pi record
-                    result = await conn.execute("DELETE FROM pis WHERE id = $1", pi_id)
+                    result = await conn.execute("DELETE FROM pis WHERE id = $1", actual_id)
                     
                     # Check if any row was deleted (result is like "DELETE 1")
                     deleted_count = int(result.split()[-1]) if result and ' ' in result else 0
@@ -192,7 +235,7 @@ class PostgresDatabase:
                     created_at, retry_count)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
             """, job_id, pi_id, zpl_source, zpl_content, 'pending', 
-                datetime.now(timezone.utc), 0)
+                datetime.now(), 0)
             return job_id
     
     async def get_print_jobs(self, pi_id: str = None, status: str = None, 
@@ -227,13 +270,13 @@ class PostgresDatabase:
         async with pool.acquire() as conn:
             update_fields = {
                 'status': status,
-                'updated_at': datetime.now(timezone.utc)
+                'updated_at': datetime.now()
             }
             
             if status == 'processing':
-                update_fields['started_at'] = datetime.now(timezone.utc)
+                update_fields['started_at'] = datetime.now()
             elif status in ['completed', 'failed']:
-                update_fields['completed_at'] = datetime.now(timezone.utc)
+                update_fields['completed_at'] = datetime.now()
             
             if error_message:
                 update_fields['error_message'] = error_message
@@ -266,13 +309,13 @@ class PostgresDatabase:
             """, str(uuid.uuid4()), pi['id'], metrics.cpu_usage, metrics.memory_usage,
                 metrics.disk_usage, metrics.temperature, metrics.jobs_processed,
                 metrics.jobs_failed, metrics.avg_print_time, metrics.uptime,
-                datetime.now(timezone.utc))
+                datetime.now())
     
     async def get_metrics(self, pi_id: str, hours: int = 24) -> List[Dict[str, Any]]:
         """Get metrics for a Pi device"""
         pool = await self.get_connection()
         async with pool.acquire() as conn:
-            since = datetime.now(timezone.utc) - timedelta(hours=hours)
+            since = datetime.now() - timedelta(hours=hours)
             rows = await conn.fetch("""
                 SELECT * FROM metrics 
                 WHERE pi_id = $1 AND created_at >= $2
@@ -291,7 +334,7 @@ class PostgresDatabase:
                     stack_trace, resolved, created_at)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
             """, str(uuid.uuid4()), pi_id, error_type, message, 
-                stack_trace, False, datetime.now(timezone.utc))
+                stack_trace, False, datetime.now())
     
     async def get_error_logs(self, pi_id: str = None, resolved: bool = None, 
                             limit: int = 100) -> List[Dict[str, Any]]:
@@ -342,7 +385,7 @@ class PostgresDatabase:
                 UPDATE users 
                 SET password = $1, updated_at = $2
                 WHERE username = $3
-            """, password_hash, datetime.now(timezone.utc), username)
+            """, password_hash, datetime.now(), username)
     
     # API Key Management
     async def create_api_key(self, name: str, description: str = None) -> Dict[str, Any]:
@@ -356,7 +399,7 @@ class PostgresDatabase:
                 INSERT INTO api_keys (id, name, key, description, created_at)
                 VALUES ($1, $2, $3, $4, $5)
                 RETURNING *
-            """, key_id, name, key, description, datetime.now(timezone.utc))
+            """, key_id, name, key, description, datetime.now())
             
             return dict(row)
     
@@ -376,7 +419,7 @@ class PostgresDatabase:
                 UPDATE api_keys 
                 SET last_used = $1
                 WHERE key = $2
-            """, datetime.now(timezone.utc), key)
+            """, datetime.now(), key)
             
             # Check if key exists
             row = await conn.fetchrow("SELECT * FROM api_keys WHERE key = $1", key)
@@ -404,9 +447,103 @@ class PostgresDatabase:
                 ON CONFLICT (name) DO NOTHING
                 RETURNING *
             """, str(uuid.uuid4()), name, width, height, unit, 
-                datetime.now(timezone.utc), datetime.now(timezone.utc))
+                datetime.now(), datetime.now())
             
             return dict(row) if row else None
+    
+    # System Settings Management
+    async def get_system_settings(self) -> Dict[str, Any]:
+        """Get system settings including MQTT configuration"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            # Use a different table name to avoid conflicts
+            # First check if settings table exists
+            table_exists = await conn.fetchval("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'mqtt_configuration'
+                )
+            """)
+            
+            if not table_exists:
+                # Create the table if it doesn't exist
+                await conn.execute("""
+                    CREATE TABLE mqtt_configuration (
+                        setting_key VARCHAR(255) PRIMARY KEY,
+                        setting_value TEXT,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                # Insert default settings
+                await conn.execute("""
+                    INSERT INTO mqtt_configuration (setting_key, setting_value) VALUES
+                    ('mqtt_broker', 'localhost'),
+                    ('mqtt_port', '1883'),
+                    ('mqtt_username', ''),
+                    ('mqtt_password', '')
+                    ON CONFLICT (setting_key) DO NOTHING
+                """)
+            
+            # Get all settings
+            rows = await conn.fetch("SELECT setting_key, setting_value FROM mqtt_configuration")
+            settings = {row['setting_key']: row['setting_value'] for row in rows}
+            
+            # Ensure all expected keys exist with defaults
+            defaults = {
+                'mqtt_broker': 'localhost',
+                'mqtt_port': '1883',
+                'mqtt_username': '',
+                'mqtt_password': ''
+            }
+            
+            for key, default_value in defaults.items():
+                if key not in settings:
+                    settings[key] = default_value
+            
+            return settings
+    
+    async def update_system_setting(self, key: str, value: str):
+        """Update a system setting"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO mqtt_configuration (setting_key, setting_value, updated_at)
+                VALUES ($1, $2, CURRENT_TIMESTAMP)
+                ON CONFLICT (setting_key) 
+                DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = EXCLUDED.updated_at
+            """, key, value)
+    
+    async def update_mqtt_settings(self, mqtt_settings: Dict[str, Any]):
+        """Update MQTT settings"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            # Ensure the table exists with correct structure
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS mqtt_configuration (
+                    setting_key VARCHAR(255) PRIMARY KEY,
+                    setting_value TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            async with conn.transaction():
+                for key, value in mqtt_settings.items():
+                    if key.startswith('mqtt_'):
+                        # Convert value to string and ensure it's not None
+                        str_value = str(value) if value is not None else ''
+                        
+                        try:
+                            await conn.execute("""
+                                INSERT INTO mqtt_configuration (setting_key, setting_value, updated_at)
+                                VALUES ($1, $2, CURRENT_TIMESTAMP)
+                                ON CONFLICT (setting_key) 
+                                DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = EXCLUDED.updated_at
+                            """, key, str_value)
+                            logger.info(f"Updated MQTT setting {key}={str_value}")
+                        except Exception as e:
+                            logger.error(f"Failed to update setting {key}={str_value}: {e}")
+                            raise
 
 
 # Create a singleton instance

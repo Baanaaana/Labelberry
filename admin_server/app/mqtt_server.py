@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import uuid
 from typing import Dict, Any, Optional, Set
 from datetime import datetime
 import paho.mqtt.client as mqtt
@@ -25,9 +26,11 @@ class MQTTServer:
             self.config.broker_host = server_config.mqtt_broker
             self.config.broker_port = server_config.mqtt_port
         
-        # MQTT client setup for admin server
-        self.client_id = f"{self.config.client_id_prefix}_admin"
-        self.client = mqtt.Client(client_id=self.client_id, protocol=mqtt.MQTTv311)
+        # MQTT client setup for admin server with unique ID
+        # Add a unique suffix to prevent conflicts with other instances
+        unique_suffix = str(uuid.uuid4())[:8]
+        self.client_id = f"{self.config.client_id_prefix}_admin_{unique_suffix}"
+        self.client = mqtt.Client(client_id=self.client_id, protocol=mqtt.MQTTv311, clean_session=True)
         
         # Connected Pis tracking
         self.connected_pis: Set[str] = set()
@@ -235,30 +238,36 @@ class MQTTServer:
         self.connected_pis.add(device_id)
         logger.info(f"Connected Pis after adding: {self.connected_pis}")
         
-        # Update database (synchronous calls, no await)
-        pi = self.database.get_pi_by_id(device_id)
+        # Update database (async calls)
+        pi = await self.database.get_pi_by_id_async(device_id)
         if pi:
-            logger.info(f"Found Pi in database: id={pi.id}, friendly_name={pi.friendly_name}")
-            self.database.update_pi_status(pi.id, "online")
+            pi_id = pi.get('id') if isinstance(pi, dict) else pi.id
+            pi_name = pi.get('friendly_name') if isinstance(pi, dict) else pi.friendly_name
+            logger.info(f"Found Pi in database: id={pi_id}, friendly_name={pi_name}")
             
-            # Update IP address if provided
-            ip_address = data.get("ip_address")
-            if ip_address:
-                self.database.update_pi_ip_address(pi.id, ip_address)
-                logger.info(f"Updated IP address for Pi {device_id}: {ip_address}")
+            # Extract IP address from the data
+            ip_address = data.get("ip_address") or data.get("ip")
+            
+            # Update status with IP if provided
+            await self.database.update_pi_status_async(device_id, "online", ip_address)
+            
+            # Update printer model if provided
+            printer_model = data.get("printer_model")
+            if printer_model:
+                await self.database.update_pi_async(pi_id, {"printer_model": printer_model})
             
             # Log connection
             import json
             details_str = json.dumps(data) if data else None
-            self.database.save_log(
-                pi_id=pi.id,
+            await self.database.save_log_async(
+                pi_id=pi_id,
                 log_type="connection",
-                message=f"Pi connected via MQTT",
+                message=f"Pi connected via MQTT from {ip_address or 'unknown IP'}",
                 level="INFO",
                 details=details_str
             )
             
-            logger.info(f"Pi {device_id} connected")
+            logger.info(f"Pi {device_id} connected from {ip_address}")
         else:
             logger.warning(f"Unknown Pi connected: {device_id}")
     
@@ -268,17 +277,21 @@ class MQTTServer:
         
         if status == "offline":
             self.connected_pis.discard(device_id)
+        elif status == "online":
+            self.connected_pis.add(device_id)
         
-        pi = self.database.get_pi_by_id(device_id)
+        pi = await self.database.get_pi_by_id_async(device_id)
         if pi:
-            self.database.update_pi_status(pi.id, status)
-            logger.info(f"Pi {device_id} status: {status}")
+            # Extract IP address if available
+            ip_address = data.get("ip_address") or data.get("ip")
+            await self.database.update_pi_status_async(device_id, status, ip_address)
+            logger.info(f"Pi {device_id} status: {status}, IP: {ip_address}")
     
     async def _handle_pi_metrics(self, device_id: str, data: Dict[str, Any]):
         """Handle Pi metrics update"""
         from shared.models import PiMetrics
         
-        pi = self.database.get_pi_by_id(device_id)
+        pi = await self.database.get_pi_by_id_async(device_id)
         if pi:
             try:
                 # Create PiMetrics object from the data with correct field names
@@ -292,19 +305,20 @@ class MQTTServer:
                     printer_status=data.get("printer_status", "unknown"),  # Added required field
                     uptime_seconds=data.get("uptime_seconds", 0)  # Added required field
                 )
-                self.database.save_metrics(metrics)
+                await self.database.save_metrics_async(metrics)
                 logger.debug(f"Saved metrics for Pi {device_id}")
             except Exception as e:
                 logger.error(f"Failed to create PiMetrics object: {e}, data: {data}")
     
     async def _handle_pi_log(self, device_id: str, data: Dict[str, Any]):
         """Handle Pi log entry"""
-        pi = self.database.get_pi_by_id(device_id)
+        pi = await self.database.get_pi_by_id_async(device_id)
         if pi:
             import json
+            pi_id = pi.get('id') if isinstance(pi, dict) else pi.id
             details_str = json.dumps(data.get("details", {})) if data.get("details") else None
-            self.database.save_log(
-                pi_id=pi.id,
+            await self.database.save_log_async(
+                pi_id=pi_id,
                 log_type=data.get("log_type", "general"),
                 message=data.get("message", ""),
                 level="INFO",
@@ -315,34 +329,48 @@ class MQTTServer:
         """Handle Pi error"""
         from shared.models import ErrorLog
         
-        pi = self.database.get_pi_by_id(device_id)
+        pi = await self.database.get_pi_by_id_async(device_id)
         if pi:
+            pi_id = pi.get('id') if isinstance(pi, dict) else pi.id
             error_log = ErrorLog(
-                pi_id=pi.id,
+                pi_id=pi_id,
                 error_type=data.get("error_type", "unknown"),
                 message=data.get("message", ""),
                 traceback=data.get("traceback")
             )
-            self.database.save_error_log(error_log)
+            await self.database.save_error_log_async(error_log)
             logger.error(f"Error from Pi {device_id}: {data.get('message')}")
     
     async def _handle_job_update(self, device_id: str, data: Dict[str, Any]):
         """Handle print job update"""
-        pi = self.database.get_pi_by_id(device_id)
+        pi = await self.database.get_pi_by_id_async(device_id)
         if pi:
             job_id = data.get("job_id")
             status = data.get("status")
             
             if job_id:
                 # Update job status in database
-                self.database.update_job_status(job_id, status)
+                await self.database.update_job_status_async(job_id, status)
                 logger.info(f"Job {job_id} on Pi {device_id}: {status}")
+                
+                # Store completed status for frontend polling
+                if status == "completed" and hasattr(self, 'server_config'):
+                    # Import main to access the recently_completed_jobs dict
+                    from .main import recently_completed_jobs
+                    recently_completed_jobs[job_id] = {
+                        'status': 'completed',
+                        'timestamp': datetime.utcnow(),
+                        'device_id': device_id,
+                        'pi_name': pi.get('friendly_name') if isinstance(pi, dict) else pi.friendly_name
+                    }
+                    logger.info(f"Stored completion status for job {job_id}")
     
     async def _handle_config_request(self, device_id: str, data: Dict[str, Any]):
         """Handle configuration request from Pi"""
-        pi = self.database.get_pi_by_id(device_id)
+        pi = await self.database.get_pi_by_id_async(device_id)
         if pi:
-            config = self.database.get_pi_config(pi.id)
+            pi_id = pi.get('id') if isinstance(pi, dict) else pi.id
+            config = await self.database.get_pi_config_async(pi_id)
             if config:
                 await self.send_config_to_pi(device_id, config)
     

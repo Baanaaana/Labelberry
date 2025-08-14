@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import uuid
+import asyncio
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
@@ -63,7 +64,27 @@ async def lifespan(app: FastAPI):
     await database.init()
     database.save_server_log("server_started", "Admin Server started", "INFO")
     
+    # Load MQTT settings from database and update server_config
+    global mqtt_server, queue_manager
     if mqtt_server:
+        try:
+            # Load MQTT settings from database
+            settings = await database.get_system_settings()
+            if settings:
+                # Update server config dict with MQTT settings from database
+                server_config.config['mqtt_broker'] = settings.get('mqtt_broker', 'localhost')
+                server_config.config['mqtt_port'] = int(settings.get('mqtt_port', '1883')) if settings.get('mqtt_port') else 1883
+                server_config.config['mqtt_username'] = settings.get('mqtt_username', '')
+                server_config.config['mqtt_password'] = settings.get('mqtt_password', '')
+                
+                logger.info(f"Loaded MQTT settings from database - broker: {server_config.mqtt_broker}:{server_config.mqtt_port}")
+                
+                # Recreate MQTT server with loaded settings
+                mqtt_server = MQTTServer(database, server_config)
+                queue_manager = QueueManager(database, mqtt_server)
+        except Exception as e:
+            logger.error(f"Failed to load MQTT settings from database: {e}")
+        
         # Start MQTT server
         await mqtt_server.start()
         
@@ -102,6 +123,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Load MQTT settings from database on startup"""
+    try:
+        # Initialize database pool
+        await database.init_pool()
+        
+        # Load MQTT settings from database
+        settings = await database.get_system_settings()
+        if hasattr(server_config, 'config') and isinstance(server_config.config, dict):
+            server_config.config['mqtt_broker'] = settings.get('mqtt_broker', 'localhost')
+            server_config.config['mqtt_port'] = int(settings.get('mqtt_port', '1883'))
+            server_config.config['mqtt_username'] = settings.get('mqtt_username', '')
+            server_config.config['mqtt_password'] = settings.get('mqtt_password', '')
+        
+        logger.info(f"Loaded MQTT settings from database - Broker: {server_config.mqtt_broker}:{server_config.mqtt_port}")
+    except Exception as e:
+        logger.warning(f"Could not load MQTT settings from database: {e}")
+        # Continue with default settings from config file
 
 # Add session middleware for authentication
 SECRET_KEY = secrets.token_urlsafe(32)  # In production, load from environment variable
@@ -320,6 +362,21 @@ async def list_pis():
         for ls in label_sizes:
             label_size_map[ls.get('id')] = ls
         
+        # Calculate jobs today for each printer
+        jobs_today_map = {}
+        if database.is_postgres:
+            pool = await database.get_connection()
+            async with pool.acquire() as conn:
+                # Get jobs count for today for all printers
+                rows = await conn.fetch("""
+                    SELECT pi_id, COUNT(*) as jobs_today
+                    FROM print_jobs
+                    WHERE created_at >= CURRENT_DATE
+                    GROUP BY pi_id
+                """)
+                for row in rows:
+                    jobs_today_map[row['pi_id']] = row['jobs_today']
+        
         pi_list = []
         for pi in pis:
             # Handle dict from database
@@ -328,12 +385,18 @@ async def list_pis():
             else:
                 pi_dict = pi.model_dump()
             
-            pi_id = pi_dict.get('id') or pi_dict.get('device_id')
-            is_connected = mqtt_server.is_connected(pi_id) if mqtt_server else False
+            pi_id = pi_dict.get('id')
+            device_id = pi_dict.get('device_id')
+            
+            # Check MQTT connection using device_id
+            is_connected = mqtt_server.is_connected(device_id) if mqtt_server and device_id else False
             pi_dict["mqtt_connected"] = is_connected
+            
             # Override status based on actual MQTT connection
             if is_connected:
                 pi_dict["status"] = "online"
+            elif not pi_dict.get("last_seen"):
+                pi_dict["status"] = "offline"
             
             # Add label size details if available
             label_size_id = pi_dict.get('label_size_id')
@@ -341,6 +404,14 @@ async def list_pis():
                 pi_dict["label_size"] = label_size_map[label_size_id]
             else:
                 pi_dict["label_size"] = None
+            
+            # Add metrics
+            pi_dict["metrics"] = {
+                "jobsToday": jobs_today_map.get(pi_id, 0),
+                "failedJobs": 0,  # TODO: Calculate failed jobs
+                "avgPrintTime": 0,  # TODO: Calculate average print time
+                "uptime": "0 days"  # TODO: Calculate uptime
+            }
                 
             # Keep the database status if not connected (could be offline, error, etc.)
             pi_list.append(pi_dict)
@@ -407,12 +478,13 @@ async def register_pi_install(registration_data: Dict[str, Any]):
         logger.info(f"  Model: {device.printer_model}")
         logger.info(f"  API Key: {device.api_key[:20]}..." if len(device.api_key) > 20 else f"  API Key: {device.api_key}")
         
-        # Check if Pi already exists
-        existing = database.get_pi_by_id(device.id)
+        # Check if Pi already exists - always use async version since we're in async function
+        existing = await database.get_pi_by_id_async(device.id)
+            
         if existing:
             logger.info(f"  Device {device.id} already exists, updating...")
-            # Update existing Pi
-            success = database.update_pi(device.id, {
+            # Update existing Pi - always use async version since we're in async function
+            success = await database.update_pi_async(device.id, {
                 "api_key": device.api_key,
                 "friendly_name": device.friendly_name,
                 "printer_model": device.printer_model
@@ -431,8 +503,10 @@ async def register_pi_install(registration_data: Dict[str, Any]):
                 raise HTTPException(status_code=400, detail="Failed to update Pi")
         else:
             logger.info(f"  Device {device.id} is new, registering...")
-            # Register new Pi
-            if database.register_pi(device):
+            # Register new Pi - always use async version since we're in async function
+            registered = await database.register_pi_async(device)
+                
+            if registered:
                 logger.info(f"  ✓ Successfully registered device {device.id}")
                 database.save_server_log("printer_registered", f"New printer '{device.friendly_name}' registered", "INFO",
                                         f"ID: {device.id}, Model: {device.printer_model}")
@@ -499,23 +573,22 @@ async def delete_pi(pi_id: str):
     try:
         logger.info(f"Attempting to delete Pi: {pi_id}, is_postgres: {database.is_postgres}")
         
-        # Use async version of get_pi_by_id if PostgreSQL
-        if database.is_postgres:
-            pi = await database.get_pi_by_id_async(pi_id)
-        else:
-            pi = database.get_pi_by_id(pi_id)
+        # Use async version of get_pi_by_id since we're in async endpoint
+        pi = await database.get_pi_by_id_async(pi_id)
             
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
-        # Disconnect MQTT if connected
-        if mqtt_server and mqtt_server.is_connected(pi_id):
-            mqtt_server.disconnect(pi_id)
+        # Disconnect MQTT if connected - use device_id for MQTT operations
+        device_id = pi.get('device_id', pi_id)
+        if mqtt_server and mqtt_server.is_connected(device_id):
+            mqtt_server.disconnect(device_id)
         
         # Delete from database - always use async version in async endpoint
         deleted = await database.delete_pi_async(pi_id)
         if deleted:
-            database.save_server_log("printer_deleted", f"Printer '{pi.friendly_name}' deleted", "WARNING")
+            friendly_name = pi.get('friendly_name', 'Unknown')
+            database.save_server_log("printer_deleted", f"Printer '{friendly_name}' deleted", "WARNING")
             return ApiResponse(
                 success=True,
                 message="Pi deleted successfully",
@@ -638,13 +711,50 @@ async def send_command(pi_id: str, command: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Store recently completed jobs for polling
+recently_completed_jobs = {}
+
+@app.get("/api/jobs/{job_id}/status", response_model=ApiResponse)
+async def get_job_status(job_id: str):
+    """Get the status of a print job"""
+    try:
+        # Check if job was recently completed
+        if job_id in recently_completed_jobs:
+            status = recently_completed_jobs[job_id]
+            # Clean up old entries (keep for 30 seconds)
+            if (datetime.utcnow() - status['timestamp']).total_seconds() > 30:
+                del recently_completed_jobs[job_id]
+            else:
+                return ApiResponse(
+                    success=True,
+                    message="Job status retrieved",
+                    data={"job_id": job_id, "status": status['status']}
+                )
+        
+        # Otherwise check database
+        job = await database.get_job_by_id_async(job_id) if hasattr(database, 'get_job_by_id_async') else None
+        if job:
+            return ApiResponse(
+                success=True,
+                message="Job status retrieved",
+                data={"job_id": job_id, "status": job.get('status', 'unknown')}
+            )
+        else:
+            return ApiResponse(
+                success=True,
+                message="Job not found or pending",
+                data={"job_id": job_id, "status": "pending"}
+            )
+    except Exception as e:
+        logger.error(f"Failed to get job status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/pis/{pi_id}/test-print", response_model=ApiResponse)
 async def send_test_print_to_pi(
     pi_id: str, 
-    print_data: Optional[Dict[str, Any]] = None,
-    _: dict = Depends(require_login)  # Require dashboard login instead of API key
+    print_data: Optional[Dict[str, Any]] = None
 ):
-    """Send test print job to Pi - Requires dashboard login"""
+    """Send test print job to Pi"""
     try:
         # Use default test label if no data provided
         if not print_data:
@@ -664,34 +774,23 @@ async def send_test_print_to_pi(
 ^FO20,200^BY2,3,40^BCN,,Y,N^FD12345678^FS
 ^XZ"""
             }
-        pi = database.get_pi_by_id(pi_id)
+        pi = await database.get_pi_by_id_async(pi_id)
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
         # Check MQTT connection and log status
-        is_mqtt_connected = mqtt_server.is_connected(pi_id)
+        device_id = pi.get('device_id', pi_id)
+        is_mqtt_connected = mqtt_server.is_connected(device_id)
         connected_pis = mqtt_server.get_connected_pis()
         logger.info(f"Test print for Pi {pi_id}: MQTT connected={is_mqtt_connected}, Connected Pis: {connected_pis}")
         
-        # Send print command through MQTT if connected
-        if is_mqtt_connected:
-            # Create a temporary job to track the test print
-            import uuid
-            test_job_id = str(uuid.uuid4())
-            
-            # Store in database temporarily to track result
-            test_job = PrintJob(
-                id=test_job_id,
+        # Send the test print via MQTT if the Pi is connected
+        if mqtt_server and mqtt_server.connected:
+            # Create print job in database to track result
+            test_job_id = await database.create_print_job_async(
                 pi_id=pi_id,
-                zpl_source=print_data.get("zpl_raw") or print_data.get("zpl_url", ""),
-                priority=print_data.get("priority", 5),
-                source="test",
-                status="pending"
-            )
-            database.save_print_job(
-                test_job,
-                zpl_content=print_data.get("zpl_raw"),
-                zpl_url=print_data.get("zpl_url")
+                zpl_source=print_data.get("zpl_url") or "test_print",
+                zpl_content=print_data.get("zpl_raw")
             )
             
             # Send with job_id so we can track completion
@@ -702,18 +801,19 @@ async def send_test_print_to_pi(
                 "priority": print_data.get("priority", 5)
             }
             
-            # Send as a print job with the test data
-            success = await mqtt_server.send_print_job(pi_id, test_print_data)
+            # Send as a print job with the test data using device_id
+            success = await mqtt_server.send_print_job(device_id, test_print_data)
             
             if success:
-                database.save_server_log("test_print", f"Test print sent to '{pi.friendly_name}'", "INFO")
+                friendly_name = pi.get('friendly_name', 'Unknown')
+                database.save_server_log("test_print", f"Test print sent to '{friendly_name}'", "INFO")
                 return ApiResponse(
                     success=True,
                     message="Test print job sent to printer",
                     data={"pi_id": pi_id, "job_id": test_job_id}
                 )
             else:
-                database.update_job_status(test_job_id, "failed", "Failed to send to printer")
+                await database.update_print_job_async(test_job_id, "failed", "Failed to send to printer")
                 return ApiResponse(
                     success=False,
                     message="Failed to send test print to printer",
@@ -737,7 +837,12 @@ async def send_test_print_to_pi(
             except:
                 pass
         
-        raise HTTPException(status_code=503, detail="Printer not connected")
+        # MQTT not connected - return error
+        friendly_name = pi.get('friendly_name', 'Unknown')
+        raise HTTPException(
+            status_code=503,
+            detail=f"Cannot send test print to '{friendly_name}' - MQTT broker not connected"
+        )
         
     except HTTPException:
         raise
@@ -1365,8 +1470,17 @@ async def get_pi_jobs(pi_id: str, limit: int = 100):
 @app.get("/api/dashboard/stats", response_model=ApiResponse)
 async def get_dashboard_stats():
     try:
-        stats = database.get_dashboard_stats()
-        stats["connected_pis"] = len(mqtt_server.get_connected_pis())
+        # Use async version for PostgreSQL
+        if database.is_postgres:
+            stats = await database.get_dashboard_stats_async()
+        else:
+            stats = database.get_dashboard_stats()
+        
+        # Add connected printers count if MQTT server is available
+        if mqtt_server:
+            stats["connected_pis"] = len(mqtt_server.get_connected_pis())
+        else:
+            stats["connected_pis"] = 0
         
         return ApiResponse(
             success=True,
@@ -1375,6 +1489,104 @@ async def get_dashboard_stats():
         )
     except Exception as e:
         logger.error(f"Failed to get dashboard stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Recent jobs endpoint for dashboard
+@app.get("/api/recent-jobs", response_model=ApiResponse)
+async def get_recent_jobs(limit: int = 50):
+    """Get recent print jobs across all printers"""
+    try:
+        jobs = await database.get_print_jobs_async(status=None, limit=limit)
+        
+        # Format jobs for frontend
+        formatted_jobs = []
+        for job in jobs:
+            pi = await database.get_pi_by_id_async(job.get('pi_id'))
+            formatted_jobs.append({
+                "id": job.get('id'),
+                "printerName": pi.get('friendly_name') if pi else 'Unknown',
+                "status": job.get('status'),
+                "createdAt": job.get('created_at'),
+                "completedAt": job.get('completed_at'),
+                "errorMessage": job.get('error_message'),
+                "source": job.get('zpl_source', 'manual')
+            })
+        
+        return ApiResponse(
+            success=True,
+            message="Recent jobs retrieved",
+            data={"jobs": formatted_jobs}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get recent jobs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Recent alerts endpoint for dashboard
+@app.get("/api/recent-alerts", response_model=ApiResponse)
+async def get_recent_alerts(limit: int = 20):
+    """Get recent system alerts and notifications"""
+    try:
+        alerts = []
+        
+        # Get recent error logs
+        error_logs = await database.get_error_logs_async(resolved=None, limit=limit)
+        for error in error_logs:
+            pi = await database.get_pi_by_id_async(error.get('pi_id'))
+            alerts.append({
+                "type": "error",
+                "severity": "high" if error.get('error_type') == 'connection_lost' else "medium",
+                "message": error.get('message'),
+                "printerName": pi.get('friendly_name') if pi else 'Unknown',
+                "timestamp": error.get('created_at'),
+                "icon": "AlertCircle"
+            })
+        
+        # Get printer status for connection alerts
+        pis = await database.get_all_pis_async()
+        for pi in pis:
+            if pi.get('status') == 'offline':
+                alerts.append({
+                    "type": "warning",
+                    "severity": "high",
+                    "message": f"{pi.get('friendly_name', 'Unknown')} is offline",
+                    "printerName": pi.get('friendly_name', 'Unknown'),
+                    "timestamp": pi.get('updated_at') or pi.get('created_at'),
+                    "icon": "AlertCircle"
+                })
+            elif pi.get('status') == 'error':
+                alerts.append({
+                    "type": "error",
+                    "severity": "high",
+                    "message": f"{pi.get('friendly_name', 'Unknown')} has an error",
+                    "printerName": pi.get('friendly_name', 'Unknown'),
+                    "timestamp": pi.get('updated_at') or pi.get('created_at'),
+                    "icon": "AlertCircle"
+                })
+        
+        # Check for high queue warnings
+        stats = await database.get_dashboard_stats_async() if database.is_postgres else database.get_dashboard_stats()
+        if stats.get('queueLength', 0) > 10:
+            alerts.insert(0, {
+                "type": "warning",
+                "severity": "medium",
+                "message": f"High queue: {stats['queueLength']} jobs pending",
+                "printerName": "System",
+                "timestamp": datetime.now().isoformat(),
+                "icon": "AlertCircle"
+            })
+        
+        # Sort by timestamp (most recent first)
+        alerts.sort(key=lambda x: x['timestamp'] if x['timestamp'] else '', reverse=True)
+        
+        return ApiResponse(
+            success=True,
+            message="Recent alerts retrieved",
+            data={"alerts": alerts[:limit]}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get recent alerts: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -2002,6 +2214,129 @@ async def delete_label_size(
         raise
     except Exception as e:
         logger.error(f"Failed to delete label size: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/mqtt-status", response_model=ApiResponse)
+async def get_mqtt_status():
+    """Get MQTT broker connection status"""
+    try:
+        global mqtt_server
+        
+        # Check if mqtt_server exists and has a connected attribute
+        is_connected = False
+        broker_info = None
+        
+        if mqtt_server:
+            # Check the connected attribute
+            is_connected = getattr(mqtt_server, 'connected', False)
+            
+            # Get broker info from config
+            settings = await database.get_system_settings()
+            broker_info = {
+                "broker": settings.get('mqtt_broker', 'localhost'),
+                "port": int(settings.get('mqtt_port', '1883')) if settings.get('mqtt_port') else 1883
+            }
+        
+        return ApiResponse(
+            success=True,
+            message="MQTT status retrieved",
+            data={
+                "connected": is_connected,
+                "broker": broker_info
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to get MQTT status: {e}")
+        return ApiResponse(
+            success=False,
+            message="Failed to get MQTT status",
+            data={"connected": False}
+        )
+
+
+@app.get("/api/mqtt-settings", response_model=ApiResponse)
+async def get_mqtt_settings():
+    """Get MQTT broker settings from database"""
+    try:
+        settings = await database.get_system_settings()
+        
+        # Convert mqtt_port to int if it's a string
+        mqtt_port = settings.get('mqtt_port', '1883')
+        if isinstance(mqtt_port, str) and mqtt_port.isdigit():
+            mqtt_port = int(mqtt_port)
+        
+        return ApiResponse(
+            success=True,
+            message="MQTT settings retrieved",
+            data={
+                "mqtt_broker": settings.get('mqtt_broker', 'localhost'),
+                "mqtt_port": mqtt_port,
+                "mqtt_username": settings.get('mqtt_username', ''),
+                "mqtt_password": "********" if settings.get('mqtt_password') else None  # Don't send actual password
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to get MQTT settings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/mqtt-settings", response_model=ApiResponse)
+async def update_mqtt_settings(data: dict):
+    """Update MQTT broker settings in database"""
+    try:
+        global mqtt_server, server_config
+        
+        logger.info(f"Received MQTT settings update: {data}")
+        
+        # Prepare settings to update
+        mqtt_settings = {}
+        if 'mqtt_broker' in data:
+            mqtt_settings['mqtt_broker'] = data['mqtt_broker']
+        if 'mqtt_port' in data:
+            mqtt_settings['mqtt_port'] = str(data['mqtt_port'])
+        if 'mqtt_username' in data:
+            mqtt_settings['mqtt_username'] = data['mqtt_username']
+        # Only update password if it's provided and not empty
+        if 'mqtt_password' in data and data['mqtt_password'] and data['mqtt_password'].strip() != '' and data['mqtt_password'] != "********":
+            mqtt_settings['mqtt_password'] = data['mqtt_password']
+        
+        logger.info(f"Prepared MQTT settings: {mqtt_settings}")
+        
+        # Save to database
+        await database.update_mqtt_settings(mqtt_settings)
+        
+        # Update server config with new values from database  
+        settings = await database.get_system_settings()
+        if hasattr(server_config, 'config') and isinstance(server_config.config, dict):
+            server_config.config['mqtt_broker'] = settings.get('mqtt_broker', 'localhost')
+            server_config.config['mqtt_port'] = int(settings.get('mqtt_port', '1883'))
+            server_config.config['mqtt_username'] = settings.get('mqtt_username', '')
+            server_config.config['mqtt_password'] = settings.get('mqtt_password', '')
+        
+        # Restart MQTT connection if needed
+        if mqtt_server:
+            try:
+                await mqtt_server.stop()
+            except:
+                pass
+            # Update server config dict with the new settings
+            server_config.config['mqtt_broker'] = settings.get('mqtt_broker', 'localhost')
+            server_config.config['mqtt_port'] = int(settings.get('mqtt_port', '1883')) if settings.get('mqtt_port') else 1883
+            server_config.config['mqtt_username'] = settings.get('mqtt_username', '')
+            server_config.config['mqtt_password'] = settings.get('mqtt_password', '')
+            
+            # Create new MQTT server with updated config
+            mqtt_server = MQTTServer(database, server_config)
+            await mqtt_server.start()
+        
+        return ApiResponse(
+            success=True,
+            message="MQTT settings updated successfully",
+            data={"status": "Settings saved and MQTT connection restarted"}
+        )
+    except Exception as e:
+        logger.error(f"Failed to update MQTT settings: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

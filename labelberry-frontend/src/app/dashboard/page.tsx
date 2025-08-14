@@ -28,13 +28,35 @@ interface PrinterStatus {
 
 interface PrinterData {
   id: string
-  name: string
+  name?: string
+  friendly_name?: string
   status: string
   ipAddress?: string
+  ip_address?: string
   lastSeen?: string
+  last_seen?: string
   metrics?: {
     jobsToday: number
   }
+}
+
+interface RecentJob {
+  id: string
+  printerName: string
+  status: string
+  createdAt: string
+  completedAt?: string
+  errorMessage?: string
+  source: string
+}
+
+interface RecentAlert {
+  type: 'error' | 'warning' | 'success'
+  severity: 'high' | 'medium' | 'low'
+  message: string
+  printerName: string
+  timestamp?: string
+  icon: string
 }
 
 export default function DashboardPage() {
@@ -48,6 +70,8 @@ export default function DashboardPage() {
   })
   
   const [printers, setPrinters] = useState<PrinterStatus[]>([])
+  const [recentJobs, setRecentJobs] = useState<RecentJob[]>([])
+  const [recentAlerts, setRecentAlerts] = useState<RecentAlert[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchData = async () => {
@@ -55,8 +79,10 @@ export default function DashboardPage() {
       // Fetch stats
       const statsResponse = await fetch('/api/dashboard/stats')
       if (statsResponse.ok) {
-        const statsData = await statsResponse.json()
-        setStats(statsData)
+        const statsResult = await statsResponse.json()
+        if (statsResult.success && statsResult.data) {
+          setStats(statsResult.data)
+        }
       }
 
       // Fetch printers
@@ -66,15 +92,33 @@ export default function DashboardPage() {
       
       const formattedPrinters = printersData.map((printer: PrinterData) => ({
         id: printer.id,
-        name: printer.name,
+        name: printer.friendly_name || printer.name,
         status: printer.status,
-        ipAddress: printer.ipAddress || 'N/A',
-        lastSeen: printer.lastSeen ? new Date(printer.lastSeen).toLocaleString() : 'Never',
+        ipAddress: printer.ip_address || printer.ipAddress || 'N/A',
+        lastSeen: printer.last_seen ? new Date(printer.last_seen).toLocaleString() : 'Never',
         jobsProcessed: printer.metrics?.jobsToday || 0,
         queueLength: 0 // TODO: Calculate from queue
       }))
       
       setPrinters(formattedPrinters)
+      
+      // Fetch recent jobs
+      const jobsResponse = await fetch('/api/recent-jobs?limit=50')
+      if (jobsResponse.ok) {
+        const jobsResult = await jobsResponse.json()
+        if (jobsResult.success && jobsResult.data?.jobs) {
+          setRecentJobs(jobsResult.data.jobs)
+        }
+      }
+      
+      // Fetch recent alerts
+      const alertsResponse = await fetch('/api/recent-alerts?limit=10')
+      if (alertsResponse.ok) {
+        const alertsResult = await alertsResponse.json()
+        if (alertsResult.success && alertsResult.data?.alerts) {
+          setRecentAlerts(alertsResult.data.alerts)
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
     } finally {
@@ -112,7 +156,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={fetchData}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
@@ -160,7 +204,7 @@ export default function DashboardPage() {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.avgPrintTime}s</div>
+                <div className="text-2xl font-bold">{stats.avgPrintTime}ms</div>
                 <p className="text-xs text-muted-foreground">
                   Per label
                 </p>
@@ -220,27 +264,23 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-start space-x-2">
-                    <AlertCircle className="h-4 w-4 text-yellow-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">High queue on Office - Shipping</p>
-                      <p className="text-xs text-muted-foreground">5 minutes ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Test Printer connection lost</p>
-                      <p className="text-xs text-muted-foreground">30 minutes ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Warehouse B - Main reconnected</p>
-                      <p className="text-xs text-muted-foreground">2 hours ago</p>
-                    </div>
-                  </div>
+                  {recentAlerts.length > 0 ? (
+                    recentAlerts.slice(0, 5).map((alert, index) => (
+                      <div key={index} className="flex items-start space-x-2">
+                        {alert.type === 'error' && <AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />}
+                        {alert.type === 'warning' && <AlertCircle className="h-4 w-4 text-yellow-500 mt-0.5" />}
+                        {alert.type === 'success' && <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />}
+                        <div>
+                          <p className="text-sm font-medium">{alert.message}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {alert.timestamp ? new Date(alert.timestamp).toLocaleString() : 'Just now'}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No recent alerts</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -289,9 +329,36 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-muted-foreground">
-                No recent print jobs to display
-              </div>
+              {recentJobs.length > 0 ? (
+                <div className="space-y-2">
+                  {recentJobs.map((job) => (
+                    <div key={job.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium">{job.printerName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(job.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge 
+                          variant={
+                            job.status === 'completed' ? 'default' :
+                            job.status === 'failed' ? 'destructive' :
+                            job.status === 'processing' ? 'secondary' :
+                            'outline'
+                          }
+                        >
+                          {job.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  No recent print jobs to display
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

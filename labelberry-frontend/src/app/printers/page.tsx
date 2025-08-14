@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 import {
   Dialog,
   DialogContent,
@@ -56,18 +57,6 @@ interface PrinterDetails {
   }
 }
 
-interface PrinterApiData {
-  id: string
-  name: string
-  deviceId: string
-  apiKey: string
-  status: string
-  ipAddress?: string
-  lastSeen?: string
-  configuration?: PrinterDetails['configuration']
-  metrics?: PrinterDetails['metrics']
-}
-
 export default function PrintersPage() {
   const [printers, setPrinters] = useState<PrinterDetails[]>([])
   const [serverIp, setServerIp] = useState<string>('')
@@ -75,6 +64,14 @@ export default function PrintersPage() {
 
   const [selectedPrinter, setSelectedPrinter] = useState<PrinterDetails | null>(null)
   const [configDialogOpen, setConfigDialogOpen] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [printerToDelete, setPrinterToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [newPrinter, setNewPrinter] = useState({
+    name: '',
+    deviceId: '',
+    apiKey: ''
+  })
 
   const fetchPrinters = async () => {
     try {
@@ -82,21 +79,41 @@ export default function PrintersPage() {
       const result = await response.json()
       const data = result.data?.pis || []
       
-      const formattedPrinters = data.map((printer: PrinterApiData) => ({
+      const formattedPrinters = data.map((printer: {
+        id: string
+        friendly_name: string
+        device_id: string
+        api_key: string
+        status: string
+        ip_address?: string
+        last_seen?: string
+        printer_device?: string
+        label_size?: string
+        default_darkness?: number
+        default_speed?: number
+        auto_reconnect?: boolean
+        max_queue_size?: number
+        metrics?: {
+          jobsToday: number
+          failedJobs: number
+          avgPrintTime: number
+          uptime: string
+        }
+      }) => ({
         id: printer.id,
-        name: printer.name,
-        deviceId: printer.deviceId,
-        apiKey: printer.apiKey,
+        name: printer.friendly_name,
+        deviceId: printer.device_id,
+        apiKey: printer.api_key,
         status: printer.status,
-        ipAddress: printer.ipAddress || 'N/A',
-        lastSeen: printer.lastSeen ? new Date(printer.lastSeen).toLocaleString() : 'Never',
-        configuration: printer.configuration || {
-          printerDevice: "/dev/usb/lp0",
-          labelSize: "4x6",
-          defaultDarkness: 15,
-          defaultSpeed: 4,
-          autoReconnect: true,
-          maxQueueSize: 100
+        ipAddress: printer.ip_address || 'N/A',
+        lastSeen: printer.last_seen ? new Date(printer.last_seen).toLocaleString() : 'Never',
+        configuration: {
+          printerDevice: printer.printer_device || "/dev/usb/lp0",
+          labelSize: printer.label_size || "4x6",
+          defaultDarkness: printer.default_darkness || 15,
+          defaultSpeed: printer.default_speed || 4,
+          autoReconnect: printer.auto_reconnect !== undefined ? printer.auto_reconnect : true,
+          maxQueueSize: printer.max_queue_size || 100
         },
         metrics: printer.metrics || {
           jobsToday: 0,
@@ -164,34 +181,140 @@ export default function PrintersPage() {
     }
   }
 
-  const handleTestPrint = (printerId: string) => {
-    console.log(`Testing printer ${printerId}`)
-    // Add test print logic here
+  const pollJobStatus = async (jobId: string, printerName: string) => {
+    let attempts = 0
+    const maxAttempts = 15 // Poll for up to 15 seconds
+    
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/jobs/${jobId}/status`)
+        if (response.ok) {
+          const result = await response.json()
+          if (result.data?.status === 'completed') {
+            toast.success(`Print job completed successfully on ${printerName}!`, {
+              duration: 5000,
+              icon: '🎉'
+            })
+            return true
+          } else if (result.data?.status === 'failed') {
+            toast.error(`Print job failed on ${printerName}`)
+            return true
+          }
+        }
+      } catch (error) {
+        console.error('Error polling job status:', error)
+      }
+      
+      attempts++
+      if (attempts < maxAttempts) {
+        setTimeout(checkStatus, 1000) // Check every second
+      }
+      return false
+    }
+    
+    setTimeout(checkStatus, 2000) // Start checking after 2 seconds
   }
 
-  const handleDeletePrinter = async (printerId: string) => {
+  const handleTestPrint = async (printerId: string) => {
     try {
-      const response = await fetch(`/api/pis/${printerId}`, {
+      const response = await fetch(`/api/pis/${printerId}/test-print`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}) // Empty body will use default test label
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        const printer = printers.find(p => p.id === printerId)
+        const printerName = printer?.name || 'Printer'
+        
+        toast.success(result.message || 'Test print sent successfully!')
+        
+        // Start polling for job completion if we have a job ID
+        if (result.data?.job_id) {
+          pollJobStatus(result.data.job_id, printerName)
+        }
+      } else {
+        const error = await response.json().catch(() => null)
+        toast.error(`Failed to send test print: ${error?.detail || response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Failed to send test print:', error)
+      toast.error('Failed to send test print. Please check the console for details.')
+    }
+  }
+
+  const handleDeleteClick = (printerId: string, printerName: string) => {
+    setPrinterToDelete({ id: printerId, name: printerName })
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!printerToDelete) return
+    
+    try {
+      const response = await fetch(`/api/pis/${printerToDelete.id}`, {
         method: 'DELETE'
       })
       
       if (response.ok) {
         // Successfully deleted, update the UI
-        setPrinters(printers.filter(p => p.id !== printerId))
+        setPrinters(printers.filter(p => p.id !== printerToDelete.id))
+        setDeleteDialogOpen(false)
+        setPrinterToDelete(null)
+        toast.success(`Printer "${printerToDelete.name}" deleted successfully`)
       } else {
         // Handle error response
         const errorData = await response.json().catch(() => null)
         console.error('Failed to delete printer:', response.status, errorData)
-        alert(`Failed to delete printer: ${errorData?.detail || response.statusText}`)
+        toast.error(`Failed to delete printer: ${errorData?.detail || response.statusText}`)
       }
     } catch (error) {
       console.error('Failed to delete printer:', error)
-      alert('Failed to delete printer. Please check the console for details.')
+      toast.error('Failed to delete printer. Please check the console for details.')
     }
+  }
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false)
+    setPrinterToDelete(null)
   }
 
   const handleRefresh = () => {
     fetchPrinters()
+  }
+
+  const handleAddPrinter = async () => {
+    try {
+      const response = await fetch('/api/pis/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: newPrinter.deviceId,  // Changed from device_id to id
+          friendly_name: newPrinter.name,
+          api_key: newPrinter.apiKey,
+          printer_model: 'Zebra'  // Optional, but good to have
+        })
+      })
+      
+      if (response.ok) {
+        // Close dialog and refresh list
+        setAddDialogOpen(false)
+        setNewPrinter({ name: '', deviceId: '', apiKey: '' })
+        fetchPrinters()
+        toast.success(`Printer "${newPrinter.name}" added successfully`)
+      } else {
+        const error = await response.json()
+        toast.error(`Failed to add printer: ${error.detail || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Failed to add printer:', error)
+      toast.error('Failed to add printer. Please check the console for details.')
+    }
   }
 
   return (
@@ -203,7 +326,7 @@ export default function PrintersPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
-          <Dialog>
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <Plus className="mr-2 h-4 w-4" />
@@ -214,7 +337,7 @@ export default function PrintersPage() {
               <DialogHeader>
                 <DialogTitle>Add New Printer</DialogTitle>
                 <DialogDescription>
-                  Register a new Raspberry Pi printer to the system
+                  Register a new Raspberry Pi printer to the system. You can enter the Device ID and API Key from your Pi installation.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -222,23 +345,44 @@ export default function PrintersPage() {
                   <Label htmlFor="name" className="text-right">
                     Name
                   </Label>
-                  <Input id="name" className="col-span-3" placeholder="e.g., Warehouse A - Station 1" />
+                  <Input 
+                    id="name" 
+                    className="col-span-3" 
+                    placeholder="e.g., Pi Rene" 
+                    value={newPrinter.name}
+                    onChange={(e) => setNewPrinter({...newPrinter, name: e.target.value})}
+                  />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="device-id" className="text-right">
                     Device ID
                   </Label>
-                  <Input id="device-id" className="col-span-3" placeholder="Will be auto-generated" disabled />
+                  <Input 
+                    id="device-id" 
+                    className="col-span-3" 
+                    placeholder="e.g., feb9fba3-bcdd-4990-8d89-62ecd33c7efd" 
+                    value={newPrinter.deviceId}
+                    onChange={(e) => setNewPrinter({...newPrinter, deviceId: e.target.value})}
+                  />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="api-key" className="text-right">
                     API Key
                   </Label>
-                  <Input id="api-key" className="col-span-3" placeholder="Will be auto-generated" disabled />
+                  <Input 
+                    id="api-key" 
+                    className="col-span-3" 
+                    placeholder="e.g., 0ce5717b-c7ee-4274-8e38-a1525968b036" 
+                    value={newPrinter.apiKey}
+                    onChange={(e) => setNewPrinter({...newPrinter, apiKey: e.target.value})}
+                  />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Add Printer</Button>
+                <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddPrinter}>Add Printer</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -338,7 +482,7 @@ export default function PrintersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeletePrinter(printer.id)}
+                          onClick={() => handleDeleteClick(printer.id, printer.name)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -445,6 +589,25 @@ export default function PrintersPage() {
             </DialogContent>
           </Dialog>
         )}
+
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Deletion</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete printer &quot;{printerToDelete?.name}&quot;? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelDelete}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmDelete}>
+                Delete Printer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
