@@ -200,7 +200,7 @@ export default function ApiDocsPage() {
               Authorization: Bearer labk_your_api_key_here
             </code>
             <p className="text-xs text-muted-foreground mt-2">
-              Include this header in all authenticated requests. API keys start with "ak_" prefix.
+              Include this header in all authenticated requests. API keys start with &quot;ak_&quot; prefix.
             </p>
           </div>
 
