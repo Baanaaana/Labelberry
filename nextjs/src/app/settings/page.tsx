@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Save } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
+import { apiRequest } from "@/lib/api"
 
 export default function SettingsPage() {
   const [mqttSettings, setMqttSettings] = useState({
@@ -23,8 +24,7 @@ export default function SettingsPage() {
 
   const fetchMqttSettings = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-      const response = await fetch(`${apiUrl}/mqtt-settings`)
+      const response = await apiRequest('mqtt-settings')
       if (response.ok) {
         const result = await response.json()
         if (result.success && result.data) {
@@ -55,12 +55,8 @@ export default function SettingsPage() {
         (settingsToSave as Record<string, string | number>).mqtt_password = mqttSettings.mqtt_password
       }
       
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-      const response = await fetch(`${apiUrl}/mqtt-settings`, {
+      const response = await apiRequest('mqtt-settings', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(settingsToSave)
       })
       
