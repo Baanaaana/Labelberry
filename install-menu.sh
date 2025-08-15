@@ -22,11 +22,11 @@ echo -e "${WHITE}        LabelBerry Menu System Installer${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
 echo ""
 
-# Check if running as root
+# Note about running as root
 if [ "$EUID" -eq 0 ]; then 
-   echo -e "${RED}Please do not run this script as root/sudo${NC}"
-   echo "Run as your regular user: ./install-menu.sh"
-   exit 1
+   echo -e "${YELLOW}Note: Running as root user${NC}"
+   echo -e "${YELLOW}The menu will be installed for the root user${NC}"
+   echo ""
 fi
 
 # Get the directory where the script is located
@@ -102,14 +102,12 @@ case "$SHELL_NAME" in
         ;;
 esac
 
-# Create a system-wide link (optional, requires sudo)
+# Create a system-wide link
 echo ""
-echo -e "${YELLOW}Would you like to make the menu command available system-wide?${NC}"
-echo -e "${GRAY}This will allow any user to run 'labelberry-menu'${NC}"
-echo -n "Install system-wide? (requires sudo) [y/N]: "
-read -r response
-
-if [[ "$response" =~ ^[Yy]$ ]]; then
+if [ "$EUID" -eq 0 ]; then
+    # Running as root, can install directly
+    echo -e "${YELLOW}Installing system-wide menu command...${NC}"
+    
     # Create wrapper script
     WRAPPER_SCRIPT="/tmp/labelberry-menu"
     cat > "$WRAPPER_SCRIPT" << EOF
@@ -127,11 +125,44 @@ EOF
     chmod +x "$WRAPPER_SCRIPT"
     
     # Install system-wide
-    if sudo mv "$WRAPPER_SCRIPT" /usr/local/bin/labelberry-menu; then
+    if mv "$WRAPPER_SCRIPT" /usr/local/bin/labelberry-menu 2>/dev/null; then
         echo -e "${GREEN}✓ System-wide command 'labelberry-menu' installed${NC}"
+        echo -e "${GREEN}  You can now use 'labelberry-menu' from anywhere${NC}"
     else
-        echo -e "${RED}✗ Failed to install system-wide command${NC}"
-        rm -f "$WRAPPER_SCRIPT"
+        echo -e "${YELLOW}System-wide command already exists or installation failed${NC}"
+        rm -f "$WRAPPER_SCRIPT" 2>/dev/null
+    fi
+else
+    # Not root, ask if they want to use sudo
+    echo -e "${YELLOW}Would you like to make the menu command available system-wide?${NC}"
+    echo -e "${GRAY}This will allow any user to run 'labelberry-menu'${NC}"
+    echo -n "Install system-wide? (requires sudo) [y/N]: "
+    read -r response
+
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        # Create wrapper script
+        WRAPPER_SCRIPT="/tmp/labelberry-menu"
+        cat > "$WRAPPER_SCRIPT" << EOF
+#!/bin/bash
+# LabelBerry Menu System Wrapper
+if [ -f "$MENU_SCRIPT" ]; then
+    source $MENU_SCRIPT
+    menu
+else
+    echo "Error: LabelBerry menu system not found at $MENU_SCRIPT"
+    exit 1
+fi
+EOF
+        
+        chmod +x "$WRAPPER_SCRIPT"
+        
+        # Install system-wide
+        if sudo mv "$WRAPPER_SCRIPT" /usr/local/bin/labelberry-menu; then
+            echo -e "${GREEN}✓ System-wide command 'labelberry-menu' installed${NC}"
+        else
+            echo -e "${RED}✗ Failed to install system-wide command${NC}"
+            rm -f "$WRAPPER_SCRIPT"
+        fi
     fi
 fi
 
