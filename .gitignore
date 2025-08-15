@@ -61,7 +61,7 @@ env/
 .env.production
 .env.development
 **/.env
-**/.env.*
+# **/.env.*
 
 # Config files with sensitive data
 client.conf
