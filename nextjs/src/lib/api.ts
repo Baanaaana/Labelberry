@@ -1,28 +1,30 @@
 // API configuration utility
 export function getApiUrl(): string {
-  // In production with Nginx path-based routing, the API is at /api
-  // The browser will automatically use the current domain
   if (typeof window !== 'undefined') {
-    // Client-side: use relative path for Nginx routing
-    const baseUrl = window.location.origin
+    // Client-side
+    const host = window.location.hostname
+    const protocol = window.location.protocol
     
-    // If we're using path-based routing (production), use /api
-    // If we're in development (localhost:3000), use the backend URL
-    if (baseUrl.includes('localhost:3000')) {
+    // Development: localhost
+    if (host === 'localhost') {
       return 'http://localhost:8080/api'
     }
     
-    // Production: use relative path which Nginx will route
+    // Production: use /api path (Nginx will route this)
     return '/api'
   }
   
-  // Server-side: use environment variable or default
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
+  // Server-side fallback
+  return '/api'
 }
 
 export async function apiRequest(endpoint: string, options?: RequestInit) {
   const apiUrl = getApiUrl()
-  const url = `${apiUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`
+  // Ensure endpoint starts with /
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  const url = `${apiUrl}${path}`
+  
+  console.log('API Request:', url) // Debug logging
   
   return fetch(url, {
     ...options,

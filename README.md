@@ -237,13 +237,13 @@ Location: /
 Forward to: http://localhost:3000
 Websockets Support: Disabled
 
-Location: /api
-Forward to: http://localhost:8080
+Location: /api/
+Forward to: http://localhost:8080/api/
 Websockets Support: ✓ Enabled (Required for real-time updates)
-Custom locations (Advanced): Keep the path unchanged
+Block Common Exploits: ✓ Enabled
 ```
 
-**Important**: In Nginx Proxy Manager, ensure the `/api` location forwards the **full path** to the backend. The backend expects routes like `/api/mqtt-settings`, not just `/mqtt-settings`.
+**Important**: Use `/api/` (with trailing slash) in both the location and forward URL to ensure proper path forwarding. The backend expects routes like `/api/mqtt-settings`.
 
 #### Update Environment Variables:
 

@@ -11,8 +11,9 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, Depends, Request, Form, Header
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+# Removed - using Next.js frontend
+# from fastapi.staticfiles import StaticFiles
+# from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 import secrets
@@ -149,14 +150,8 @@ async def startup_event():
 SECRET_KEY = secrets.token_urlsafe(32)  # In production, load from environment variable
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
-# Mount static files and templates
-app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "web" / "static"), name="static")
-templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "templates")
-
-# Add cache busting version for static files
-import time
-STATIC_VERSION = int(time.time()) if os.getenv("DEBUG", "false").lower() == "true" else "62.0"
-templates.env.globals['static_version'] = STATIC_VERSION
+# Static files and templates removed - using Next.js frontend instead
+# templates = Jinja2Templates(directory=Path(__file__).parent.parent / "web" / "templates")
 
 
 # Authentication dependencies
@@ -183,9 +178,8 @@ async def login_page(request: Request):
     if "user" in request.session:
         return RedirectResponse(url="/", status_code=302)
     
-    return templates.TemplateResponse("login.html", {
-        "request": request
-    })
+    # Return JSON instead of template - using Next.js frontend
+    return JSONResponse({"message": "Please use the Next.js frontend for login"})
 
 
 @app.post("/login")
@@ -331,7 +325,7 @@ async def root(request: Request):
     # Check if user is logged in
     if "user" not in request.session:
         return RedirectResponse(url="/login?next=/", status_code=302)
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return JSONResponse({"message": "Please use the Next.js frontend"})
 
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -1145,10 +1139,7 @@ async def print_history_page(request: Request):
     # Check if user is logged in
     if "user" not in request.session:
         return RedirectResponse(url="/login?next=/print-history", status_code=302)
-    return templates.TemplateResponse("print_history.html", {
-        "request": request,
-        "user": request.session["user"]
-    })
+    return JSONResponse({"message": "Please use the Next.js frontend"})
 
 
 @app.get("/performance-metrics", response_class=HTMLResponse)
@@ -1157,10 +1148,7 @@ async def performance_metrics_page(request: Request):
     # Check if user is logged in
     if "user" not in request.session:
         return RedirectResponse(url="/login?next=/performance-metrics", status_code=302)
-    return templates.TemplateResponse("performance_metrics.html", {
-        "request": request,
-        "user": request.session["user"]
-    })
+    return JSONResponse({"message": "Please use the Next.js frontend"})
 
 
 @app.post("/api/reprint", response_model=ApiResponse)
@@ -2114,10 +2102,7 @@ async def api_documentation(request: Request):
         # Try to construct from request if not set
         base_url = f"{request.url.scheme}://{request.url.netloc}"
     
-    return templates.TemplateResponse("api_docs.html", {
-        "request": request,
-        "base_url": base_url
-    })
+    return JSONResponse({"message": "API documentation available at /docs", "base_url": base_url})
 
 
 @app.get("/swagger-docs", response_class=HTMLResponse)
