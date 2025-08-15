@@ -72,27 +72,80 @@ A modern, enterprise-grade label printing system for Zebra printers with central
 
 ## 🚀 Quick Installation
 
-### Admin Server Installation
+### Admin Server Installation (Main Server)
+
+The admin server hosts both the FastAPI backend (port 8080) and Next.js frontend (port 3000). Follow these steps for initial setup:
+
+#### Step 1: Initial Server Setup (First-time only)
 
 ```bash
-# Download and run the installer
+# Download and run the installer on your Ubuntu server
 curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install/install-server.sh | bash
 
 # The installer will:
-# 1. Install system dependencies (PostgreSQL, Mosquitto, Node.js)
-# 2. Set up the PostgreSQL database
-# 3. Configure MQTT broker with authentication
-# 4. Install and configure the FastAPI backend
+# 1. Install system dependencies (PostgreSQL, Mosquitto, Node.js, Python)
+# 2. Create and configure the PostgreSQL database
+# 3. Set up MQTT broker with authentication
+# 4. Install and configure the FastAPI backend service
 # 5. Build and deploy the Next.js frontend
 # 6. Create systemd services for auto-start
 # 7. Configure nginx reverse proxy (optional)
+# 8. Set up directory structure at /opt/labelberry
 ```
 
-After installation:
+#### Step 2: Install Management Tools (Recommended)
+
+```bash
+# After installation completes, install the management menu
+cd /opt/labelberry
+./install-menu.sh
+
+# Reload your shell or open a new terminal, then type:
+menu  # Opens the interactive management interface
+```
+
+#### Step 3: Verify Installation
+
+After installation, verify all services are running:
+```bash
+# Check service status
+systemctl status labelberry-admin    # FastAPI backend
+pm2 status                          # Next.js frontend
+systemctl status mosquitto          # MQTT broker
+systemctl status postgresql         # Database
+
+# Test endpoints
+curl http://localhost:8080/health   # Backend health check
+curl http://localhost:3000          # Frontend check
+```
+
+#### Access Points After Installation:
 - **Web Interface**: `http://your-server-ip:3000`
 - **API Endpoint**: `http://your-server-ip:8080`
-- **Default Login**: `admin` / `admin123` (change immediately!)
 - **MQTT Broker**: `your-server-ip:1883`
+- **Default Credentials**: Update in Settings → API Keys
+
+#### Step 4: Future Updates and Deployments
+
+After initial setup, use the deployment script for all updates:
+
+```bash
+cd /opt/labelberry
+git pull                    # Get latest code
+./deploy.sh                 # Run automated deployment
+
+# Or use the menu:
+menu                        # Select option 1 for full deployment
+```
+
+The deploy script will:
+- Pull latest code from git
+- Update Python and Node.js dependencies
+- Rebuild the Next.js frontend
+- Restart all services with zero downtime
+- Run health checks
+
+> **Important**: Always run `install-server.sh` first for initial setup, then use `deploy.sh` for updates. The deploy script assumes the system infrastructure is already in place.
 
 ### Raspberry Pi Client Installation
 
@@ -411,6 +464,46 @@ mosquitto_sub -h localhost -t "labelberry/pi/YOUR_DEVICE_ID/#" -v
 
 ### Common Issues
 
+#### Server Setup Issues
+
+##### Services Not Starting After Installation
+```bash
+# Check each service
+systemctl status labelberry-admin      # FastAPI backend
+pm2 status                            # Next.js frontend
+systemctl status mosquitto            # MQTT broker
+systemctl status postgresql           # Database
+
+# Restart services if needed
+sudo systemctl restart labelberry-admin
+pm2 restart labelberry-nextjs
+sudo systemctl restart mosquitto
+```
+
+##### Port Already in Use
+```bash
+# Check what's using the ports
+sudo lsof -i :3000                   # Next.js port
+sudo lsof -i :8080                   # FastAPI port
+sudo lsof -i :1883                   # MQTT port
+
+# Kill the process if needed (replace PID)
+sudo kill -9 <PID>
+```
+
+##### Database Connection Issues
+```bash
+# Check PostgreSQL is running
+sudo systemctl status postgresql
+
+# Test database connection
+sudo -u postgres psql -c "SELECT 1"
+
+# Reset database if needed
+sudo -u postgres psql -c "DROP DATABASE IF EXISTS labelberry"
+sudo -u postgres psql -c "CREATE DATABASE labelberry"
+```
+
 #### Printer Not Detected
 ```bash
 ls -la /dev/usb/lp*                    # Check USB device
@@ -428,10 +521,18 @@ sudo systemctl restart mosquitto
 
 #### Frontend Not Loading
 ```bash
-sudo systemctl status labelberry-frontend
-cd /opt/labelberry/nextjs && npm run build
-sudo systemctl restart labelberry-frontend
-sudo ufw allow 3000/tcp               # Open firewall port
+# Check PM2 status
+pm2 status
+pm2 logs labelberry-nextjs            # View logs
+
+# Rebuild if needed
+cd /opt/labelberry/nextjs
+npm run build
+pm2 restart labelberry-nextjs
+
+# Check firewall
+sudo ufw allow 3000/tcp               # Open frontend port
+sudo ufw allow 8080/tcp               # Open API port
 ```
 
 ## 📚 Project Structure
