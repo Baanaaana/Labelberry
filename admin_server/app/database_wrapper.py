@@ -213,12 +213,17 @@ class DatabaseWrapper:
         else:
             self.db.update_pi_config(pi_id, config)
     
-    async def update_pi_config_async(self, pi_id: str, config: Dict[str, Any]):
+    async def update_pi_config_async(self, pi_id: str, config: Dict[str, Any]) -> bool:
         """Update Pi configuration (async)"""
-        if self.is_postgres:
-            await self.db.update_pi_config(pi_id, config)
-        else:
-            self.db.update_pi_config(pi_id, config)
+        try:
+            if self.is_postgres:
+                await self.db.update_pi_config(pi_id, config)
+            else:
+                self.db.update_pi_config(pi_id, config)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update config: {e}")
+            return False
     
     def update_pi(self, pi_id: str, updates: Dict[str, Any]) -> bool:
         """Update Pi device details"""

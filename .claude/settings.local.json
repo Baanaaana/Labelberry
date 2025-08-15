@@ -10,7 +10,8 @@
       "Bash(mv:*)",
       "Bash(npx shadcn@latest add:*)",
       "Bash(npm run build:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(python3:*)"
     ],
     "deny": []
   }

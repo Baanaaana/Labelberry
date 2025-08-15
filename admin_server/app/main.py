@@ -398,12 +398,8 @@ async def list_pis():
             elif not pi_dict.get("last_seen"):
                 pi_dict["status"] = "offline"
             
-            # Add label size details if available
-            label_size_id = pi_dict.get('label_size_id')
-            if label_size_id and label_size_id in label_size_map:
-                pi_dict["label_size"] = label_size_map[label_size_id]
-            else:
-                pi_dict["label_size"] = None
+            # Keep label_size as is - it's now stored directly in the pis table
+            # Don't overwrite with None
             
             # Add metrics
             pi_dict["metrics"] = {
@@ -429,23 +425,26 @@ async def list_pis():
 @app.get("/api/pis/{pi_id}", response_model=ApiResponse)
 async def get_pi_details(pi_id: str):
     try:
-        pi = database.get_pi_by_id(pi_id)
+        pi = await database.get_pi_by_id_async(pi_id)
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
-        pi_dict = pi.model_dump()
-        is_connected = mqtt_server.is_connected(pi_id)
+        # pi is already a dict from async method
+        pi_dict = pi
+        device_id = pi.get('device_id', pi_id)
+        is_connected = mqtt_server.is_connected(device_id)
         pi_dict["mqtt_connected"] = is_connected
         # Override status based on actual MQTT connection
         if is_connected:
             pi_dict["status"] = "online"
-        pi_dict["config"] = database.get_pi_config(pi_id)
+        pi_dict["config"] = await database.get_pi_config_async(pi_id)
         
         # Get label size details if assigned
-        if pi.label_size_id:
-            sizes = database.get_label_sizes()
+        label_size_id = pi.get('label_size_id')
+        if label_size_id:
+            sizes = await database.get_label_sizes_async()
             for size in sizes:
-                if size['id'] == pi.label_size_id:
+                if size['id'] == label_size_id:
                     pi_dict["label_size"] = size
                     break
         
@@ -546,13 +545,17 @@ async def register_pi(device: PiDevice):
 @app.put("/api/pis/{pi_id}", response_model=ApiResponse)
 async def update_pi(pi_id: str, updates: Dict[str, Any]):
     try:
-        pi = database.get_pi_by_id(pi_id)
+        logger.info(f"Updating Pi {pi_id} with data: {updates}")
+        pi = await database.get_pi_by_id_async(pi_id)
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
         # Use the update_pi method that only updates specified fields
-        if database.update_pi(pi_id, updates):
-            database.save_server_log("printer_config_updated", f"Configuration updated for '{pi.friendly_name}'", "INFO",
+        success = await database.update_pi_async(pi_id, updates)
+        logger.info(f"Update result for Pi {pi_id}: {success}")
+        if success:
+            pi_name = pi.get('friendly_name') if isinstance(pi, dict) else pi.friendly_name
+            database.save_server_log("printer_config_updated", f"Configuration updated for '{pi_name}'", "INFO",
                                     f"Updates: {list(updates.keys())}")
             return ApiResponse(
                 success=True,
@@ -606,17 +609,27 @@ async def delete_pi(pi_id: str):
 @app.put("/api/pis/{pi_id}/config", response_model=ApiResponse)
 async def update_pi_config(pi_id: str, config: Dict[str, Any]):
     try:
-        pi = database.get_pi_by_id(pi_id)
+        pi = await database.get_pi_by_id_async(pi_id)
         if not pi:
             raise HTTPException(status_code=404, detail="Pi not found")
         
-        if database.update_pi_config(pi_id, config):
-            if mqtt_server.is_connected(pi_id):
-                await mqtt_server.send_config_update(pi_id, config)
+        # Update the configuration in the database
+        success = await database.update_pi_config_async(pi_id, config)
+        if success:
+            # Get the device_id for MQTT communication
+            device_id = pi.get('device_id', pi_id)
+            
+            # Send the config to the Pi via MQTT if it's connected
+            if mqtt_server and mqtt_server.connected:
+                if device_id in mqtt_server.connected_pis:
+                    logger.info(f"Sending config update to Pi {device_id}: {config}")
+                    await mqtt_server.send_config_to_pi(device_id, config)
+                else:
+                    logger.warning(f"Pi {device_id} not connected via MQTT, config saved but not sent")
             
             return ApiResponse(
                 success=True,
-                message="Configuration updated",
+                message="Configuration updated and sent to Pi",
                 data={"pi_id": pi_id}
             )
         else:
@@ -747,6 +760,179 @@ async def get_job_status(job_id: str):
             )
     except Exception as e:
         logger.error(f"Failed to get job status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/jobs/{job_id}/cancel", response_model=ApiResponse)
+async def cancel_job(job_id: str):
+    """Cancel a pending or processing job"""
+    try:
+        # Get the job details
+        job = await database.get_job_by_id_async(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Only allow canceling pending or processing jobs
+        if job.get('status') not in ['pending', 'processing']:
+            raise HTTPException(status_code=400, detail=f"Cannot cancel job with status: {job.get('status')}")
+        
+        # Update job status to cancelled
+        await database.update_print_job_async(job_id, 'cancelled', 'Job cancelled by user')
+        
+        return ApiResponse(
+            success=True,
+            message="Job cancelled successfully",
+            data={"job_id": job_id, "status": "cancelled"}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cancel job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/metrics/{pi_id}", response_model=ApiResponse)
+async def get_pi_metrics(
+    pi_id: str,
+    timeRange: str = "24h"
+):
+    """Get performance metrics for a specific Pi"""
+    try:
+        # Convert time range to hours
+        hours_map = {
+            "1h": 1,
+            "24h": 24,
+            "7d": 168,
+            "30d": 720
+        }
+        hours = hours_map.get(timeRange, 24)
+        
+        # Get metrics from database
+        metrics = await database.get_metrics_async(pi_id, hours)
+        
+        return ApiResponse(
+            success=True,
+            message="Metrics retrieved",
+            data={"metrics": metrics}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get metrics for Pi {pi_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/queue", response_model=ApiResponse)
+async def get_queue_items(
+    printerId: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100
+):
+    """Get queue items with optional filters"""
+    try:
+        # Get all print jobs
+        jobs = await database.get_print_jobs_async(
+            pi_id=printerId,
+            status=status if status != "all" else None,
+            limit=limit
+        )
+        
+        # Get printer information for each job
+        pis = await database.get_all_pis_async()
+        pi_map = {pi['id']: pi for pi in pis}
+        
+        # Format the queue items
+        queue_items = []
+        for job in jobs:
+            pi = pi_map.get(job['pi_id'], {})
+            queue_items.append({
+                "id": job['id'],
+                "printerId": job['pi_id'],
+                "printerName": pi.get('friendly_name', 'Unknown Printer'),
+                "status": job['status'],
+                "zplSource": job.get('zpl_source', ''),
+                "createdAt": job['created_at'].isoformat() if job.get('created_at') else '',
+                "startedAt": job['started_at'].isoformat() if job.get('started_at') else None,
+                "completedAt": job['completed_at'].isoformat() if job.get('completed_at') else None,
+                "retryCount": job.get('retry_count', 0),
+                "errorMessage": job.get('error_message')
+            })
+        
+        return ApiResponse(
+            success=True,
+            message="Queue items retrieved",
+            data={"items": queue_items}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get queue items: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/jobs/clear-history", response_model=ApiResponse)
+async def clear_print_history():
+    """Clear all print job history"""
+    try:
+        # Get database connection
+        if database.is_postgres:
+            pool = await database.get_connection()
+            async with pool.acquire() as conn:
+                # Delete all print jobs
+                result = await conn.execute("DELETE FROM print_jobs")
+                # Extract the number of deleted rows from the result string
+                deleted_count = int(result.split()[-1]) if result and ' ' in result else 0
+                
+                logger.info(f"Cleared {deleted_count} print jobs from history")
+                
+                return ApiResponse(
+                    success=True,
+                    message=f"Cleared {deleted_count} print job(s) from history",
+                    data={"deleted_count": deleted_count}
+                )
+        else:
+            # For SQLite, implement the deletion
+            # This is a fallback, but the system should be using PostgreSQL
+            return ApiResponse(
+                success=False,
+                message="Clear history not implemented for SQLite",
+                data={}
+            )
+    except Exception as e:
+        logger.error(f"Failed to clear print history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/jobs/{job_id}/retry", response_model=ApiResponse)
+async def retry_job(job_id: str):
+    """Retry a failed or cancelled job"""
+    try:
+        # Get the job details
+        job = await database.get_job_by_id_async(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Create a new job with the same details
+        new_job_id = await database.create_print_job_async(
+            pi_id=job['pi_id'],
+            zpl_source=job.get('zpl_source', 'retry'),
+            zpl_content=job.get('zpl_content')
+        )
+        
+        # If MQTT is connected, send the job immediately
+        pi = await database.get_pi_by_id_async(job['pi_id'])
+        if pi and mqtt_server and mqtt_server.connected:
+            device_id = pi.get('device_id')
+            if mqtt_server.is_connected(device_id):
+                job_data = {
+                    "job_id": new_job_id,
+                    "zpl_source": job.get('zpl_source'),
+                    "zpl_content": job.get('zpl_content')
+                }
+                success = await mqtt_server.send_print_job(device_id, job_data)
+                if success:
+                    await database.update_print_job_async(new_job_id, 'processing')
+        
+        return ApiResponse(
+            success=True,
+            message="Job restarted successfully",
+            data={"old_job_id": job_id, "new_job_id": new_job_id}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retry job: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/pis/{pi_id}/test-print", response_model=ApiResponse)

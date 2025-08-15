@@ -251,10 +251,15 @@ class MQTTServer:
             # Update status with IP if provided
             await self.database.update_pi_status_async(device_id, "online", ip_address)
             
-            # Update printer model if provided
+            # Update printer model and IP address if provided
             printer_model = data.get("printer_model")
+            updates = {}
             if printer_model:
-                await self.database.update_pi_async(pi_id, {"printer_model": printer_model})
+                updates["printer_model"] = printer_model
+            if ip_address:
+                updates["ip_address"] = ip_address
+            if updates:
+                await self.database.update_pi_async(pi_id, updates)
             
             # Log connection
             import json
@@ -282,9 +287,12 @@ class MQTTServer:
         
         pi = await self.database.get_pi_by_id_async(device_id)
         if pi:
-            # Extract IP address if available
+            # Extract IP address if available (don't pass None to avoid overwriting)
             ip_address = data.get("ip_address") or data.get("ip")
-            await self.database.update_pi_status_async(device_id, status, ip_address)
+            if ip_address:
+                await self.database.update_pi_status_async(device_id, status, ip_address)
+            else:
+                await self.database.update_pi_status_async(device_id, status)
             logger.info(f"Pi {device_id} status: {status}, IP: {ip_address}")
     
     async def _handle_pi_metrics(self, device_id: str, data: Dict[str, Any]):

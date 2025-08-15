@@ -29,14 +29,19 @@ class PostgresDatabase:
         
     async def init_pool(self):
         """Initialize connection pool"""
-        if not self.pool:
-            self.pool = await asyncpg.create_pool(
-                self.database_url,
-                min_size=1,
-                max_size=10,
-                timeout=60,
-                command_timeout=60
-            )
+        if self.pool:
+            # Close existing pool to avoid cached statement issues
+            await self.pool.close()
+            self.pool = None
+        
+        self.pool = await asyncpg.create_pool(
+            self.database_url,
+            min_size=1,
+            max_size=10,
+            timeout=60,
+            command_timeout=60,
+            statement_cache_size=0  # Disable statement caching to avoid schema change issues
+        )
     
     async def close_pool(self):
         """Close connection pool"""
@@ -94,14 +99,18 @@ class PostgresDatabase:
                 SELECT 
                     p.id, p.device_id, p.friendly_name, p.api_key, p.ip_address, 
                     p.status, p.last_seen, p.created_at, p.updated_at, p.printer_model,
-                    c.id as config_id, c.pi_id, c.printer_device, c.label_size, 
+                    p.device_name, p.location, p.label_size,
+                    c.id as config_id, c.pi_id, c.printer_device,
                     c.default_darkness, c.default_speed, c.auto_reconnect, 
-                    c.max_queue_size, c.retry_attempts, c.retry_delay
+                    c.max_queue_size, c.retry_attempts, c.retry_delay, c.override_settings
                 FROM pis p
                 LEFT JOIN configurations c ON p.id = c.pi_id
                 ORDER BY p.friendly_name
             """)
-            return [dict(row) for row in rows]
+            results = [dict(row) for row in rows]
+            if results:
+                logger.info(f"First Pi data - label_size: {results[0].get('label_size')}, device_name: {results[0].get('device_name')}")
+            return results
     
     async def get_pi_by_id(self, pi_id: str) -> Optional[Dict[str, Any]]:
         """Get Pi device by ID"""
@@ -111,9 +120,10 @@ class PostgresDatabase:
                 SELECT 
                     p.id, p.device_id, p.friendly_name, p.api_key, p.ip_address, 
                     p.status, p.last_seen, p.created_at, p.updated_at, p.printer_model,
-                    c.id as config_id, c.pi_id, c.printer_device, c.label_size, 
+                    p.device_name, p.location, p.label_size,
+                    c.id as config_id, c.pi_id, c.printer_device,
                     c.default_darkness, c.default_speed, c.auto_reconnect, 
-                    c.max_queue_size, c.retry_attempts, c.retry_delay
+                    c.max_queue_size, c.retry_attempts, c.retry_delay, c.override_settings
                 FROM pis p
                 LEFT JOIN configurations c ON p.id = c.pi_id
                 WHERE p.id = $1 OR p.device_id = $1
@@ -124,38 +134,50 @@ class PostgresDatabase:
         """Update Pi device status"""
         pool = await self.get_connection()
         async with pool.acquire() as conn:
-            await conn.execute("""
-                UPDATE pis 
-                SET status = $1, ip_address = $2, last_seen = $3, updated_at = $4
-                WHERE device_id = $5
-            """, status, ip_address, datetime.now(), 
-                datetime.now(), device_id)
+            if ip_address is not None:
+                # Update with IP address
+                await conn.execute("""
+                    UPDATE pis 
+                    SET status = $1, ip_address = $2, last_seen = $3, updated_at = $4
+                    WHERE device_id = $5
+                """, status, ip_address, datetime.now(), 
+                    datetime.now(), device_id)
+            else:
+                # Update without changing IP address
+                await conn.execute("""
+                    UPDATE pis 
+                    SET status = $1, last_seen = $2, updated_at = $3
+                    WHERE device_id = $4
+                """, status, datetime.now(), 
+                    datetime.now(), device_id)
     
     async def update_pi_config(self, pi_id: str, config: Dict[str, Any]):
         """Update Pi configuration and details"""
+        logger.info(f"update_pi_config called with pi_id={pi_id}, config={config}")
         pool = await self.get_connection()
         async with pool.acquire() as conn:
+            # Fields that go directly into the pis table
+            pi_fields = ['printer_model', 'friendly_name', 'device_name', 'location', 'label_size']
+            pi_config_keys = [k for k in config.keys() if k in pi_fields]
+            
             # Update pis table fields if present
-            if 'printer_model' in config or 'friendly_name' in config:
+            if pi_config_keys:
                 pi_updates = []
                 pi_values = []
                 pi_param_count = 1
                 
-                if 'printer_model' in config:
-                    pi_updates.append(f"printer_model = ${pi_param_count}")
-                    pi_values.append(config['printer_model'])
-                    pi_param_count += 1
-                    
-                if 'friendly_name' in config:
-                    pi_updates.append(f"friendly_name = ${pi_param_count}")
-                    pi_values.append(config['friendly_name'])
+                for key in pi_config_keys:
+                    pi_updates.append(f"{key} = ${pi_param_count}")
+                    pi_values.append(config[key])
                     pi_param_count += 1
                     
                 if pi_updates:
                     pi_values.append(pi_id)
                     query = f"""UPDATE pis SET {', '.join(pi_updates)}, updated_at = NOW() 
-                               WHERE id = ${pi_param_count} OR device_id = ${pi_param_count}"""
-                    await conn.execute(query, *pi_values)
+                               WHERE id = ${pi_param_count}"""
+                    logger.info(f"Executing query: {query} with values: {pi_values}")
+                    result = await conn.execute(query, *pi_values)
+                    logger.info(f"Update result: {result}")
             
             # Build dynamic update query for configuration fields
             update_fields = []
@@ -163,9 +185,9 @@ class PostgresDatabase:
             param_count = 1
             
             for key, value in config.items():
-                if key in ['printer_device', 'label_size', 'default_darkness', 
+                if key in ['printer_device', 'default_darkness', 
                           'default_speed', 'auto_reconnect', 'max_queue_size', 
-                          'retry_attempts', 'retry_delay']:
+                          'retry_attempts', 'retry_delay', 'override_settings']:
                     update_fields.append(f"{key} = ${param_count}")
                     values.append(value)
                     param_count += 1
@@ -304,12 +326,17 @@ class PostgresDatabase:
             
             await conn.execute("""
                 INSERT INTO metrics (id, pi_id, cpu_usage, memory_usage, disk_usage, 
-                    temperature, jobs_processed, jobs_failed, avg_print_time, uptime, created_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    temperature, jobs_processed, jobs_failed, avg_print_time, uptime, created_at, queue_size)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             """, str(uuid.uuid4()), pi['id'], metrics.cpu_usage, metrics.memory_usage,
-                metrics.disk_usage, metrics.temperature, metrics.jobs_processed,
-                metrics.jobs_failed, metrics.avg_print_time, metrics.uptime,
-                datetime.now())
+                0.0,  # disk_usage - not provided by Pi
+                0.0,  # temperature - not provided by Pi
+                metrics.jobs_completed,  # jobs_processed
+                metrics.jobs_failed,
+                0.0,  # avg_print_time - calculate separately
+                metrics.uptime_seconds,  # uptime
+                datetime.now(),
+                metrics.queue_size)
     
     async def get_metrics(self, pi_id: str, hours: int = 24) -> List[Dict[str, Any]]:
         """Get metrics for a Pi device"""

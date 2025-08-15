@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select"
 import { RefreshCw, Trash2, RotateCcw } from "lucide-react"
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 
 interface QueueItem {
   id: string
@@ -36,9 +37,24 @@ interface QueueItem {
 
 export default function QueuePage() {
   const [queueItems, setQueueItems] = useState<QueueItem[]>([])
-
+  const [printers, setPrinters] = useState<{id: string, name: string}[]>([])
   const [selectedPrinter, setSelectedPrinter] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
+
+  const fetchPrinters = async () => {
+    try {
+      const response = await fetch('/api/pis')
+      const result = await response.json()
+      const data = result.data?.pis || []
+      const printerList = data.map((pi: {id: string, friendly_name?: string, name?: string}) => ({
+        id: pi.id,
+        name: pi.friendly_name || pi.name || 'Unknown'
+      }))
+      setPrinters(printerList)
+    } catch (error) {
+      console.error('Failed to fetch printers:', error)
+    }
+  }
 
   const fetchQueueItems = async () => {
     try {
@@ -56,6 +72,12 @@ export default function QueuePage() {
       setQueueItems([])
     }
   }
+
+  useEffect(() => {
+    fetchPrinters()
+    fetchQueueItems()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     fetchQueueItems()
@@ -77,18 +99,66 @@ export default function QueuePage() {
     }
   }
 
-  const handleRetry = (itemId: string) => {
-    console.log(`Retrying job ${itemId}`)
-    // Add retry logic here
+  const handleRetry = async (itemId: string) => {
+    try {
+      const response = await fetch(`/api/jobs/${itemId}/retry`, {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        toast.success('Job restarted successfully')
+        fetchQueueItems() // Refresh the queue
+      } else {
+        const error = await response.json().catch(() => null)
+        toast.error(`Failed to retry job: ${error?.detail || response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Failed to retry job:', error)
+      toast.error('Failed to retry job')
+    }
   }
 
   const handleDelete = async (itemId: string) => {
-    // TODO: Implement delete endpoint
-    setQueueItems(queueItems.filter(item => item.id !== itemId))
+    try {
+      const response = await fetch(`/api/jobs/${itemId}/cancel`, {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        toast.success('Job cancelled successfully')
+        fetchQueueItems() // Refresh the queue
+      } else {
+        const error = await response.json().catch(() => null)
+        toast.error(`Failed to cancel job: ${error?.detail || response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Failed to cancel job:', error)
+      toast.error('Failed to cancel job')
+    }
   }
 
-  const handleClearCompleted = () => {
-    setQueueItems(queueItems.filter(item => item.status !== "completed"))
+  const handleClearCompleted = async () => {
+    try {
+      // Get all completed jobs
+      const completedJobs = queueItems.filter(item => item.status === "completed")
+      
+      if (completedJobs.length === 0) {
+        toast.info('No completed jobs to clear')
+        return
+      }
+      
+      // Delete each completed job
+      const promises = completedJobs.map(job =>
+        fetch(`/api/jobs/${job.id}/cancel`, { method: 'POST' })
+      )
+      
+      await Promise.all(promises)
+      toast.success(`Cleared ${completedJobs.length} completed job(s)`)
+      fetchQueueItems() // Refresh the queue
+    } catch (error) {
+      console.error('Failed to clear completed jobs:', error)
+      toast.error('Failed to clear completed jobs')
+    }
   }
 
   const filteredItems = queueItems.filter(item => {
@@ -176,10 +246,11 @@ export default function QueuePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Printers</SelectItem>
-                <SelectItem value="1">Warehouse A - Station 1</SelectItem>
-                <SelectItem value="2">Warehouse A - Station 2</SelectItem>
-                <SelectItem value="3">Warehouse B - Main</SelectItem>
-                <SelectItem value="4">Office - Shipping</SelectItem>
+                {printers.map((printer) => (
+                  <SelectItem key={printer.id} value={printer.id}>
+                    {printer.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
@@ -210,9 +281,18 @@ export default function QueuePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredItems.map((item) => (
+              {filteredItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    No print jobs found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredItems.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-mono text-sm">{item.id}</TableCell>
+                  <TableCell className="font-mono text-sm" title={item.id}>
+                    {item.id.substring(0, 8)}...
+                  </TableCell>
                   <TableCell>{item.printerName}</TableCell>
                   <TableCell>{getStatusBadge(item.status)}</TableCell>
                   <TableCell className="max-w-[200px] truncate">
@@ -222,7 +302,7 @@ export default function QueuePage() {
                       <span className="text-sm text-muted-foreground">Raw ZPL</span>
                     )}
                   </TableCell>
-                  <TableCell>{item.createdAt}</TableCell>
+                  <TableCell>{new Date(item.createdAt).toLocaleString()}</TableCell>
                   <TableCell>{item.retryCount}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
@@ -247,7 +327,7 @@ export default function QueuePage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )))}
             </TableBody>
           </Table>
         </CardContent>

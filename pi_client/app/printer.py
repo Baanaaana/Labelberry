@@ -2,7 +2,7 @@ import os
 import time
 import logging
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import usb.core
 import usb.util
 import atexit
@@ -13,12 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class ZebraPrinter:
-    def __init__(self, device_path: str = "/dev/usb/lp0"):
+    def __init__(self, device_path: str = "/dev/usb/lp0", config: Optional[dict] = None):
         self.device_path = device_path
         self.is_connected = False
         self._active_device = None
         self._active_interface = None
         self._driver_was_detached = False
+        self.config = config or {}
         
         # Register cleanup handlers
         atexit.register(self._emergency_cleanup)
@@ -63,10 +64,48 @@ class ZebraPrinter:
         logger.info(f"Printer instance device path: {self.device_path}")
         logger.info(f"ZPL data length: {len(zpl_data)} bytes")
         
+        # Apply ZPL overrides if configured
+        if self.config.get('override_settings', False):
+            zpl_data = self._apply_zpl_overrides(zpl_data)
+        
         result = self.print_zpl(zpl_data)
         
         logger.info(f"=== PRINT JOB END (Success: {result}) ===")
         return result
+    
+    def _apply_zpl_overrides(self, zpl_content: str) -> str:
+        """Apply darkness and speed overrides to ZPL content"""
+        try:
+            import re
+            
+            darkness = self.config.get('default_darkness', 15)
+            speed = self.config.get('default_speed', 4)
+            
+            logger.info(f"Applying ZPL overrides: darkness={darkness}, speed={speed}")
+            
+            # Remove existing ^MD (darkness) commands and add our own
+            # ^MD command sets darkness (0-30)
+            zpl_content = re.sub(r'\^MD\d+', '', zpl_content)
+            
+            # Remove existing ^PR (print rate/speed) commands
+            # ^PR command sets print, slew, and backfeed speeds
+            zpl_content = re.sub(r'\^PR\d+,\d+,\d+', '', zpl_content)
+            zpl_content = re.sub(r'\^PR\d+', '', zpl_content)
+            
+            # Insert our settings right after ^XA (start of label)
+            if '^XA' in zpl_content:
+                # Add darkness and speed commands after ^XA
+                override_commands = f"\n^MD{darkness}\n^PR{speed},{speed},{speed}\n"
+                zpl_content = zpl_content.replace('^XA', f'^XA{override_commands}', 1)
+                logger.info(f"Inserted override commands: ^MD{darkness} and ^PR{speed}")
+            else:
+                logger.warning("No ^XA found in ZPL, cannot apply overrides")
+            
+            return zpl_content
+            
+        except Exception as e:
+            logger.error(f"Failed to apply ZPL overrides: {e}")
+            return zpl_content  # Return original if override fails
     
     def connect(self) -> bool:
         """Check if printer is available"""
@@ -338,6 +377,12 @@ class ZebraPrinter:
     
     def test_print(self) -> bool:
         """Print a test label with proper formatting"""
+        # Build override status line
+        if self.config.get('override_settings', False):
+            override_status = f"Override: ON (D:{self.config.get('default_darkness', 15)} S:{self.config.get('default_speed', 4)})"
+        else:
+            override_status = "Override: OFF"
+        
         test_zpl = """^XA
 ^PW448
 ^LL252
@@ -346,11 +391,12 @@ class ZebraPrinter:
 ^FO20,90^GB400,2,2^FS
 ^FO20,100^A0N,18,18^FDDevice: """ + self.device_path + """^FS
 ^FO20,125^A0N,18,18^FDTime: """ + time.strftime("%Y-%m-%d %H:%M:%S") + """^FS
-^FO20,150^A0N,18,18^FDStatus: Ready^FS
+^FO20,150^A0N,18,18^FDSettings: """ + override_status + """^FS
 ^FO20,180^BY2,2,40^BCN,,Y,N^FD""" + str(int(time.time()) % 100000000) + """^FS
 ^XZ"""
-        logger.info("Sending test print with complete ZPL")
-        return self.print_zpl(test_zpl)
+        logger.info(f"Sending test print with complete ZPL (override: {self.config.get('override_settings', False)})")
+        # Use send_to_printer to apply overrides if configured
+        return self.send_to_printer(test_zpl)
     
     def disconnect(self):
         self._emergency_cleanup()

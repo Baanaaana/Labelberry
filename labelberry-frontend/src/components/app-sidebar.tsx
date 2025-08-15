@@ -9,6 +9,7 @@ import {
   BarChart,
   LogOut,
   Circle,
+  BookOpen,
 } from "lucide-react"
 
 import {
@@ -56,16 +57,24 @@ const menuItems = [
   },
 ]
 
+const apiItems = [
+  {
+    title: "API Keys",
+    url: "/settings/api-keys",
+    icon: Key,
+  },
+  {
+    title: "API Documentation",
+    url: "/api-docs",
+    icon: BookOpen,
+  },
+]
+
 const settingsItems = [
   {
     title: "System Settings",
     url: "/settings",
     icon: Settings,
-  },
-  {
-    title: "API Keys",
-    url: "/settings/api-keys",
-    icon: Key,
   },
 ]
 
@@ -171,6 +180,23 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={pathname === item.url}>
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>API</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {apiItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={pathname === item.url}>
                     <Link href={item.url}>

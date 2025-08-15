@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import {
@@ -30,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Plus, Settings, Trash2, TestTube, RefreshCw, Copy, CheckCircle } from "lucide-react"
+import { Plus, Settings, Trash2, TestTube, RefreshCw, Copy, CheckCircle, Wrench } from "lucide-react"
 import { useState, useEffect } from "react"
 
 interface PrinterDetails {
@@ -41,6 +42,9 @@ interface PrinterDetails {
   status: "online" | "offline" | "error"
   ipAddress: string
   lastSeen: string
+  deviceName?: string
+  location?: string
+  labelSize?: string
   configuration: {
     printerDevice: string
     labelSize: string
@@ -48,6 +52,7 @@ interface PrinterDetails {
     defaultSpeed: number
     autoReconnect: boolean
     maxQueueSize: number
+    overrideSettings?: boolean
   }
   metrics: {
     jobsToday: number
@@ -67,10 +72,22 @@ export default function PrintersPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [printerToDelete, setPrinterToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false)
+  const [advancedSettings, setAdvancedSettings] = useState({
+    defaultDarkness: 15,
+    defaultSpeed: 4,
+    overrideSettings: false
+  })
   const [newPrinter, setNewPrinter] = useState({
     name: '',
     deviceId: '',
     apiKey: ''
+  })
+  const [editPrinterData, setEditPrinterData] = useState({
+    friendlyName: '',
+    deviceName: '',
+    location: '',
+    labelSize: 'standard'
   })
 
   const fetchPrinters = async () => {
@@ -88,11 +105,14 @@ export default function PrintersPage() {
         ip_address?: string
         last_seen?: string
         printer_device?: string
+        device_name?: string
+        location?: string
         label_size?: string
         default_darkness?: number
         default_speed?: number
         auto_reconnect?: boolean
         max_queue_size?: number
+        override_settings?: boolean
         metrics?: {
           jobsToday: number
           failedJobs: number
@@ -107,13 +127,17 @@ export default function PrintersPage() {
         status: printer.status,
         ipAddress: printer.ip_address || 'N/A',
         lastSeen: printer.last_seen ? new Date(printer.last_seen).toLocaleString() : 'Never',
+        deviceName: printer.device_name,
+        location: printer.location,
+        labelSize: printer.label_size,
         configuration: {
           printerDevice: printer.printer_device || "/dev/usb/lp0",
           labelSize: printer.label_size || "4x6",
           defaultDarkness: printer.default_darkness || 15,
           defaultSpeed: printer.default_speed || 4,
           autoReconnect: printer.auto_reconnect !== undefined ? printer.auto_reconnect : true,
-          maxQueueSize: printer.max_queue_size || 100
+          maxQueueSize: printer.max_queue_size || 100,
+          overrideSettings: printer.override_settings || false
         },
         metrics: printer.metrics || {
           jobsToday: 0,
@@ -284,6 +308,100 @@ export default function PrintersPage() {
 
   const handleRefresh = () => {
     fetchPrinters()
+  }
+
+  const handleEditPrinter = (printer: PrinterDetails) => {
+    // Always get the latest printer data from the list
+    const currentPrinter = printers.find(p => p.id === printer.id) || printer
+    setSelectedPrinter(currentPrinter)
+    setEditPrinterData({
+      friendlyName: currentPrinter.name,
+      deviceName: currentPrinter.deviceName || currentPrinter.deviceId.split('-')[0].toUpperCase() || 'PI-2025',
+      location: currentPrinter.location || '',
+      labelSize: currentPrinter.labelSize || 'standard'
+    })
+    setConfigDialogOpen(true)
+  }
+
+  const handleAdvancedSettings = (printer: PrinterDetails) => {
+    setSelectedPrinter(printer)
+    setAdvancedSettings({
+      defaultDarkness: printer.configuration.defaultDarkness,
+      defaultSpeed: printer.configuration.defaultSpeed,
+      overrideSettings: printer.configuration.overrideSettings || false
+    })
+    setAdvancedSettingsOpen(true)
+  }
+
+  const handleSaveAdvancedSettings = async () => {
+    if (!selectedPrinter) return
+    
+    try {
+      const response = await fetch(`/api/pis/${selectedPrinter.id}/config`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          default_darkness: advancedSettings.defaultDarkness,
+          default_speed: advancedSettings.defaultSpeed,
+          override_settings: advancedSettings.overrideSettings
+        })
+      })
+      
+      if (response.ok) {
+        setAdvancedSettingsOpen(false)
+        setSelectedPrinter(null)
+        toast.success('Printer settings updated successfully')
+        await fetchPrinters()
+      } else {
+        const error = await response.json().catch(() => null)
+        toast.error(`Failed to update settings: ${error?.detail || response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Failed to update printer settings:', error)
+      toast.error('Failed to update printer settings')
+    }
+  }
+
+  const handleSaveEditPrinter = async () => {
+    if (!selectedPrinter) return
+    
+    try {
+      const updateData = {
+        friendly_name: editPrinterData.friendlyName,
+        device_name: editPrinterData.deviceName,
+        location: editPrinterData.location,
+        label_size: editPrinterData.labelSize
+      }
+      console.log('Sending update:', updateData, 'to printer ID:', selectedPrinter.id)
+      
+      const response = await fetch(`/api/pis/${selectedPrinter.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      })
+      
+      if (response.ok) {
+        // Close dialog first
+        setConfigDialogOpen(false)
+        setSelectedPrinter(null)
+        
+        // Show success message
+        toast.success(`Printer "${editPrinterData.friendlyName}" updated successfully`)
+        
+        // Refresh the printers list from server to get the updated data
+        await fetchPrinters()
+      } else {
+        const error = await response.json().catch(() => null)
+        toast.error(`Failed to update printer: ${error?.detail || response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Failed to update printer:', error)
+      toast.error('Failed to update printer. Please check the console for details.')
+    }
   }
 
   const handleAddPrinter = async () => {
@@ -465,17 +583,24 @@ export default function PrintersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setSelectedPrinter(printer)
-                            setConfigDialogOpen(true)
-                          }}
+                          onClick={() => handleEditPrinter(printer)}
+                          title="Edit Printer"
                         >
                           <Settings className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => handleAdvancedSettings(printer)}
+                          title="Advanced Settings"
+                        >
+                          <Wrench className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleTestPrint(printer.id)}
+                          title="Test Print"
                         >
                           <TestTube className="h-4 w-4" />
                         </Button>
@@ -483,6 +608,7 @@ export default function PrintersPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteClick(printer.id, printer.name)}
+                          title="Delete Printer"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -496,95 +622,66 @@ export default function PrintersPage() {
         </Card>
 
         {selectedPrinter && (
-          <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
-            <DialogContent className="max-w-2xl">
+          <Dialog open={configDialogOpen} onOpenChange={(open) => {
+            setConfigDialogOpen(open)
+            // Reset edit data when dialog is closed
+            if (!open) {
+              setSelectedPrinter(null)
+            }
+          }}>
+            <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Configure {selectedPrinter.name}</DialogTitle>
-                <DialogDescription>
-                  Update printer configuration and settings
-                </DialogDescription>
+                <DialogTitle>Edit Printer</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="printer-name" className="text-right">
-                    Name
-                  </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="friendly-name">Friendly Name</Label>
                   <Input
-                    id="printer-name"
-                    className="col-span-3"
-                    defaultValue={selectedPrinter.name}
+                    id="friendly-name"
+                    value={editPrinterData.friendlyName}
+                    onChange={(e) => setEditPrinterData({...editPrinterData, friendlyName: e.target.value})}
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="printer-device" className="text-right">
-                    Device
-                  </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="device-name">Device Name</Label>
                   <Input
-                    id="printer-device"
-                    className="col-span-3"
-                    defaultValue={selectedPrinter.configuration.printerDevice}
+                    id="device-name"
+                    value={editPrinterData.deviceName}
+                    onChange={(e) => setEditPrinterData({...editPrinterData, deviceName: e.target.value})}
+                    placeholder="e.g., PI-2025"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="label-size" className="text-right">
-                    Label Size
-                  </Label>
-                  <Select defaultValue={selectedPrinter.configuration.labelSize}>
-                    <SelectTrigger className="col-span-3">
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    value={editPrinterData.location}
+                    onChange={(e) => setEditPrinterData({...editPrinterData, location: e.target.value})}
+                    placeholder="e.g., Kantoor"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="label-size">Label Size</Label>
+                  <Select 
+                    value={editPrinterData.labelSize}
+                    onValueChange={(value) => setEditPrinterData({...editPrinterData, labelSize: value})}
+                  >
+                    <SelectTrigger id="label-size">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="4x6">4x6 inches</SelectItem>
-                      <SelectItem value="4x4">4x4 inches</SelectItem>
-                      <SelectItem value="2x1">2x1 inches</SelectItem>
+                      <SelectItem value="standard">Standard (57mm x 32mm)</SelectItem>
+                      <SelectItem value="large">Large (102mm x 152mm)</SelectItem>
+                      <SelectItem value="small">Small (25mm x 25mm)</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="darkness" className="text-right">
-                    Darkness
-                  </Label>
-                  <Input
-                    id="darkness"
-                    type="number"
-                    className="col-span-3"
-                    defaultValue={selectedPrinter.configuration.defaultDarkness}
-                    min="0"
-                    max="30"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="speed" className="text-right">
-                    Speed
-                  </Label>
-                  <Input
-                    id="speed"
-                    type="number"
-                    className="col-span-3"
-                    defaultValue={selectedPrinter.configuration.defaultSpeed}
-                    min="1"
-                    max="14"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="queue-size" className="text-right">
-                    Max Queue Size
-                  </Label>
-                  <Input
-                    id="queue-size"
-                    type="number"
-                    className="col-span-3"
-                    defaultValue={selectedPrinter.configuration.maxQueueSize}
-                    min="1"
-                    max="1000"
-                  />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setConfigDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Save Changes</Button>
+                <Button onClick={handleSaveEditPrinter}>Save Changes</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -608,6 +705,96 @@ export default function PrintersPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Advanced Settings Dialog */}
+        {selectedPrinter && (
+          <Dialog open={advancedSettingsOpen} onOpenChange={setAdvancedSettingsOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Advanced Printer Settings</DialogTitle>
+                <DialogDescription>
+                  Configure ZPL override settings for {selectedPrinter.name}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="override-settings">Override ZPL Settings</Label>
+                    <p className="text-sm text-muted-foreground">
+                      When enabled, the printer will override darkness and speed values in ZPL commands
+                    </p>
+                  </div>
+                  <Switch
+                    id="override-settings"
+                    checked={advancedSettings.overrideSettings}
+                    onCheckedChange={(checked) => 
+                      setAdvancedSettings({...advancedSettings, overrideSettings: checked})
+                    }
+                  />
+                </div>
+                
+                <div className={`space-y-4 ${!advancedSettings.overrideSettings ? 'opacity-50' : ''}`}>
+                  <div className="space-y-2">
+                    <Label htmlFor="darkness">
+                      Default Darkness: {advancedSettings.defaultDarkness}
+                    </Label>
+                    <input
+                      id="darkness"
+                      type="range"
+                      min="0"
+                      max="30"
+                      value={advancedSettings.defaultDarkness}
+                      onChange={(e) => 
+                        setAdvancedSettings({...advancedSettings, defaultDarkness: parseInt(e.target.value)})
+                      }
+                      disabled={!advancedSettings.overrideSettings}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Darkness level (0-30). Higher values produce darker prints.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="speed">
+                      Default Speed: {advancedSettings.defaultSpeed} inches/sec
+                    </Label>
+                    <input
+                      id="speed"
+                      type="range"
+                      min="2"
+                      max="12"
+                      value={advancedSettings.defaultSpeed}
+                      onChange={(e) => 
+                        setAdvancedSettings({...advancedSettings, defaultSpeed: parseInt(e.target.value)})
+                      }
+                      disabled={!advancedSettings.overrideSettings}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Print speed in inches per second (2-12). Lower speeds may improve quality.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-muted p-3">
+                  <p className="text-sm">
+                    <strong>Note:</strong> When override is enabled, these settings will replace any ^MD (darkness) 
+                    and ^PR (speed) commands in the ZPL data sent to this printer.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAdvancedSettingsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveAdvancedSettings}>
+                  Save Settings
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   )
