@@ -63,7 +63,7 @@ apt-get install -y \
     mosquitto-clients
 
 echo -e "${YELLOW}[4/13] Creating installation directory...${NC}"
-INSTALL_DIR="/opt/labelberry-admin"
+INSTALL_DIR="/opt/labelberry"
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}Installation directory already exists${NC}"
     read -p "Do you want to reinstall? This will backup your database (y/N): " -n 1 -r </dev/tty
@@ -87,16 +87,18 @@ git sparse-checkout init --cone
 git sparse-checkout set admin_server shared
 
 echo -e "${YELLOW}[6/13] Creating virtual environment...${NC}"
+cd admin_server
 python3 -m venv venv
 source venv/bin/activate
 
 echo -e "${YELLOW}[7/13] Installing Python packages...${NC}"
 pip install --upgrade pip
-pip install -r admin_server/requirements.txt
+pip install -r requirements_postgres.txt
 
 # Create __init__.py files for proper Python package structure
-touch admin_server/__init__.py
-touch admin_server/app/__init__.py
+touch __init__.py
+touch app/__init__.py
+cd ..
 touch shared/__init__.py
 
 echo -e "${YELLOW}[8/13] Creating directories...${NC}"
@@ -221,16 +223,17 @@ echo -e "${YELLOW}[11/13] Creating systemd service...${NC}"
 cat > /etc/systemd/system/labelberry-admin.service <<EOF
 [Unit]
 Description=LabelBerry Admin Server
-After=network.target
+After=network.target postgresql.service
+Requires=postgresql.service
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=$INSTALL_DIR
-Environment="PATH=$INSTALL_DIR/venv/bin"
-Environment="PYTHONPATH=$INSTALL_DIR"
+WorkingDirectory=$INSTALL_DIR/admin_server
+Environment="PATH=$INSTALL_DIR/admin_server/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONPATH=$INSTALL_DIR/admin_server"
 Environment="ENABLE_DOCS=false"
-ExecStart=$INSTALL_DIR/venv/bin/python -m uvicorn admin_server.app.main:app --host 0.0.0.0 --port $PORT
+ExecStart=$INSTALL_DIR/admin_server/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
 Restart=always
 RestartSec=10
 
