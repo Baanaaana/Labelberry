@@ -76,7 +76,7 @@ A modern, enterprise-grade label printing system for Zebra printers with central
 
 ```bash
 # Download and run the installer
-curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install-server.sh | bash
+curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install/install-server.sh | bash
 
 # The installer will:
 # 1. Install system dependencies (PostgreSQL, Mosquitto, Node.js)
@@ -98,7 +98,7 @@ After installation:
 
 ```bash
 # On each Raspberry Pi:
-curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install-pi.sh | bash
+curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install/install-pi.sh | bash
 
 # The installer will prompt for:
 # 1. Admin server URL (e.g., http://192.168.1.100:8080)
@@ -106,6 +106,58 @@ curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install-pi
 # 3. Printer device path (usually /dev/usb/lp0)
 
 # Note your Device ID and API Key after installation!
+```
+
+## 🛠️ Management Tools
+
+### Interactive Management Menu
+
+After installation, you can install the management menu for easier server administration:
+
+```bash
+# Install the menu system
+./install-menu.sh
+
+# After installation, use these commands:
+menu        # Open the management menu
+m           # Quick shortcut
+lb          # Alternative shortcut
+deploy      # Run deployment directly
+```
+
+The menu provides:
+- **Deployment & Build**: Git pull, build, dependency updates
+- **Service Management**: Start/stop/restart all services
+- **Logs & Monitoring**: Real-time log streaming, PM2 monitoring
+- **Database Access**: PostgreSQL console, configuration editing
+- **Utilities**: System info, disk usage, quick navigation
+
+### Deployment Script
+
+For automated deployments and updates:
+
+```bash
+# Run the deployment script
+./deploy.sh
+
+# This will:
+# - Pull latest code from git
+# - Install/update dependencies
+# - Build Next.js application
+# - Restart services with zero downtime
+# - Run health checks
+```
+
+### Uninstallation
+
+To completely remove LabelBerry:
+
+```bash
+# Uninstall server
+./install/uninstall-server.sh
+
+# Uninstall Pi client
+./install/uninstall-pi.sh
 ```
 
 ## 🔧 Configuration
@@ -425,10 +477,15 @@ LabelBerry/
 │   ├── models.py           # Data models
 │   └── mqtt_config.py      # MQTT topics
 │
-├── install-server.sh       # Server installer script
-├── install-pi.sh          # Pi client installer
-├── uninstall-server.sh    # Server uninstaller
-├── uninstall-pi.sh        # Pi uninstaller
+├── install/               # Installation scripts
+│   ├── install-server.sh  # Server installer
+│   ├── install-pi.sh      # Pi client installer
+│   ├── uninstall-server.sh # Server uninstaller
+│   └── uninstall-pi.sh    # Pi uninstaller
+│
+├── deploy.sh              # Deployment script
+├── menu.sh                # Management menu
+├── install-menu.sh        # Menu installer
 ├── API_DOCUMENTATION.md   # Complete API reference
 └── CLAUDE.md              # Development notes
 ```

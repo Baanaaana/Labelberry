@@ -7,7 +7,22 @@
 # persistent menu access and useful aliases
 
 # Load NVM first so it's available in the menu function
-export NVM_DIR="$HOME/.nvm"
+# Handle both root and regular user NVM installations
+if [ "$EUID" -eq 0 ]; then
+    # Running as root - check common NVM locations
+    if [ -s "/root/.nvm/nvm.sh" ]; then
+        export NVM_DIR="/root/.nvm"
+    elif [ -s "/home/$SUDO_USER/.nvm/nvm.sh" ] && [ ! -z "$SUDO_USER" ]; then
+        export NVM_DIR="/home/$SUDO_USER/.nvm"
+    elif [ -s "/opt/nvm/nvm.sh" ]; then
+        export NVM_DIR="/opt/nvm"
+    else
+        export NVM_DIR="$HOME/.nvm"
+    fi
+else
+    export NVM_DIR="$HOME/.nvm"
+fi
+
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
@@ -201,14 +216,22 @@ menu() {
         7)
             clear
             echo -e "${YELLOW}Restarting FastAPI backend...${NC}"
-            sudo systemctl restart labelberry-admin
+            if [ "$EUID" -eq 0 ]; then
+                systemctl restart labelberry-admin
+            else
+                sudo systemctl restart labelberry-admin
+            fi
             echo -e "${GREEN}FastAPI backend restarted!${NC}"
             prompt_next_action
             ;;
         8)
             clear
             echo -e "${YELLOW}Restarting MQTT broker...${NC}"
-            sudo systemctl restart mosquitto
+            if [ "$EUID" -eq 0 ]; then
+                systemctl restart mosquitto
+            else
+                sudo systemctl restart mosquitto
+            fi
             echo -e "${GREEN}MQTT broker restarted!${NC}"
             prompt_next_action
             ;;
@@ -216,16 +239,26 @@ menu() {
             clear
             echo -e "${YELLOW}Stopping all services...${NC}"
             pm2 stop $PM2_APP_NAME
-            sudo systemctl stop labelberry-admin
-            sudo systemctl stop mosquitto
+            if [ "$EUID" -eq 0 ]; then
+                systemctl stop labelberry-admin
+                systemctl stop mosquitto
+            else
+                sudo systemctl stop labelberry-admin
+                sudo systemctl stop mosquitto
+            fi
             echo -e "${GREEN}All services stopped!${NC}"
             prompt_next_action
             ;;
         a|A)
             clear
             echo -e "${YELLOW}Starting all services...${NC}"
-            sudo systemctl start mosquitto
-            sudo systemctl start labelberry-admin
+            if [ "$EUID" -eq 0 ]; then
+                systemctl start mosquitto
+                systemctl start labelberry-admin
+            else
+                sudo systemctl start mosquitto
+                sudo systemctl start labelberry-admin
+            fi
             pm2 start $PM2_APP_NAME
             echo -e "${GREEN}All services started!${NC}"
             prompt_next_action
@@ -241,14 +274,22 @@ menu() {
             clear
             echo -e "${YELLOW}Streaming FastAPI logs (Press Ctrl+C to stop)...${NC}"
             echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
-            sudo journalctl -u labelberry-admin -f
+            if [ "$EUID" -eq 0 ]; then
+                journalctl -u labelberry-admin -f
+            else
+                sudo journalctl -u labelberry-admin -f
+            fi
             prompt_next_action
             ;;
         d|D)
             clear
             echo -e "${YELLOW}Streaming MQTT logs (Press Ctrl+C to stop)...${NC}"
             echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
-            sudo journalctl -u mosquitto -f
+            if [ "$EUID" -eq 0 ]; then
+                journalctl -u mosquitto -f
+            else
+                sudo journalctl -u mosquitto -f
+            fi
             prompt_next_action
             ;;
         e|E)
@@ -262,7 +303,11 @@ menu() {
             clear
             echo -e "${YELLOW}Showing last 100 FastAPI log lines...${NC}"
             echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
-            sudo journalctl -u labelberry-admin -n 100
+            if [ "$EUID" -eq 0 ]; then
+                journalctl -u labelberry-admin -n 100
+            else
+                sudo journalctl -u labelberry-admin -n 100
+            fi
             prompt_next_action
             ;;
         g|G)
@@ -274,14 +319,22 @@ menu() {
         h|H)
             clear
             echo -e "${YELLOW}Opening PostgreSQL console (type \\q to exit)...${NC}"
-            sudo -u postgres psql labelberry
+            if [ "$EUID" -eq 0 ]; then
+                su - postgres -c "psql labelberry"
+            else
+                sudo -u postgres psql labelberry
+            fi
             prompt_next_action
             ;;
         i|I)
             clear
             echo -e "${YELLOW}Opening environment variables for editing...${NC}"
             if [ -f "/etc/labelberry/.env" ]; then
-                sudo nano /etc/labelberry/.env
+                if [ "$EUID" -eq 0 ]; then
+                    nano /etc/labelberry/.env
+                else
+                    sudo nano /etc/labelberry/.env
+                fi
             else
                 echo -e "${RED}.env file not found at /etc/labelberry/.env${NC}"
             fi
@@ -293,12 +346,20 @@ menu() {
             echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
             echo -e "${CYAN}Environment Variables:${NC}"
             if [ -f "/etc/labelberry/.env" ]; then
-                sudo grep -v "PASSWORD\|SECRET" /etc/labelberry/.env | head -20
+                if [ "$EUID" -eq 0 ]; then
+                    grep -v "PASSWORD\|SECRET" /etc/labelberry/.env | head -20
+                else
+                    sudo grep -v "PASSWORD\|SECRET" /etc/labelberry/.env | head -20
+                fi
             fi
             echo ""
             echo -e "${CYAN}Server Config:${NC}"
             if [ -f "/etc/labelberry/server.conf" ]; then
-                sudo cat /etc/labelberry/server.conf | head -20
+                if [ "$EUID" -eq 0 ]; then
+                    cat /etc/labelberry/server.conf | head -20
+                else
+                    sudo cat /etc/labelberry/server.conf | head -20
+                fi
             fi
             echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
             prompt_next_action
@@ -393,15 +454,27 @@ alias m='menu'
 alias lb='menu'
 alias labelberry='menu'
 alias logs-nextjs='pm2 logs labelberry-nextjs'
-alias logs-backend='sudo journalctl -u labelberry-admin -f'
-alias logs-mqtt='sudo journalctl -u mosquitto -f'
 alias status='pm2 status'
 alias restart-nextjs='pm2 restart labelberry-nextjs'
-alias restart-backend='sudo systemctl restart labelberry-admin'
 alias deploy='cd /opt/labelberry && bash deploy.sh'
 
+# Aliases that need sudo (check if running as root)
+if [ "$EUID" -eq 0 ]; then
+    alias logs-backend='journalctl -u labelberry-admin -f'
+    alias logs-mqtt='journalctl -u mosquitto -f'
+    alias restart-backend='systemctl restart labelberry-admin'
+else
+    alias logs-backend='sudo journalctl -u labelberry-admin -f'
+    alias logs-mqtt='sudo journalctl -u mosquitto -f'
+    alias restart-backend='sudo systemctl restart labelberry-admin'
+fi
+
 # Welcome message when sourced
-echo -e "${CYAN}Welcome to LabelBerry Server Management${NC}"
+if [ "$EUID" -eq 0 ]; then
+    echo -e "${CYAN}Welcome to LabelBerry Server Management ${YELLOW}(Running as root)${NC}"
+else
+    echo -e "${CYAN}Welcome to LabelBerry Server Management${NC}"
+fi
 echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
 echo -e "${GREEN}Quick commands:${NC}"
 echo -e "  ${WHITE}menu${NC} or ${WHITE}m${NC}      - Open management menu"
