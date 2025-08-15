@@ -189,8 +189,19 @@ export default function ApiDocsPage() {
             </div>
             <div className="flex items-center gap-2">
               <strong>Authentication:</strong>
-              <code className="text-sm bg-background px-2 py-1 rounded">API Key in request body</code>
+              <code className="text-sm bg-background px-2 py-1 rounded">Bearer token in Authorization header</code>
             </div>
+          </div>
+
+          {/* Authentication Example */}
+          <div className="rounded-lg bg-amber-50 dark:bg-amber-950 p-4 space-y-2">
+            <p className="text-sm font-medium">Authentication Example:</p>
+            <code className="text-xs bg-background px-2 py-1 rounded block">
+              Authorization: Bearer labk_your_api_key_here
+            </code>
+            <p className="text-xs text-muted-foreground mt-2">
+              Include this header in all authenticated requests. API keys start with "ak_" prefix.
+            </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -403,12 +414,33 @@ export default function ApiDocsPage() {
                 <div className="rounded-lg bg-muted p-4">
                   <pre className="text-xs">
 {`{
-  "api_key": "your-api-key",
-  "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello World^FS^XZ",
+  "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello World^FS^XZ"
   // OR
-  "zpl_url": "https://example.com/label.zpl",
-  "priority": 5  // Optional: 1-10, higher = more urgent
+  "zpl_url": "https://example.com/label.zpl"
 }`}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>cURL Example</Label>
+                <div className="rounded-lg bg-muted p-4">
+                  <pre className="text-xs overflow-x-auto">
+{`# Send a print job with raw ZPL
+curl -X POST http://your-server:8080/api/pis/YOUR_PI_ID/print \\
+  -H "Authorization: Bearer labk_your_api_key_here" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "zpl_raw": "^XA^FO50,50^ADN,36,20^FDHello World^FS^XZ"
+  }'
+
+# Send a print job from URL
+curl -X POST http://your-server:8080/api/pis/YOUR_PI_ID/print \\
+  -H "Authorization: Bearer labk_your_api_key_here" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "zpl_url": "https://example.com/label.zpl"
+  }'`}
                   </pre>
                 </div>
               </div>
@@ -426,6 +458,50 @@ export default function ApiDocsPage() {
     "queue_position": null
   }
 }`}
+                  </pre>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Direct Pi Printing */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Printer className="h-5 w-5" />
+                Direct Pi Printing (Local Network)
+              </CardTitle>
+              <CardDescription>
+                If you have direct network access to the Pi, you can send print jobs directly without authentication
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-4">
+                <p className="text-sm">
+                  <strong>Direct Access:</strong> Print directly to Pi at <code>http://pi-ip:5000/print</code> without authentication (local network only)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-blue-500">POST</Badge>
+                  <code className="text-sm">http://pi-ip:5000/print</code>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Send print jobs directly to a Pi on your local network
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>cURL Example (Direct to Pi)</Label>
+                <div className="rounded-lg bg-muted p-4">
+                  <pre className="text-xs overflow-x-auto">
+{`# Direct print to Pi (no authentication required)
+curl -X POST http://192.168.1.100:5000/print \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "zpl_raw": "^XA^FO50,50^FDDirect Print^FS^XZ"
+  }'`}
                   </pre>
                 </div>
               </div>

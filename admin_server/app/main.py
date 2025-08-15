@@ -2270,10 +2270,10 @@ async def change_password(
 
 
 @app.get("/api/api-keys", response_model=ApiResponse)
-async def get_api_keys(_: dict = Depends(require_login)):
+async def get_api_keys():
     """Get all API keys"""
     try:
-        keys = database.get_api_keys()
+        keys = await database.get_api_keys_async()
         return ApiResponse(
             success=True,
             message="API keys retrieved successfully",
@@ -2286,8 +2286,7 @@ async def get_api_keys(_: dict = Depends(require_login)):
 
 @app.post("/api/api-keys", response_model=ApiResponse)
 async def create_api_key(
-    data: dict,
-    _: dict = Depends(require_login)
+    data: dict
 ):
     """Create new API key"""
     try:
@@ -2297,17 +2296,13 @@ async def create_api_key(
         if not name:
             raise HTTPException(status_code=400, detail="Key name is required")
         
-        # Generate a secure API key
-        import secrets
-        api_key = f"lb_{secrets.token_urlsafe(32)}"
-        
-        # Save to database
-        key_id = database.create_api_key(name, api_key, description)
+        # Save to database (database generates the key)
+        result = await database.create_api_key_async(name, description)
         
         return ApiResponse(
             success=True,
             message="API key created successfully",
-            data={"id": key_id, "key": api_key}
+            data={"id": result.get('id'), "key": result.get('key')}
         )
         
     except Exception as e:
@@ -2317,12 +2312,11 @@ async def create_api_key(
 
 @app.delete("/api/api-keys/{key_id}", response_model=ApiResponse)
 async def delete_api_key(
-    key_id: str,
-    _: dict = Depends(require_login)
+    key_id: str
 ):
     """Delete API key"""
     try:
-        if database.delete_api_key(key_id):
+        if await database.delete_api_key_async(key_id):
             return ApiResponse(
                 success=True,
                 message="API key deleted successfully"

@@ -420,12 +420,13 @@ class PostgresDatabase:
         async with pool.acquire() as conn:
             key_id = str(uuid.uuid4())
             key = f"ak_{uuid.uuid4().hex[:20]}"
+            now = datetime.now()
             
             row = await conn.fetchrow("""
-                INSERT INTO api_keys (id, name, key, description, created_at)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO api_keys (id, name, key, description, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING *
-            """, key_id, name, key, description, datetime.now())
+            """, key_id, name, key, description, now, now)
             
             return dict(row)
     
@@ -450,6 +451,13 @@ class PostgresDatabase:
             # Check if key exists
             row = await conn.fetchrow("SELECT * FROM api_keys WHERE key = $1", key)
             return row is not None
+    
+    async def delete_api_key(self, key_id: str) -> bool:
+        """Delete an API key"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            result = await conn.execute("DELETE FROM api_keys WHERE id = $1", key_id)
+            return result.split()[-1] != '0' if result else False
     
     # Label Size Management
     async def get_label_sizes(self) -> List[Dict[str, Any]]:

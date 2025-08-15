@@ -456,8 +456,14 @@ class DatabaseWrapper:
     def delete_api_key(self, key_id: str) -> bool:
         """Delete an API key"""
         if self.is_postgres:
-            # PostgreSQL version doesn't have delete_api_key yet
-            return False
+            return self._run_async(self.db.delete_api_key(key_id))
+        else:
+            return self.db.delete_api_key(key_id)
+    
+    async def delete_api_key_async(self, key_id: str) -> bool:
+        """Delete an API key (async)"""
+        if self.is_postgres:
+            return await self.db.delete_api_key(key_id)
         else:
             return self.db.delete_api_key(key_id)
     
@@ -599,12 +605,14 @@ class DatabaseWrapper:
                 """)
                 
                 # Get average print time from completed jobs (in milliseconds)
+                # Exclude test prints by filtering out jobs with 'test' in the source
                 avg_print_time = await conn.fetchval("""
                     SELECT AVG(EXTRACT(EPOCH FROM (completed_at - created_at)) * 1000)
                     FROM print_jobs 
                     WHERE status = 'completed' 
                     AND completed_at IS NOT NULL
                     AND created_at > NOW() - INTERVAL '24 hours'
+                    AND (zpl_source NOT LIKE '%test%' OR zpl_source IS NULL)
                 """) or 0
                 
                 # Get current queue length (pending jobs)

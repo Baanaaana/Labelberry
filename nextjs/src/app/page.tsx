@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import {
@@ -31,8 +30,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Plus, Settings, Trash2, TestTube, RefreshCw, Copy, CheckCircle } from "lucide-react"
+import { Plus, Settings, Trash2, TestTube, RefreshCw, Copy, CheckCircle, Printer, Activity, Clock, AlertCircle } from "lucide-react"
 import { useState, useEffect } from "react"
+
+interface DashboardStats {
+  totalPrinters: number
+  onlinePrinters: number
+  totalJobsToday: number
+  failedJobsToday: number
+  avgPrintTime: number
+  queueLength: number
+}
 
 interface PrinterDetails {
   id: string
@@ -48,8 +56,6 @@ interface PrinterDetails {
   configuration: {
     printerDevice: string
     labelSize: string
-    defaultDarkness: number
-    defaultSpeed: number
     autoReconnect: boolean
     maxQueueSize: number
   }
@@ -63,6 +69,14 @@ interface PrinterDetails {
 
 export default function PrintersPage() {
   const [printers, setPrinters] = useState<PrinterDetails[]>([])
+  const [stats, setStats] = useState<DashboardStats>({
+    totalPrinters: 0,
+    onlinePrinters: 0,
+    totalJobsToday: 0,
+    failedJobsToday: 0,
+    avgPrintTime: 0,
+    queueLength: 0
+  })
   const [serverIp, setServerIp] = useState<string>('')
   const [copied, setCopied] = useState(false)
 
@@ -85,9 +99,18 @@ export default function PrintersPage() {
 
   const fetchPrinters = async () => {
     try {
+      // Fetch printers
       const response = await fetch('/api/pis')
       const result = await response.json()
       const data = result.data?.pis || []
+      
+      // Fetch dashboard stats separately
+      const statsResponse = await fetch('/api/dashboard-stats')
+      let dashboardStats = null
+      if (statsResponse.ok) {
+        const statsResult = await statsResponse.json()
+        dashboardStats = statsResult.data
+      }
       
       const formattedPrinters = data.map((printer: {
         id: string
@@ -135,6 +158,32 @@ export default function PrintersPage() {
       }))
       
       setPrinters(formattedPrinters)
+      
+      // Use dashboard stats if available, otherwise calculate from printer data
+      if (dashboardStats) {
+        setStats({
+          totalPrinters: dashboardStats.totalPrinters || formattedPrinters.length,
+          onlinePrinters: dashboardStats.onlinePrinters || formattedPrinters.filter((p: PrinterDetails) => p.status === "online").length,
+          totalJobsToday: dashboardStats.totalJobsToday || 0,
+          failedJobsToday: dashboardStats.failedJobsToday || 0,
+          avgPrintTime: dashboardStats.avgPrintTime || 0,
+          queueLength: dashboardStats.queueLength || 0
+        })
+      } else {
+        // Fallback to calculating from printer data
+        const onlinePrinters = formattedPrinters.filter((p: PrinterDetails) => p.status === "online").length
+        const totalJobsToday = formattedPrinters.reduce((acc: number, p: PrinterDetails) => acc + (p.metrics?.jobsToday || 0), 0)
+        const failedJobsToday = formattedPrinters.reduce((acc: number, p: PrinterDetails) => acc + (p.metrics?.failedJobs || 0), 0)
+        
+        setStats({
+          totalPrinters: formattedPrinters.length,
+          onlinePrinters,
+          totalJobsToday,
+          failedJobsToday,
+          avgPrintTime: 0,
+          queueLength: 0
+        })
+      }
     } catch (error) {
       console.error('Failed to fetch printers:', error)
     }
@@ -452,6 +501,63 @@ export default function PrintersPage() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
+
+      {/* Metrics Section */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Printers</CardTitle>
+            <Printer className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalPrinters}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.onlinePrinters} online
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Jobs Today</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalJobsToday}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.failedJobsToday} failed
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Print Time</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.avgPrintTime > 0 ? `${(stats.avgPrintTime / 1000).toFixed(1)}s` : '-'}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Per label
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Queue Length</CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.queueLength}</div>
+            <p className="text-xs text-muted-foreground">
+              Pending jobs
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>

@@ -124,22 +124,50 @@ export default function ApiKeysPage() {
     setKeyToDelete(null)
   }
 
-  const createApiKey = () => {
-    const newKey: ApiKey = {
-      id: Date.now().toString(),
-      name: newKeyData.name,
-      key: `ak_${Math.random().toString(36).substring(2, 15)}`,
-      description: newKeyData.description,
-      lastUsed: null,
-      createdAt: new Date().toISOString()
+  const createApiKey = async () => {
+    try {
+      const response = await fetch('/api/api-keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newKeyData.name,
+          description: newKeyData.description
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        
+        // Create the new key object from the response
+        const newKey: ApiKey = {
+          id: result.data?.id || Date.now().toString(),
+          name: newKeyData.name,
+          key: result.data?.key || `ak_${Math.random().toString(36).substring(2, 15)}`,
+          description: newKeyData.description,
+          lastUsed: null,
+          createdAt: new Date().toISOString()
+        }
+        
+        // Add to local state
+        setApiKeys(prev => [...prev, newKey])
+        
+        // Close dialog and reset form
+        setNewKeyDialog(false)
+        setNewKeyData({
+          name: "",
+          description: ""
+        })
+        
+        // Refresh the list to ensure consistency
+        fetchApiKeys()
+      } else {
+        console.error('Failed to create API key')
+      }
+    } catch (error) {
+      console.error('Failed to create API key:', error)
     }
-    
-    setApiKeys(prev => [...prev, newKey])
-    setNewKeyDialog(false)
-    setNewKeyData({
-      name: "",
-      description: ""
-    })
   }
 
 

@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  Home,
   Printer,
   Settings,
   List,
@@ -36,13 +35,8 @@ import { useState, useEffect } from "react"
 
 const menuItems = [
   {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: Home,
-  },
-  {
     title: "Printers",
-    url: "/printers",
+    url: "/",
     icon: Printer,
   },
   {
