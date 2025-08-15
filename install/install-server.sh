@@ -6,7 +6,7 @@
 
 set -e
 
-SCRIPT_VERSION="1.0.7"
+SCRIPT_VERSION="1.0.8"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -25,7 +25,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}[1/13] Checking system requirements...${NC}"
+echo -e "${YELLOW}[1/12] Checking system requirements...${NC}"
 if ! lsb_release -d | grep -q "Ubuntu"; then
     echo -e "${YELLOW}Warning: This doesn't appear to be Ubuntu${NC}"
     read -p "Do you want to continue anyway? (y/N): " -n 1 -r </dev/tty
@@ -35,7 +35,7 @@ if ! lsb_release -d | grep -q "Ubuntu"; then
     fi
 fi
 
-echo -e "${YELLOW}[2/13] Checking Python version...${NC}"
+echo -e "${YELLOW}[2/12] Checking Python version...${NC}"
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}Python 3 is not installed${NC}"
     exit 1
@@ -49,7 +49,7 @@ if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1
 fi
 echo -e "${GREEN}Python $PYTHON_VERSION found${NC}"
 
-echo -e "${YELLOW}[3/13] Installing system dependencies...${NC}"
+echo -e "${YELLOW}[3/12] Installing system dependencies...${NC}"
 apt-get update
 apt-get install -y \
     python3-pip \
@@ -62,7 +62,7 @@ apt-get install -y \
     mosquitto \
     mosquitto-clients
 
-echo -e "${YELLOW}[4/13] Creating installation directory...${NC}"
+echo -e "${YELLOW}[4/12] Creating installation directory...${NC}"
 INSTALL_DIR="/opt/labelberry"
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}Installation directory already exists${NC}"
@@ -80,18 +80,18 @@ if [ -d "$INSTALL_DIR" ]; then
 fi
 mkdir -p "$INSTALL_DIR"
 
-echo -e "${YELLOW}[5/13] Cloning repository...${NC}"
+echo -e "${YELLOW}[5/12] Cloning repository...${NC}"
 cd "$INSTALL_DIR"
-git clone --sparse https://github.com/Baanaaana/LabelBerry.git .
+git clone --sparse https://github.com/Baanaaana/labelberry.git .
 git sparse-checkout init --cone
-git sparse-checkout set admin_server shared
+git sparse-checkout set admin_server shared install
 
-echo -e "${YELLOW}[6/13] Creating virtual environment...${NC}"
+echo -e "${YELLOW}[6/12] Creating virtual environment...${NC}"
 cd admin_server
 python3 -m venv venv
 source venv/bin/activate
 
-echo -e "${YELLOW}[7/13] Installing Python packages...${NC}"
+echo -e "${YELLOW}[7/12] Installing Python packages...${NC}"
 pip install --upgrade pip
 pip install -r requirements_postgres.txt
 
@@ -101,12 +101,12 @@ touch app/__init__.py
 cd ..
 touch shared/__init__.py
 
-echo -e "${YELLOW}[8/13] Creating directories...${NC}"
+echo -e "${YELLOW}[8/12] Creating directories...${NC}"
 mkdir -p /etc/labelberry
 mkdir -p /var/lib/labelberry
 mkdir -p /var/log/labelberry
 
-echo -e "${YELLOW}[9/13] Configuring MQTT connection...${NC}"
+echo -e "${YELLOW}[9/12] Configuring MQTT connection...${NC}"
 
 # Check if we have existing MQTT configuration
 EXISTING_MQTT_CONFIG=false
@@ -181,7 +181,7 @@ EOF
     fi
 fi
 
-echo -e "${YELLOW}[10/13] Creating configuration...${NC}"
+echo -e "${YELLOW}[10/12] Creating configuration...${NC}"
 if [ ! -f "/etc/labelberry/server.conf" ]; then
     read -p "Enter the port for the admin server (default 8080): " PORT </dev/tty
     PORT=${PORT:-8080}
@@ -219,7 +219,7 @@ EOF
 
 echo -e "${GREEN}Configuration created/updated with MQTT settings${NC}"
 
-echo -e "${YELLOW}[11/13] Creating systemd service...${NC}"
+echo -e "${YELLOW}[11/12] Creating systemd service...${NC}"
 cat > /etc/systemd/system/labelberry-admin.service <<EOF
 [Unit]
 Description=LabelBerry Admin Server
@@ -244,7 +244,7 @@ EOF
 systemctl daemon-reload
 systemctl enable labelberry-admin.service
 
-echo -e "${YELLOW}[12/13] Checking service status...${NC}"
+echo -e "${YELLOW}[12/12] Checking service status...${NC}"
 
 # Check if service is already running
 if systemctl is-active --quiet labelberry-admin.service; then
@@ -262,13 +262,11 @@ SERVER_IP=$(hostname -I | awk '{print $1}')
 PORT=${PORT:-8080}
 
 echo ""
-echo -e "${YELLOW}[13/13] Finalizing installation...${NC}"
-
 echo -e "${GREEN}===============================================${NC}"
-echo -e "${GREEN}    Installation Complete!                     ${NC}"
+echo -e "${GREEN}    Backend Installation Complete!             ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
-echo -e "${YELLOW}Access the dashboard at:${NC}"
+echo -e "${YELLOW}API Server running at:${NC}"
 echo "   http://${SERVER_IP}:${PORT}"
 echo ""
 echo -e "${YELLOW}MQTT Configuration:${NC}"
@@ -284,8 +282,9 @@ echo -e "${YELLOW}View Logs:${NC}"
 echo "   sudo journalctl -u labelberry-admin -f"
 echo ""
 echo -e "${YELLOW}Note:${NC}"
-echo "   For domain/SSL setup, use Nginx Proxy Manager or similar"
-echo "   The service is running directly on port $PORT"
+echo "   This installs the backend API server only."
+echo "   To deploy the web interface, run ./deploy.sh next."
+echo "   For domain/SSL setup, use Nginx Proxy Manager or similar."
 echo ""
 
 if [ "$SERVICE_ACTION" = "restart" ]; then
@@ -296,7 +295,8 @@ fi
 echo
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     systemctl $SERVICE_ACTION labelberry-admin
-    echo -e "${GREEN}Service ${SERVICE_ACTION}ed!${NC}"
+    echo -e "${GREEN}Backend service ${SERVICE_ACTION}ed!${NC}"
     SERVER_IP=$(hostname -I | awk '{print $1}')
-    echo -e "${YELLOW}Access the admin interface at: http://${SERVER_IP}:${PORT}${NC}"
+    echo -e "${YELLOW}API server running at: http://${SERVER_IP}:${PORT}${NC}"
+    echo -e "${YELLOW}Run ./deploy.sh to install the web interface${NC}"
 fi

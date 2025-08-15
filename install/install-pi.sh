@@ -225,7 +225,7 @@ mkdir -p "$INSTALL_DIR"
 
 echo -e "${YELLOW}[6/11] Cloning repository...${NC}"
 cd "$INSTALL_DIR"
-git clone --sparse https://github.com/Baanaaana/LabelBerry.git .
+git clone --sparse https://github.com/Baanaaana/labelberry.git .
 git sparse-checkout init --cone
 git sparse-checkout set pi_client shared
 
