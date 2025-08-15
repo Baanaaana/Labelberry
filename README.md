@@ -240,7 +240,10 @@ Websockets Support: Disabled
 Location: /api
 Forward to: http://localhost:8080
 Websockets Support: ✓ Enabled (Required for real-time updates)
+Custom locations (Advanced): Keep the path unchanged
 ```
+
+**Important**: In Nginx Proxy Manager, ensure the `/api` location forwards the **full path** to the backend. The backend expects routes like `/api/mqtt-settings`, not just `/mqtt-settings`.
 
 #### Update Environment Variables:
 

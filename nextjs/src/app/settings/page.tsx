@@ -23,7 +23,8 @@ export default function SettingsPage() {
 
   const fetchMqttSettings = async () => {
     try {
-      const response = await fetch('/api/mqtt-settings')
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+      const response = await fetch(`${apiUrl}/mqtt-settings`)
       if (response.ok) {
         const result = await response.json()
         if (result.success && result.data) {
@@ -54,7 +55,8 @@ export default function SettingsPage() {
         (settingsToSave as Record<string, string | number>).mqtt_password = mqttSettings.mqtt_password
       }
       
-      const response = await fetch('/api/mqtt-settings', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+      const response = await fetch(`${apiUrl}/mqtt-settings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
