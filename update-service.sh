@@ -30,8 +30,7 @@ echo -e "${YELLOW}Updating systemd service configuration...${NC}"
 cat > /etc/systemd/system/labelberry-admin.service <<EOF
 [Unit]
 Description=LabelBerry Admin Server
-After=network.target postgresql.service
-Requires=postgresql.service
+After=network.target
 
 [Service]
 Type=simple
