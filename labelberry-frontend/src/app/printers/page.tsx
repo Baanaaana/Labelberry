@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Plus, Settings, Trash2, TestTube, RefreshCw, Copy, CheckCircle, Wrench } from "lucide-react"
+import { Plus, Settings, Trash2, TestTube, RefreshCw, Copy, CheckCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 
 interface PrinterDetails {
@@ -52,7 +52,6 @@ interface PrinterDetails {
     defaultSpeed: number
     autoReconnect: boolean
     maxQueueSize: number
-    overrideSettings?: boolean
   }
   metrics: {
     jobsToday: number
@@ -72,12 +71,6 @@ export default function PrintersPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [printerToDelete, setPrinterToDelete] = useState<{ id: string; name: string } | null>(null)
-  const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false)
-  const [advancedSettings, setAdvancedSettings] = useState({
-    defaultDarkness: 15,
-    defaultSpeed: 4,
-    overrideSettings: false
-  })
   const [newPrinter, setNewPrinter] = useState({
     name: '',
     deviceId: '',
@@ -108,11 +101,8 @@ export default function PrintersPage() {
         device_name?: string
         location?: string
         label_size?: string
-        default_darkness?: number
-        default_speed?: number
         auto_reconnect?: boolean
         max_queue_size?: number
-        override_settings?: boolean
         metrics?: {
           jobsToday: number
           failedJobs: number
@@ -133,11 +123,8 @@ export default function PrintersPage() {
         configuration: {
           printerDevice: printer.printer_device || "/dev/usb/lp0",
           labelSize: printer.label_size || "4x6",
-          defaultDarkness: printer.default_darkness || 15,
-          defaultSpeed: printer.default_speed || 4,
           autoReconnect: printer.auto_reconnect !== undefined ? printer.auto_reconnect : true,
           maxQueueSize: printer.max_queue_size || 100,
-          overrideSettings: printer.override_settings || false
         },
         metrics: printer.metrics || {
           jobsToday: 0,
@@ -323,46 +310,6 @@ export default function PrintersPage() {
     setConfigDialogOpen(true)
   }
 
-  const handleAdvancedSettings = (printer: PrinterDetails) => {
-    setSelectedPrinter(printer)
-    setAdvancedSettings({
-      defaultDarkness: printer.configuration.defaultDarkness,
-      defaultSpeed: printer.configuration.defaultSpeed,
-      overrideSettings: printer.configuration.overrideSettings || false
-    })
-    setAdvancedSettingsOpen(true)
-  }
-
-  const handleSaveAdvancedSettings = async () => {
-    if (!selectedPrinter) return
-    
-    try {
-      const response = await fetch(`/api/pis/${selectedPrinter.id}/config`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          default_darkness: advancedSettings.defaultDarkness,
-          default_speed: advancedSettings.defaultSpeed,
-          override_settings: advancedSettings.overrideSettings
-        })
-      })
-      
-      if (response.ok) {
-        setAdvancedSettingsOpen(false)
-        setSelectedPrinter(null)
-        toast.success('Printer settings updated successfully')
-        await fetchPrinters()
-      } else {
-        const error = await response.json().catch(() => null)
-        toast.error(`Failed to update settings: ${error?.detail || response.statusText}`)
-      }
-    } catch (error) {
-      console.error('Failed to update printer settings:', error)
-      toast.error('Failed to update printer settings')
-    }
-  }
 
   const handleSaveEditPrinter = async () => {
     if (!selectedPrinter) return
@@ -591,14 +538,6 @@ export default function PrintersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleAdvancedSettings(printer)}
-                          title="Advanced Settings"
-                        >
-                          <Wrench className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
                           onClick={() => handleTestPrint(printer.id)}
                           title="Test Print"
                         >
@@ -706,95 +645,6 @@ export default function PrintersPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Advanced Settings Dialog */}
-        {selectedPrinter && (
-          <Dialog open={advancedSettingsOpen} onOpenChange={setAdvancedSettingsOpen}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Advanced Printer Settings</DialogTitle>
-                <DialogDescription>
-                  Configure ZPL override settings for {selectedPrinter.name}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="flex items-center justify-between space-x-2">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="override-settings">Override ZPL Settings</Label>
-                    <p className="text-sm text-muted-foreground">
-                      When enabled, the printer will override darkness and speed values in ZPL commands
-                    </p>
-                  </div>
-                  <Switch
-                    id="override-settings"
-                    checked={advancedSettings.overrideSettings}
-                    onCheckedChange={(checked) => 
-                      setAdvancedSettings({...advancedSettings, overrideSettings: checked})
-                    }
-                  />
-                </div>
-                
-                <div className={`space-y-4 ${!advancedSettings.overrideSettings ? 'opacity-50' : ''}`}>
-                  <div className="space-y-2">
-                    <Label htmlFor="darkness">
-                      Default Darkness: {advancedSettings.defaultDarkness}
-                    </Label>
-                    <input
-                      id="darkness"
-                      type="range"
-                      min="0"
-                      max="30"
-                      value={advancedSettings.defaultDarkness}
-                      onChange={(e) => 
-                        setAdvancedSettings({...advancedSettings, defaultDarkness: parseInt(e.target.value)})
-                      }
-                      disabled={!advancedSettings.overrideSettings}
-                      className="w-full"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Darkness level (0-30). Higher values produce darker prints.
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="speed">
-                      Default Speed: {advancedSettings.defaultSpeed} inches/sec
-                    </Label>
-                    <input
-                      id="speed"
-                      type="range"
-                      min="2"
-                      max="12"
-                      value={advancedSettings.defaultSpeed}
-                      onChange={(e) => 
-                        setAdvancedSettings({...advancedSettings, defaultSpeed: parseInt(e.target.value)})
-                      }
-                      disabled={!advancedSettings.overrideSettings}
-                      className="w-full"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Print speed in inches per second (2-12). Lower speeds may improve quality.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-lg bg-muted p-3">
-                  <p className="text-sm">
-                    <strong>Note:</strong> When override is enabled, these settings will replace any ^MD (darkness) 
-                    and ^PR (speed) commands in the ZPL data sent to this printer.
-                  </p>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAdvancedSettingsOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveAdvancedSettings}>
-                  Save Settings
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
       </div>
     </div>
   )

@@ -78,12 +78,12 @@ class PostgresDatabase:
                 # Create default configuration
                 await conn.execute("""
                     INSERT INTO configurations (id, pi_id, printer_device, label_size, 
-                        default_darkness, default_speed, auto_reconnect, max_queue_size, 
+                        auto_reconnect, max_queue_size, 
                         retry_attempts, retry_delay, created_at, updated_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                     ON CONFLICT (pi_id) DO NOTHING
                 """, str(uuid.uuid4()), pi['id'], '/dev/usb/lp0', '4x6', 
-                    15, 4, True, 100, 3, 5, 
+                    True, 100, 3, 5, 
                     datetime.now(), datetime.now())
                 
                 return dict(pi)
@@ -101,8 +101,8 @@ class PostgresDatabase:
                     p.status, p.last_seen, p.created_at, p.updated_at, p.printer_model,
                     p.device_name, p.location, p.label_size,
                     c.id as config_id, c.pi_id, c.printer_device,
-                    c.default_darkness, c.default_speed, c.auto_reconnect, 
-                    c.max_queue_size, c.retry_attempts, c.retry_delay, c.override_settings
+                    c.auto_reconnect, 
+                    c.max_queue_size, c.retry_attempts, c.retry_delay
                 FROM pis p
                 LEFT JOIN configurations c ON p.id = c.pi_id
                 ORDER BY p.friendly_name
@@ -122,8 +122,8 @@ class PostgresDatabase:
                     p.status, p.last_seen, p.created_at, p.updated_at, p.printer_model,
                     p.device_name, p.location, p.label_size,
                     c.id as config_id, c.pi_id, c.printer_device,
-                    c.default_darkness, c.default_speed, c.auto_reconnect, 
-                    c.max_queue_size, c.retry_attempts, c.retry_delay, c.override_settings
+                    c.auto_reconnect, 
+                    c.max_queue_size, c.retry_attempts, c.retry_delay
                 FROM pis p
                 LEFT JOIN configurations c ON p.id = c.pi_id
                 WHERE p.id = $1 OR p.device_id = $1
@@ -185,9 +185,8 @@ class PostgresDatabase:
             param_count = 1
             
             for key, value in config.items():
-                if key in ['printer_device', 'default_darkness', 
-                          'default_speed', 'auto_reconnect', 'max_queue_size', 
-                          'retry_attempts', 'retry_delay', 'override_settings']:
+                if key in ['printer_device', 'auto_reconnect', 'max_queue_size', 
+                          'retry_attempts', 'retry_delay']:
                     update_fields.append(f"{key} = ${param_count}")
                     values.append(value)
                     param_count += 1

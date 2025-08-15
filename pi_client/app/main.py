@@ -35,14 +35,7 @@ logger = logging.getLogger(__name__)
 config_manager = ConfigManager()
 config = config_manager.get_config()
 
-# Store printer configuration globally
-printer_config = {
-    'override_settings': False,
-    'default_darkness': 15,
-    'default_speed': 4
-}
-
-printer = ZebraPrinter(config.printer_device, config=printer_config)
+printer = ZebraPrinter(config.printer_device)
 print_queue = PrintQueue(max_size=config.queue_size)
 monitoring = MonitoringService(config.device_id)
 mqtt_client = MQTTClient(config)
@@ -133,8 +126,7 @@ async def process_print_job(job: PrintJob) -> bool:
                 logger.info("Printer reconnected successfully")
         
         logger.info(f"Sending ZPL to printer for job {job.id}, content length: {len(zpl_content)}")
-        # Use send_to_printer to apply overrides if configured
-        success = printer.send_to_printer(zpl_content)
+        success = printer.print_zpl(zpl_content)
         logger.info(f"Printer returned {'success' if success else 'failure'} for job {job.id}")
         
         if success:
@@ -176,24 +168,11 @@ async def handle_ping(data: Dict[str, Any]):
 
 
 async def handle_config_update(data: Dict[str, Any]):
-    global printer_config, printer
     logger.info(f"Received config update: {data}")
     
-    # Update printer-specific configuration
-    if 'override_settings' in data:
-        printer_config['override_settings'] = data['override_settings']
-    if 'default_darkness' in data:
-        printer_config['default_darkness'] = data['default_darkness']
-    if 'default_speed' in data:
-        printer_config['default_speed'] = data['default_speed']
-    
-    # Update printer instance with new config
-    printer.config = printer_config
-    logger.info(f"Updated printer config: override={printer_config.get('override_settings')}, darkness={printer_config.get('default_darkness')}, speed={printer_config.get('default_speed')}")
-    
-    # Update other config values
+    # Update config values
     for key, value in data.items():
-        if hasattr(config, key) and key not in ['override_settings', 'default_darkness', 'default_speed']:
+        if hasattr(config, key):
             config_manager.update_config(key, value)
 
 
