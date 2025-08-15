@@ -120,10 +120,18 @@ curl http://localhost:3000          # Frontend check
 ```
 
 #### Access Points After Installation:
+
+**Without Nginx (Direct Access):**
 - **Web Interface**: `http://your-server-ip:3000`
 - **API Endpoint**: `http://your-server-ip:8080`
 - **MQTT Broker**: `your-server-ip:1883`
-- **Default Credentials**: Update in Settings → API Keys
+
+**With Nginx Proxy Manager (Recommended):**
+- **Web Interface**: `https://labelberry.yourdomain.com`
+- **API Endpoint**: `https://labelberry.yourdomain.com/api`
+- **MQTT Broker**: `your-server-ip:1883` (direct connection)
+
+See the [Nginx Proxy Manager Setup](#nginx-proxy-manager-setup-recommended) section for configuration details.
 
 #### Step 4: Future Updates and Deployments
 
@@ -214,6 +222,51 @@ To completely remove LabelBerry:
 ```
 
 ## 🔧 Configuration
+
+### Nginx Proxy Manager Setup (Recommended)
+
+For production deployments using Nginx Proxy Manager with path-based routing:
+
+#### Create Proxy Host:
+1. **Domain**: `labelberry.yourdomain.com`
+2. **SSL Certificate**: Enable Let's Encrypt
+3. **Locations**:
+
+```nginx
+Location: /
+Forward to: http://localhost:3000
+Websockets Support: Disabled
+
+Location: /api
+Forward to: http://localhost:8080
+Websockets Support: ✓ Enabled (Required for real-time updates)
+```
+
+#### Update Environment Variables:
+
+**Next.js** (`/opt/labelberry/nextjs/.env`):
+```env
+NEXTAUTH_URL="https://labelberry.yourdomain.com"
+NEXT_PUBLIC_API_URL="https://labelberry.yourdomain.com/api"
+NEXT_PUBLIC_WS_URL="wss://labelberry.yourdomain.com/api"
+```
+
+**FastAPI** (`/opt/labelberry/admin_server/.env`):
+```env
+# No changes needed - keeps using localhost
+MQTT_HOST=localhost
+MQTT_PORT=1883
+```
+
+#### Required Ports:
+- **80/443**: HTTP/HTTPS (handled by Nginx)
+- **1883**: MQTT broker (direct connection for Raspberry Pi clients)
+
+After configuration changes, restart services:
+```bash
+cd /opt/labelberry
+./deploy.sh
+```
 
 ### Environment Variables (Admin Server)
 

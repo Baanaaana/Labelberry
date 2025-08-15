@@ -220,9 +220,13 @@ export default function PrintersPage() {
   }
 
   const copyServerUrl = () => {
+    // Use the API URL from environment variable
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
     const url = serverIp === 'YOUR_SERVER_IP' 
-      ? 'http://YOUR_SERVER_IP:8080' 
-      : `http://${serverIp}:8080`
+      ? apiUrl.replace('localhost', 'YOUR_SERVER_IP')
+      : apiUrl.includes('localhost') 
+        ? apiUrl.replace('localhost', serverIp)
+        : apiUrl
     navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -570,9 +574,15 @@ export default function PrintersPage() {
         <CardContent>
           <div className="flex items-center space-x-2">
             <code className="flex-1 px-3 py-2 bg-muted rounded-md font-mono text-sm">
-              {serverIp === 'YOUR_SERVER_IP' 
-                ? 'http://YOUR_SERVER_IP:8080' 
-                : `http://${serverIp}:8080`}
+              {(() => {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+                if (serverIp === 'YOUR_SERVER_IP') {
+                  return apiUrl.replace('localhost', 'YOUR_SERVER_IP')
+                }
+                return apiUrl.includes('localhost') 
+                  ? apiUrl.replace('localhost', serverIp)
+                  : apiUrl
+              })()}
             </code>
             <Button
               variant="outline"
