@@ -137,20 +137,28 @@ labelberry() {
     elif [ "$INSTALLED" = "server" ]; then
         echo -e "${GREEN}● Admin Server Installed${NC}"
         echo ""
-        echo -e "${YELLOW}Service Management:${NC}"
-        echo -e "${CYAN}1)${NC} View service status"
-        echo -e "${CYAN}2)${NC} View logs (live)"
-        echo -e "${CYAN}3)${NC} Restart service"
-        echo -e "${CYAN}4)${NC} Stop service"
-        echo -e "${CYAN}5)${NC} Start service"
+        echo -e "${YELLOW}Backend Service (API):${NC}"
+        echo -e "${CYAN}1)${NC} View backend status"
+        echo -e "${CYAN}2)${NC} View backend logs (live)"
+        echo -e "${CYAN}3)${NC} Restart backend"
+        echo ""
+        echo -e "${YELLOW}Frontend Service (Next.js):${NC}"
+        echo -e "${CYAN}4)${NC} View frontend status (PM2)"
+        echo -e "${CYAN}5)${NC} View frontend logs (PM2)"
+        echo -e "${CYAN}6)${NC} Restart frontend (PM2)"
+        echo ""
+        echo -e "${YELLOW}All Services:${NC}"
+        echo -e "${CYAN}7)${NC} Restart all services"
+        echo -e "${CYAN}8)${NC} Stop all services"
+        echo -e "${CYAN}9)${NC} Start all services"
         echo ""
         echo -e "${YELLOW}Installation:${NC}"
-        echo -e "${CYAN}6)${NC} Update Admin Server (reinstall)"
-        echo -e "${CYAN}7)${NC} Uninstall Admin Server"
+        echo -e "${CYAN}10)${NC} Update Admin Server (reinstall)"
+        echo -e "${CYAN}11)${NC} Uninstall Admin Server"
         echo ""
         echo -e "${YELLOW}Configuration:${NC}"
-        echo -e "${CYAN}8)${NC} Edit .env file (unified configuration)"
-        echo -e "${CYAN}9)${NC} View current configuration"
+        echo -e "${CYAN}12)${NC} Edit .env file (unified configuration)"
+        echo -e "${CYAN}13)${NC} View current configuration"
         
     else
         echo -e "${YELLOW}● No LabelBerry installation detected${NC}"
@@ -265,48 +273,111 @@ labelberry() {
             case $choice in
                 1)
                     clear
-                    echo -e "${YELLOW}Service Status:${NC}"
+                    echo -e "${YELLOW}Backend Service Status:${NC}"
                     sudo systemctl status labelberry-admin
                     prompt_next_action
                     ;;
                 2)
                     clear
-                    echo -e "${YELLOW}Viewing logs (press Ctrl+C to exit)...${NC}"
+                    echo -e "${YELLOW}Viewing backend logs (press Ctrl+C to exit)...${NC}"
                     sudo journalctl -u labelberry-admin -f
                     prompt_next_action
                     ;;
                 3)
                     clear
-                    echo -e "${YELLOW}Restarting service...${NC}"
+                    echo -e "${YELLOW}Restarting backend service...${NC}"
                     sudo systemctl restart labelberry-admin
-                    echo -e "${GREEN}Service restarted!${NC}"
+                    echo -e "${GREEN}Backend service restarted!${NC}"
                     sleep 2
                     sudo systemctl status labelberry-admin --no-pager
                     prompt_next_action
                     ;;
                 4)
                     clear
-                    echo -e "${YELLOW}Stopping service...${NC}"
-                    sudo systemctl stop labelberry-admin
-                    echo -e "${GREEN}Service stopped!${NC}"
+                    echo -e "${YELLOW}Frontend Service Status (PM2):${NC}"
+                    if command -v pm2 &> /dev/null; then
+                        pm2 status
+                    else
+                        echo -e "${RED}PM2 is not installed${NC}"
+                    fi
                     prompt_next_action
                     ;;
                 5)
                     clear
-                    echo -e "${YELLOW}Starting service...${NC}"
-                    sudo systemctl start labelberry-admin
-                    echo -e "${GREEN}Service started!${NC}"
-                    sleep 2
-                    sudo systemctl status labelberry-admin --no-pager
+                    echo -e "${YELLOW}Viewing frontend logs (press Ctrl+C to exit)...${NC}"
+                    if command -v pm2 &> /dev/null; then
+                        pm2 logs labelberry-nextjs
+                    else
+                        echo -e "${RED}PM2 is not installed${NC}"
+                    fi
                     prompt_next_action
                     ;;
                 6)
+                    clear
+                    echo -e "${YELLOW}Restarting frontend service...${NC}"
+                    if command -v pm2 &> /dev/null; then
+                        pm2 restart labelberry-nextjs
+                        echo -e "${GREEN}Frontend service restarted!${NC}"
+                        sleep 2
+                        pm2 status
+                    else
+                        echo -e "${RED}PM2 is not installed${NC}"
+                    fi
+                    prompt_next_action
+                    ;;
+                7)
+                    clear
+                    echo -e "${YELLOW}Restarting all services...${NC}"
+                    sudo systemctl restart labelberry-admin
+                    if command -v pm2 &> /dev/null; then
+                        pm2 restart labelberry-nextjs
+                    fi
+                    echo -e "${GREEN}All services restarted!${NC}"
+                    sleep 2
+                    echo -e "${CYAN}Backend Status:${NC}"
+                    sudo systemctl status labelberry-admin --no-pager
+                    if command -v pm2 &> /dev/null; then
+                        echo ""
+                        echo -e "${CYAN}Frontend Status:${NC}"
+                        pm2 status
+                    fi
+                    prompt_next_action
+                    ;;
+                8)
+                    clear
+                    echo -e "${YELLOW}Stopping all services...${NC}"
+                    sudo systemctl stop labelberry-admin
+                    if command -v pm2 &> /dev/null; then
+                        pm2 stop labelberry-nextjs
+                    fi
+                    echo -e "${GREEN}All services stopped!${NC}"
+                    prompt_next_action
+                    ;;
+                9)
+                    clear
+                    echo -e "${YELLOW}Starting all services...${NC}"
+                    sudo systemctl start labelberry-admin
+                    if command -v pm2 &> /dev/null; then
+                        pm2 start labelberry-nextjs 2>/dev/null || pm2 start /opt/labelberry/server/ecosystem.config.js
+                    fi
+                    echo -e "${GREEN}All services started!${NC}"
+                    sleep 2
+                    echo -e "${CYAN}Backend Status:${NC}"
+                    sudo systemctl status labelberry-admin --no-pager
+                    if command -v pm2 &> /dev/null; then
+                        echo ""
+                        echo -e "${CYAN}Frontend Status:${NC}"
+                        pm2 status
+                    fi
+                    prompt_next_action
+                    ;;
+                10)
                     clear
                     echo -e "${YELLOW}Updating Admin Server...${NC}"
                     labelberry-server-install
                     prompt_next_action
                     ;;
-                7)
+                11)
                     clear
                     echo -e "${RED}Are you sure you want to uninstall? (y/N)${NC}"
                     read -rsn1 confirm
@@ -315,7 +386,7 @@ labelberry() {
                     fi
                     prompt_next_action
                     ;;
-                8)
+                12)
                     clear
                     echo -e "${YELLOW}Opening unified .env configuration...${NC}"
                     cd /opt/labelberry/server
@@ -361,11 +432,11 @@ EOF
                     echo -e "${CYAN}Opening .env file in editor...${NC}"
                     echo -e "${WHITE}Current directory: $(pwd)${NC}"
                     ${EDITOR:-nano} .env
-                    echo -e "${GREEN}Backend .env file saved${NC}"
-                    echo -e "${YELLOW}Restart the backend service for changes to take effect${NC}"
+                    echo -e "${GREEN}.env file saved${NC}"
+                    echo -e "${YELLOW}Restart services for changes to take effect${NC}"
                     prompt_next_action
                     ;;
-                9)
+                13)
                     clear
                     echo -e "${YELLOW}Current Configuration:${NC}"
                     echo ""
@@ -385,7 +456,7 @@ EOF
                         echo -e "${RED}.env file not found at /opt/labelberry/server/.env${NC}"
                     fi
                     echo ""
-                    echo -e "${YELLOW}To edit configuration, use option 8${NC}"
+                    echo -e "${YELLOW}To edit configuration, use option 12${NC}"
                     prompt_next_action
                     ;;
                 0)
