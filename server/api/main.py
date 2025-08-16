@@ -169,9 +169,44 @@ async def login_page(request: Request):
     return JSONResponse({"message": "Please use the Next.js frontend for login"})
 
 
+@app.post("/api/auth/login", response_model=ApiResponse)
+async def api_login(request: Request):
+    """API endpoint for NextAuth authentication"""
+    try:
+        data = await request.json()
+        username = data.get("username")
+        password = data.get("password")
+        
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Username and password required")
+        
+        # Verify credentials
+        if await database.verify_user(username, password):
+            # Store user in session
+            request.session["user"] = username
+            
+            return ApiResponse(
+                success=True,
+                message="Login successful",
+                data={
+                    "user": {
+                        "id": "1",
+                        "username": username,
+                        "email": f"{username}@labelberry.local"
+                    }
+                }
+            )
+        else:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")
+
 @app.post("/login")
 async def login(request: Request):
-    """Handle login"""
+    """Handle legacy login - kept for backward compatibility"""
     try:
         data = await request.json()
         username = data.get("username")

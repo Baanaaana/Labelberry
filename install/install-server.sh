@@ -255,7 +255,7 @@ DATABASE_URL=postgresql://your_user:your_password@your_host/your_database
 API_HOST=0.0.0.0
 API_PORT=$PORT
 DEBUG=false
-ENABLE_DOCS=false
+ENABLE_DOCS=true
 STATIC_VERSION=1.0
 
 # Local mode (disables MQTT for development)
@@ -396,7 +396,7 @@ User=root
 WorkingDirectory=$INSTALL_DIR/server
 Environment="PATH=$INSTALL_DIR/server/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Environment="PYTHONPATH=$INSTALL_DIR/server"
-Environment="ENABLE_DOCS=false"
+Environment="ENABLE_DOCS=true"
 ExecStart=$INSTALL_DIR/server/venv/bin/python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT
 Restart=always
 RestartSec=10

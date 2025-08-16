@@ -9,7 +9,9 @@ import {
   LogOut,
   Circle,
   BookOpen,
+  User,
 } from "lucide-react"
+import { signOut, useSession } from "next-auth/react"
 
 import {
   Sidebar,
@@ -76,6 +78,7 @@ const settingsItems = [
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { data: session } = useSession()
   const [mqttStatus, setMqttStatus] = useState<'connected' | 'disconnected' | 'error' | 'checking'>('checking')
 
   useEffect(() => {
@@ -231,9 +234,20 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          {session?.user && (
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>{session.user.name || 'Admin'}</span>
+              </div>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <button className="w-full">
+              <button 
+                className="w-full"
+                onClick={() => signOut({ callbackUrl: '/login' })}
+              >
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
               </button>
