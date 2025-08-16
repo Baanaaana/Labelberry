@@ -94,8 +94,15 @@ echo -e "${GREEN}3)${NC} Exit"
 echo ""
 
 # Get user choice
+# When running through pipe, we need to read from /dev/tty
 while true; do
-    read -p "$(echo -e ${WHITE}Enter your choice [1-3]: ${NC})" choice
+    if [ -t 0 ]; then
+        # Interactive mode
+        read -p "$(echo -e ${WHITE}Enter your choice [1-3]: ${NC})" choice
+    else
+        # Piped mode - read from /dev/tty
+        read -p "$(echo -e ${WHITE}Enter your choice [1-3]: ${NC})" choice < /dev/tty
+    fi
     case $choice in
         1)
             echo ""
@@ -106,7 +113,7 @@ while true; do
             if [ "$IS_PI" = true ]; then
                 echo -e "${YELLOW}Warning: You're installing the server on a Raspberry Pi${NC}"
                 echo -e "${YELLOW}The server is designed for more powerful systems${NC}"
-                read -p "Do you want to continue? (y/N): " -n 1 -r
+                read -p "Do you want to continue? (y/N): " -n 1 -r < /dev/tty
                 echo
                 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                     echo -e "${RED}Installation cancelled${NC}"
@@ -146,7 +153,7 @@ while true; do
             if [ "$IS_PI" = false ]; then
                 echo -e "${YELLOW}Warning: This doesn't appear to be a Raspberry Pi${NC}"
                 echo -e "${YELLOW}The Pi client is designed for Raspberry Pi devices${NC}"
-                read -p "Do you want to continue anyway? (y/N): " -n 1 -r
+                read -p "Do you want to continue anyway? (y/N): " -n 1 -r < /dev/tty
                 echo
                 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                     echo -e "${RED}Installation cancelled${NC}"
