@@ -461,8 +461,8 @@ echo "   Frontend status: pm2 status"
 echo "   Update system: cd /opt/labelberry && ./deploy.sh"
 echo ""
 
-# Set up menu commands for easy access
-echo -e "${CYAN}Setting up menu commands...${NC}"
+# Set up menu in .bashrc for easy access
+echo -e "${CYAN}Setting up LabelBerry menu...${NC}"
 
 # Download the labelberry-menu.sh if it doesn't exist
 if [ ! -f "$INSTALL_DIR/labelberry-menu.sh" ]; then
@@ -470,16 +470,29 @@ if [ ! -f "$INSTALL_DIR/labelberry-menu.sh" ]; then
     chmod +x $INSTALL_DIR/labelberry-menu.sh
 fi
 
-cat > /usr/local/bin/labelberry-menu << 'EOF'
-#!/bin/bash
-cd /opt/labelberry && ./labelberry-menu.sh
-EOF
-chmod +x /usr/local/bin/labelberry-menu
-ln -sf /usr/local/bin/labelberry-menu /usr/local/bin/menu 2>/dev/null || true
-ln -sf /usr/local/bin/labelberry-menu /usr/local/bin/lb 2>/dev/null || true
-ln -sf /usr/local/bin/labelberry-menu /usr/local/bin/m 2>/dev/null || true
-echo -e "${GREEN}✓ Menu commands installed (menu, m, lb, labelberry-menu)${NC}"
-echo -e "${YELLOW}Run 'source ~/.bashrc' to make the menu commands available in this session${NC}"
+# Add to root's .bashrc if not already there
+if ! grep -q "source /opt/labelberry/labelberry-menu.sh" /root/.bashrc 2>/dev/null; then
+    echo "" >> /root/.bashrc
+    echo "# LabelBerry Management Menu" >> /root/.bashrc
+    echo "source /opt/labelberry/labelberry-menu.sh" >> /root/.bashrc
+fi
+
+# Also add to regular user's .bashrc if they exist
+for user_home in /home/*; do
+    if [ -d "$user_home" ]; then
+        username=$(basename "$user_home")
+        if ! grep -q "source /opt/labelberry/labelberry-menu.sh" "$user_home/.bashrc" 2>/dev/null; then
+            echo "" >> "$user_home/.bashrc"
+            echo "# LabelBerry Management Menu" >> "$user_home/.bashrc"
+            echo "source /opt/labelberry/labelberry-menu.sh" >> "$user_home/.bashrc"
+            chown $username:$username "$user_home/.bashrc"
+        fi
+    fi
+done
+
+echo -e "${GREEN}✓ Menu installed successfully!${NC}"
+echo -e "${YELLOW}Run 'source ~/.bashrc' to load the menu in this session${NC}"
+echo -e "${CYAN}Commands: labelberry, lb, lblogs, lbstatus, lbrestart${NC}"
 echo ""
 
 if [ "$SERVICE_ACTION" = "restart" ]; then

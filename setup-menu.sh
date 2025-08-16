@@ -36,26 +36,35 @@ if [ ! -f "/opt/labelberry/labelberry-menu.sh" ]; then
     chmod +x /opt/labelberry/labelberry-menu.sh
 fi
 
-# Create system-wide command
-cat > /usr/local/bin/labelberry-menu << 'EOF'
-#!/bin/bash
-cd /opt/labelberry && ./labelberry-menu.sh
-EOF
+# Add to root's .bashrc if not already there
+if ! grep -q "source /opt/labelberry/labelberry-menu.sh" /root/.bashrc 2>/dev/null; then
+    echo "" >> /root/.bashrc
+    echo "# LabelBerry Management Menu" >> /root/.bashrc
+    echo "source /opt/labelberry/labelberry-menu.sh" >> /root/.bashrc
+    echo -e "${GREEN}✓ Added labelberry-menu.sh to /root/.bashrc${NC}"
+fi
 
-chmod +x /usr/local/bin/labelberry-menu
+# Also add to regular user's .bashrc if they exist
+for user_home in /home/*; do
+    if [ -d "$user_home" ]; then
+        username=$(basename "$user_home")
+        if ! grep -q "source /opt/labelberry/labelberry-menu.sh" "$user_home/.bashrc" 2>/dev/null; then
+            echo "" >> "$user_home/.bashrc"
+            echo "# LabelBerry Management Menu" >> "$user_home/.bashrc"
+            echo "source /opt/labelberry/labelberry-menu.sh" >> "$user_home/.bashrc"
+            chown $username:$username "$user_home/.bashrc"
+            echo -e "${GREEN}✓ Added labelberry-menu.sh to $username's .bashrc${NC}"
+        fi
+    fi
+done
 
-# Create shorter aliases
-ln -sf /usr/local/bin/labelberry-menu /usr/local/bin/menu 2>/dev/null || true
-ln -sf /usr/local/bin/labelberry-menu /usr/local/bin/lb 2>/dev/null || true
-ln -sf /usr/local/bin/labelberry-menu /usr/local/bin/m 2>/dev/null || true
-
-echo -e "${GREEN}✓ Menu command installed successfully!${NC}"
+echo -e "${GREEN}✓ Menu installed successfully!${NC}"
 echo ""
-echo -e "${CYAN}You can now use any of these commands from anywhere:${NC}"
-echo -e "  ${GREEN}menu${NC}           - Open the LabelBerry management menu"
-echo -e "  ${GREEN}m${NC}              - Shortest alias for menu"
+echo -e "${YELLOW}Run 'source ~/.bashrc' to load the menu in this session${NC}"
+echo ""
+echo -e "${CYAN}After sourcing, you can use:${NC}"
+echo -e "  ${GREEN}labelberry${NC}     - Open the LabelBerry management menu"
 echo -e "  ${GREEN}lb${NC}             - Short alias for menu"
-echo -e "  ${GREEN}labelberry-menu${NC} - Full command name"
-echo ""
-echo -e "${YELLOW}Run 'source ~/.bashrc' to make the commands available in this session${NC}"
-echo -e "${CYAN}Then try: just type 'menu' and press Enter${NC}"
+echo -e "  ${GREEN}lblogs${NC}         - View live logs"
+echo -e "  ${GREEN}lbstatus${NC}       - Check service status"
+echo -e "  ${GREEN}lbrestart${NC}      - Restart service"
