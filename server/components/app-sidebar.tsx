@@ -59,8 +59,9 @@ const apiItems = [
   },
   {
     title: "API Documentation",
-    url: "/api-docs",
+    url: "/docs",
     icon: BookOpen,
+    external: true,
   },
 ]
 
@@ -193,10 +194,17 @@ export function AppSidebar() {
               {apiItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
+                    {'external' in item && item.external ? (
+                      <a href={item.url} target="_blank" rel="noopener noreferrer">
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </a>
+                    ) : (
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

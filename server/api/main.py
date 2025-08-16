@@ -2075,21 +2075,13 @@ async def delete_label_size(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api-docs", response_class=HTMLResponse)
-async def api_documentation(request: Request):
-    """Interactive API documentation page - requires authentication"""
-    # Check if user is logged in
-    if "user" not in request.session:
-        # Redirect to login page
-        return RedirectResponse(url="/login?next=/api-docs", status_code=302)
-    
-    # Get base URL from settings
-    base_url = database.get_server_setting("base_url", "")
-    if not base_url:
-        # Try to construct from request if not set
-        base_url = f"{request.url.scheme}://{request.url.netloc}"
-    
-    return JSONResponse({"message": "API documentation available at /docs", "base_url": base_url})
+@app.get("/api-docs")
+async def api_documentation_redirect():
+    """Redirect to the actual API docs if enabled"""
+    if os.getenv("ENABLE_DOCS", "true").lower() == "true":
+        return RedirectResponse(url="/docs", status_code=302)
+    else:
+        raise HTTPException(status_code=404, detail="API documentation is disabled in production. Set ENABLE_DOCS=true to enable.")
 
 
 @app.get("/swagger-docs", response_class=HTMLResponse)
