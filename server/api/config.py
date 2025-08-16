@@ -25,11 +25,14 @@ class ServerConfig:
             with open(self.config_path, 'r') as f:
                 config_data = yaml.safe_load(f)
             
-            # Apply environment variable overrides
+            # Apply environment variable overrides (except MQTT settings)
+            # MQTT settings are managed through the database
+            mqtt_keys = ['mqtt_broker', 'mqtt_port', 'mqtt_username', 'mqtt_password']
             for key in config_data:
-                env_key = f"LABELBERRY_{key.upper()}"
-                if env_key in os.environ:
-                    config_data[key] = os.environ[env_key]
+                if key not in mqtt_keys:  # Skip MQTT settings
+                    env_key = f"LABELBERRY_{key.upper()}"
+                    if env_key in os.environ:
+                        config_data[key] = os.environ[env_key]
             
             # Ensure all required fields exist
             defaults = self.get_defaults()

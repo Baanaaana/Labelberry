@@ -180,7 +180,8 @@ mkdir -p /etc/labelberry
 mkdir -p /var/lib/labelberry
 mkdir -p /var/log/labelberry
 
-echo -e "${YELLOW}[9/15] Configuring MQTT connection...${NC}"
+echo -e "${YELLOW}[9/15] Configuring initial MQTT connection...${NC}"
+echo -e "${CYAN}Note: MQTT settings will be stored in the database and can be changed via the web interface${NC}"
 
 # Check if we have existing MQTT configuration
 EXISTING_MQTT_CONFIG=false
@@ -291,7 +292,8 @@ mqtt_username: $MQTT_USER
 mqtt_password: $MQTT_PASS
 EOF
 
-echo -e "${GREEN}Configuration created/updated with MQTT settings${NC}"
+echo -e "${GREEN}Configuration created/updated with initial MQTT settings${NC}"
+echo -e "${CYAN}MQTT settings will be imported to database on first run and managed via web interface${NC}"
 
 echo -e "${YELLOW}[10/15] Creating .env files...${NC}"
 
@@ -313,19 +315,8 @@ DEBUG=false
 ENABLE_DOCS=false
 STATIC_VERSION=1.0
 
-# MQTT Configuration (for config.py)
-LABELBERRY_MQTT_BROKER=$MQTT_HOST
-LABELBERRY_MQTT_PORT=$MQTT_PORT
-LABELBERRY_MQTT_USERNAME=$MQTT_USER
-LABELBERRY_MQTT_PASSWORD=$MQTT_PASS
-
-# MQTT Configuration (alternative names)
-MQTT_HOST=$MQTT_HOST
-MQTT_PORT=$MQTT_PORT
-MQTT_USERNAME=$MQTT_USER
-MQTT_PASSWORD=$MQTT_PASS
-
 # Local mode (disables MQTT for development)
+# MQTT settings are configured through the web interface
 LABELBERRY_LOCAL_MODE=false
 
 # Next.js Frontend Configuration

@@ -342,19 +342,8 @@ DEBUG=false
 ENABLE_DOCS=false
 STATIC_VERSION=1.0
 
-# MQTT Configuration (for config.py)
-LABELBERRY_MQTT_BROKER=localhost
-LABELBERRY_MQTT_PORT=1883
-LABELBERRY_MQTT_USERNAME=admin
-LABELBERRY_MQTT_PASSWORD=admin_password
-
-# MQTT Configuration (alternative names)
-MQTT_HOST=localhost
-MQTT_PORT=1883
-MQTT_USERNAME=admin
-MQTT_PASSWORD=admin_password
-
 # Local mode (disables MQTT for development)
+# MQTT settings are managed through the web interface
 LABELBERRY_LOCAL_MODE=false
 
 # Next.js Frontend Configuration

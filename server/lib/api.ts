@@ -3,7 +3,6 @@ export function getApiUrl(): string {
   if (typeof window !== 'undefined') {
     // Client-side
     const host = window.location.hostname
-    const protocol = window.location.protocol
     
     // Development: localhost
     if (host === 'localhost') {
