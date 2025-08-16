@@ -114,7 +114,7 @@ menu() {
     
     print_section "DATABASE & CONFIGURATION"
     echo -e "  ${GREEN}h)${NC} PostgreSQL console"
-    echo -e "  ${GREEN}i)${NC} Edit environment variables"
+    echo -e "  ${GREEN}i)${NC} Edit/Create environment variables (.env files)"
     echo -e "  ${GREEN}j)${NC} View current configuration"
     echo -e "  ${GREEN}k)${NC} Test printer connection"
     echo " "
@@ -324,30 +324,133 @@ menu() {
             ;;
         i|I)
             clear
-            echo -e "${YELLOW}Opening environment variables for editing...${NC}"
-            if [ -f "/etc/labelberry/.env" ]; then
-                if [ "$EUID" -eq 0 ]; then
-                    nano /etc/labelberry/.env
-                else
-                    sudo nano /etc/labelberry/.env
-                fi
-            else
-                echo -e "${RED}.env file not found at /etc/labelberry/.env${NC}"
-            fi
+            echo -e "${YELLOW}Environment Variables Configuration${NC}"
+            echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
+            echo ""
+            echo -e "${CYAN}Which environment file would you like to edit?${NC}"
+            echo ""
+            echo -e "  ${GREEN}1)${NC} Backend (.env) - FastAPI server configuration"
+            echo -e "  ${GREEN}2)${NC} Frontend (.env) - Next.js configuration"
+            echo -e "  ${GREEN}3)${NC} View both configurations"
+            echo -e "  ${GREEN}4)${NC} Back to main menu"
+            echo ""
+            read -rsn1 -p "$(echo -e "${WHITE}Enter your choice [1-4]: ${NC}")" env_choice
+            echo
+            
+            case $env_choice in
+                1)
+                    BACKEND_ENV="$ADMIN_DIR/.env"
+                    BACKEND_ENV_EXAMPLE="$ADMIN_DIR/.env.example"
+                    
+                    # Check if .env exists, if not create from example
+                    if [ ! -f "$BACKEND_ENV" ]; then
+                        echo -e "${YELLOW}.env file not found. Creating from .env.example...${NC}"
+                        if [ -f "$BACKEND_ENV_EXAMPLE" ]; then
+                            cp "$BACKEND_ENV_EXAMPLE" "$BACKEND_ENV"
+                            echo -e "${GREEN}Created $BACKEND_ENV from example${NC}"
+                            echo -e "${YELLOW}Please update the values with your actual configuration${NC}"
+                            sleep 2
+                        else
+                            echo -e "${RED}No .env.example found. Creating blank .env file...${NC}"
+                            touch "$BACKEND_ENV"
+                        fi
+                    fi
+                    
+                    echo -e "${YELLOW}Opening backend .env for editing...${NC}"
+                    if command -v nano &> /dev/null; then
+                        nano "$BACKEND_ENV"
+                    elif command -v vi &> /dev/null; then
+                        vi "$BACKEND_ENV"
+                    else
+                        echo -e "${RED}No text editor found (nano or vi)${NC}"
+                    fi
+                    
+                    echo -e "${GREEN}Backend configuration updated${NC}"
+                    echo -e "${YELLOW}Note: Restart the backend service for changes to take effect${NC}"
+                    ;;
+                    
+                2)
+                    FRONTEND_ENV="$NEXTJS_DIR/.env"
+                    FRONTEND_ENV_EXAMPLE="$NEXTJS_DIR/.env.example"
+                    
+                    # Check if .env exists, if not create from example
+                    if [ ! -f "$FRONTEND_ENV" ]; then
+                        echo -e "${YELLOW}.env file not found. Creating from .env.example...${NC}"
+                        if [ -f "$FRONTEND_ENV_EXAMPLE" ]; then
+                            cp "$FRONTEND_ENV_EXAMPLE" "$FRONTEND_ENV"
+                            echo -e "${GREEN}Created $FRONTEND_ENV from example${NC}"
+                            echo -e "${YELLOW}Please update the values with your actual configuration${NC}"
+                            sleep 2
+                        else
+                            echo -e "${RED}No .env.example found. Creating blank .env file...${NC}"
+                            touch "$FRONTEND_ENV"
+                        fi
+                    fi
+                    
+                    echo -e "${YELLOW}Opening frontend .env for editing...${NC}"
+                    if command -v nano &> /dev/null; then
+                        nano "$FRONTEND_ENV"
+                    elif command -v vi &> /dev/null; then
+                        vi "$FRONTEND_ENV"
+                    else
+                        echo -e "${RED}No text editor found (nano or vi)${NC}"
+                    fi
+                    
+                    echo -e "${GREEN}Frontend configuration updated${NC}"
+                    echo -e "${YELLOW}Note: Rebuild Next.js for NEXT_PUBLIC_* changes to take effect${NC}"
+                    ;;
+                    
+                3)
+                    echo -e "${CYAN}Backend Configuration ($ADMIN_DIR/.env):${NC}"
+                    echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
+                    if [ -f "$ADMIN_DIR/.env" ]; then
+                        grep -v "PASSWORD\|SECRET\|KEY" "$ADMIN_DIR/.env" | grep -v "^#" | grep -v "^$" || echo "No non-sensitive variables found"
+                    else
+                        echo -e "${YELLOW}No .env file found${NC}"
+                    fi
+                    echo ""
+                    echo -e "${CYAN}Frontend Configuration ($NEXTJS_DIR/.env):${NC}"
+                    echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
+                    if [ -f "$NEXTJS_DIR/.env" ]; then
+                        grep -v "PASSWORD\|SECRET\|KEY" "$NEXTJS_DIR/.env" | grep -v "^#" | grep -v "^$" || echo "No non-sensitive variables found"
+                    else
+                        echo -e "${YELLOW}No .env file found${NC}"
+                    fi
+                    ;;
+                    
+                4)
+                    menu
+                    return
+                    ;;
+                    
+                *)
+                    echo -e "${RED}Invalid option${NC}"
+                    ;;
+            esac
             prompt_next_action
             ;;
         j|J)
             clear
             echo -e "${YELLOW}Current Configuration:${NC}"
             echo -e "${GRAY}───────────────────────────────────────────────────────${NC}"
-            echo -e "${CYAN}Environment Variables:${NC}"
-            if [ -f "/etc/labelberry/.env" ]; then
-                if [ "$EUID" -eq 0 ]; then
-                    grep -v "PASSWORD\|SECRET" /etc/labelberry/.env | head -20
-                else
-                    sudo grep -v "PASSWORD\|SECRET" /etc/labelberry/.env | head -20
-                fi
+            
+            echo -e "${CYAN}Backend Environment Variables:${NC}"
+            if [ -f "$ADMIN_DIR/.env" ]; then
+                echo -e "${GREEN}Location: $ADMIN_DIR/.env${NC}"
+                grep -v "PASSWORD\|SECRET\|KEY" "$ADMIN_DIR/.env" | grep -v "^#" | grep -v "^$" | head -10 || echo "No non-sensitive variables found"
+            else
+                echo -e "${YELLOW}No backend .env file found at $ADMIN_DIR/.env${NC}"
             fi
+            
+            echo ""
+            echo -e "${CYAN}Frontend Environment Variables:${NC}"
+            if [ -f "$NEXTJS_DIR/.env" ]; then
+                echo -e "${GREEN}Location: $NEXTJS_DIR/.env${NC}"
+                grep -v "PASSWORD\|SECRET\|KEY" "$NEXTJS_DIR/.env" | grep -v "^#" | grep -v "^$" | head -10 || echo "No non-sensitive variables found"
+            else
+                echo -e "${YELLOW}No frontend .env file found at $NEXTJS_DIR/.env${NC}"
+            fi
+            
             echo ""
             echo -e "${CYAN}Server Config:${NC}"
             if [ -f "/etc/labelberry/server.conf" ]; then

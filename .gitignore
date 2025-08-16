@@ -58,12 +58,16 @@ env/
 
 # Environment files - NEVER commit these!
 .env
-# .env.*
 .env.local
 .env.production
 .env.development
 **/.env
-# **/.env.*
+**/.env.local
+**/.env.production
+**/.env.development
+# But allow example files
+!.env.example
+!**/.env.example
 
 # Config files with sensitive data
 client.conf
