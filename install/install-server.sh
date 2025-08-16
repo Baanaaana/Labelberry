@@ -152,19 +152,27 @@ source venv/bin/activate
 echo -e "${YELLOW}[7/15] Installing Python packages...${NC}"
 pip install --upgrade pip
 
-# Install packages - ensure uvicorn is installed even if requirements file is missing
+# Install packages - ensure all required packages are installed
 if [ -f requirements.txt ]; then
+    echo -e "${GREEN}Installing from requirements.txt...${NC}"
     pip install -r requirements.txt
 else
     echo -e "${YELLOW}requirements.txt not found, installing essential packages...${NC}"
-    pip install uvicorn fastapi psycopg2-binary python-dotenv pydantic asyncpg aiofiles python-multipart paho-mqtt requests pyyaml itsdangerous httpx jinja2 sse-starlette
+    pip install fastapi==0.111.0 uvicorn[standard]==0.30.1 python-dotenv==1.0.1 pydantic==2.7.1 pydantic-settings==2.3.4
+    pip install asyncpg==0.29.0 psycopg2-binary==2.9.9 sqlalchemy==1.4.48 databases==0.8.0
+    pip install python-multipart==0.0.9 aiofiles==24.1.0 httpx==0.27.0 jinja2==3.1.4 
+    pip install sse-starlette==2.1.2 itsdangerous==2.2.0 paho-mqtt==2.1.0 pyyaml==6.0.1 requests==2.32.3
 fi
 
-# Verify uvicorn is installed
-if ! pip show uvicorn > /dev/null 2>&1; then
-    echo -e "${YELLOW}Installing uvicorn explicitly...${NC}"
-    pip install uvicorn
-fi
+# Verify critical packages are installed
+echo -e "${YELLOW}Verifying critical packages...${NC}"
+for package in uvicorn fastapi pydantic asyncpg psycopg2-binary paho-mqtt; do
+    if ! pip show $package > /dev/null 2>&1; then
+        echo -e "${YELLOW}Installing missing package: $package${NC}"
+        pip install $package
+    fi
+done
+echo -e "${GREEN}All critical packages verified${NC}"
 
 # Create __init__.py files for proper Python package structure
 touch __init__.py
