@@ -153,12 +153,12 @@ labelberry() {
         echo -e "${CYAN}9)${NC} Start all services"
         echo ""
         echo -e "${YELLOW}Installation:${NC}"
-        echo -e "${CYAN}10)${NC} Update Admin Server (reinstall)"
-        echo -e "${CYAN}11)${NC} Uninstall Admin Server"
+        echo -e "${CYAN}u)${NC} Update Admin Server (reinstall)"
+        echo -e "${CYAN}x)${NC} Uninstall Admin Server"
         echo ""
         echo -e "${YELLOW}Configuration:${NC}"
-        echo -e "${CYAN}12)${NC} Edit .env file (unified configuration)"
-        echo -e "${CYAN}13)${NC} View current configuration"
+        echo -e "${CYAN}e)${NC} Edit .env file (unified configuration)"
+        echo -e "${CYAN}c)${NC} View current configuration"
         
     else
         echo -e "${YELLOW}● No LabelBerry installation detected${NC}"
@@ -173,7 +173,7 @@ labelberry() {
     echo ""
     echo -e "${WHITE}Type 'labelberry' to reopen this menu${NC}"
     echo ""
-    read -rsn1 -p "$(echo -e ${WHITE}Enter your choice: ${NC})" choice
+    read -r -p "$(echo -e ${WHITE}Enter your choice: ${NC})" choice
     echo  # Add newline after input
     
     case "$INSTALLED" in
@@ -225,7 +225,7 @@ labelberry() {
                 7)
                     clear
                     echo -e "${RED}Are you sure you want to uninstall? (y/N)${NC}"
-                    read -rsn1 confirm
+                    read -r confirm
                     if [[ $confirm == "y" ]] || [[ $confirm == "Y" ]]; then
                         labelberry-pi-uninstall
                     fi
@@ -371,22 +371,22 @@ labelberry() {
                     fi
                     prompt_next_action
                     ;;
-                10)
+                u|U)
                     clear
                     echo -e "${YELLOW}Updating Admin Server...${NC}"
                     labelberry-server-install
                     prompt_next_action
                     ;;
-                11)
+                x|X)
                     clear
                     echo -e "${RED}Are you sure you want to uninstall? (y/N)${NC}"
-                    read -rsn1 confirm
+                    read -r confirm
                     if [[ $confirm == "y" ]] || [[ $confirm == "Y" ]]; then
                         labelberry-server-uninstall
                     fi
                     prompt_next_action
                     ;;
-                12)
+                e|E)
                     clear
                     echo -e "${YELLOW}Opening unified .env configuration...${NC}"
                     cd /opt/labelberry/server
@@ -436,7 +436,7 @@ EOF
                     echo -e "${YELLOW}Restart services for changes to take effect${NC}"
                     prompt_next_action
                     ;;
-                13)
+                c|C)
                     clear
                     echo -e "${YELLOW}Current Configuration:${NC}"
                     echo ""
@@ -456,7 +456,7 @@ EOF
                         echo -e "${RED}.env file not found at /opt/labelberry/server/.env${NC}"
                     fi
                     echo ""
-                    echo -e "${YELLOW}To edit configuration, use option 12${NC}"
+                    echo -e "${YELLOW}To edit configuration, use option 'e'${NC}"
                     prompt_next_action
                     ;;
                 0)
