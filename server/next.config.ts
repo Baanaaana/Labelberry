@@ -8,16 +8,16 @@ const nextConfig: NextConfig = {
       
     return [
       {
-        source: '/fastapi/:path*',
-        destination: `${apiUrl}/fastapi/:path*`, // Proxy to FastAPI backend
+        source: '/api/:path((?!auth).*)',  // Match /api/* except /api/auth
+        destination: `${apiUrl}/:path*`, // Proxy to FastAPI backend (without /api prefix)
       },
       {
         source: '/docs',
-        destination: `${apiUrl}/fastapi/docs`, // Proxy to FastAPI docs
+        destination: `${apiUrl}/docs`, // Proxy to FastAPI docs
       },
       {
         source: '/redoc',
-        destination: `${apiUrl}/fastapi/redoc`, // Proxy to FastAPI redoc
+        destination: `${apiUrl}/redoc`, // Proxy to FastAPI redoc
       },
     ];
   },

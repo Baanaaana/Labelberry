@@ -19,7 +19,7 @@ export const authOptions: NextAuthOptions = {
           // Using localhost since both services run on the same server
           const apiUrl = 'http://localhost:8080'
           
-          const response = await fetch(`${apiUrl}/fastapi/auth/login`, {
+          const response = await fetch(`${apiUrl}/auth/login`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

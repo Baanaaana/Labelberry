@@ -116,8 +116,6 @@ app = FastAPI(
     title="LabelBerry API",
     version="1.0.0",
     lifespan=lifespan,
-    # Use /fastapi prefix to avoid conflicts with Next.js /api/auth routes
-    root_path="/fastapi",
     # Disable automatic docs in production for security
     # Set ENABLE_DOCS=false in production environment
     docs_url="/docs" if os.getenv("ENABLE_DOCS", "true").lower() == "true" else None,

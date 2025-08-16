@@ -100,12 +100,12 @@ export default function PrintersPage() {
   const fetchPrinters = async () => {
     try {
       // Fetch printers
-      const response = await fetch('/fastapi/pis')
+      const response = await fetch('/api/pis')
       const result = await response.json()
       const data = result.data?.pis || []
       
       // Fetch dashboard stats separately
-      const statsResponse = await fetch('/fastapi/dashboard-stats')
+      const statsResponse = await fetch('/api/dashboard-stats')
       let dashboardStats = null
       if (statsResponse.ok) {
         const statsResult = await statsResponse.json()
@@ -202,7 +202,7 @@ export default function PrintersPage() {
       // If it's localhost, try to get the actual network IP
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
         // Fetch the actual server IP from our API
-        const response = await fetch('/fastapi/server-info')
+        const response = await fetch('/api/server-info')
         if (response.ok) {
           const data = await response.json()
           setServerIp(data.ip || 'YOUR_SERVER_IP')
@@ -251,7 +251,7 @@ export default function PrintersPage() {
     
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/fastapi/jobs/${jobId}/status`)
+        const response = await fetch(`/api/jobs/${jobId}/status`)
         if (response.ok) {
           const result = await response.json()
           if (result.data?.status === 'completed') {
@@ -281,7 +281,7 @@ export default function PrintersPage() {
 
   const handleTestPrint = async (printerId: string) => {
     try {
-      const response = await fetch(`/fastapi/pis/${printerId}/test-print`, {
+      const response = await fetch(`/api/pis/${printerId}/test-print`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -319,7 +319,7 @@ export default function PrintersPage() {
     if (!printerToDelete) return
     
     try {
-      const response = await fetch(`/fastapi/pis/${printerToDelete.id}`, {
+      const response = await fetch(`/api/pis/${printerToDelete.id}`, {
         method: 'DELETE'
       })
       
@@ -376,7 +376,7 @@ export default function PrintersPage() {
       }
       console.log('Sending update:', updateData, 'to printer ID:', selectedPrinter.id)
       
-      const response = await fetch(`/fastapi/pis/${selectedPrinter.id}`, {
+      const response = await fetch(`/api/pis/${selectedPrinter.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -406,7 +406,7 @@ export default function PrintersPage() {
 
   const handleAddPrinter = async () => {
     try {
-      const response = await fetch('/fastapi/pis/register', {
+      const response = await fetch('/api/pis/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

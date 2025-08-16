@@ -95,7 +95,7 @@ export function AppSidebar() {
 
   const checkMqttStatus = async () => {
     try {
-      const response = await fetch('/fastapi/mqtt-status')
+      const response = await fetch('/api/mqtt-status')
       if (response.ok) {
         const result = await response.json()
         // The API returns { success, message, data: { connected, broker } }

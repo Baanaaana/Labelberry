@@ -49,7 +49,7 @@ export default function PerformancePage() {
   const fetchMetrics = async () => {
     try {
       // Fetch all Pi devices with their latest metrics
-      const response = await fetch('/fastapi/pis')
+      const response = await fetch('/api/pis')
       const result = await response.json()
       const pis = result.data?.pis || []
       
@@ -63,7 +63,7 @@ export default function PerformancePage() {
         ip_address?: string
         printer_model?: string
       }) => {
-        const metricsResponse = await fetch(`/fastapi/metrics/${pi.id}?timeRange=${timeRange}`)
+        const metricsResponse = await fetch(`/api/metrics/${pi.id}?timeRange=${timeRange}`)
         let latestMetrics = null
         
         if (metricsResponse.ok) {
