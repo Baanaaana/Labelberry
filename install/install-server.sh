@@ -461,6 +461,27 @@ echo "   Frontend status: pm2 status"
 echo "   Update system: cd /opt/labelberry && ./deploy.sh"
 echo ""
 
+# Set up menu commands for easy access
+echo -e "${CYAN}Setting up menu commands...${NC}"
+
+# Download the labelberry-menu.sh if it doesn't exist
+if [ ! -f "$INSTALL_DIR/labelberry-menu.sh" ]; then
+    curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/labelberry-menu.sh -o $INSTALL_DIR/labelberry-menu.sh
+    chmod +x $INSTALL_DIR/labelberry-menu.sh
+fi
+
+cat > /usr/local/bin/labelberry-menu << 'EOF'
+#!/bin/bash
+cd /opt/labelberry && ./labelberry-menu.sh
+EOF
+chmod +x /usr/local/bin/labelberry-menu
+ln -sf /usr/local/bin/labelberry-menu /usr/local/bin/menu 2>/dev/null || true
+ln -sf /usr/local/bin/labelberry-menu /usr/local/bin/lb 2>/dev/null || true
+ln -sf /usr/local/bin/labelberry-menu /usr/local/bin/m 2>/dev/null || true
+echo -e "${GREEN}✓ Menu commands installed (menu, m, lb, labelberry-menu)${NC}"
+echo -e "${YELLOW}Run 'source ~/.bashrc' to make the menu commands available in this session${NC}"
+echo ""
+
 if [ "$SERVICE_ACTION" = "restart" ]; then
     read -p "Do you want to restart the service now? (Y/n): " -n 1 -r </dev/tty
 else

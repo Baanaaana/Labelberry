@@ -118,7 +118,7 @@ After server installation, the management menu is available:
 
 ```bash
 cd /opt/labelberry
-./menu.sh  # Opens the management interface
+./labelberry-menu.sh  # Opens the management interface
 ```
 
 The menu provides easy access to:
@@ -153,7 +153,7 @@ The management menu is available after server installation:
 
 ```bash
 cd /opt/labelberry
-./menu.sh  # Open the management menu
+./labelberry-menu.sh  # Open the management menu
 ```
 
 The menu provides:
@@ -611,8 +611,7 @@ LabelBerry/
 │   └── uninstall-pi.sh    # Pi uninstaller
 │
 ├── deploy.sh              # Deployment script
-├── menu.sh                # Management menu
-├── install-menu.sh        # Menu installer
+├── labelberry-menu.sh     # Management menu
 ├── API_DOCUMENTATION.md   # Complete API reference
 └── CLAUDE.md              # Development notes
 ```
