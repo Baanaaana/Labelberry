@@ -17,7 +17,12 @@ const authOptions: NextAuthOptions = {
 
         try {
           // Verify credentials with backend API
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/auth/login`, {
+          // In production, use the internal Docker network or localhost since both services are on same server
+          const apiUrl = process.env.NODE_ENV === 'production' 
+            ? 'http://localhost:8080'  // Internal API call on same server
+            : 'http://localhost:8080'
+          
+          const response = await fetch(`${apiUrl}/api/auth/login`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

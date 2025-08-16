@@ -242,6 +242,18 @@ echo -e "${YELLOW}[10/15] Creating .env files...${NC}"
 
 # Create unified .env file
 SERVER_IP=$(hostname -I | awk '{print $1}')
+
+# Ask for domain if not in local mode
+echo -e "${YELLOW}Will you be accessing this server via a domain name? (y/N)${NC}"
+read -p "" -n 1 -r </dev/tty
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    read -p "Enter your domain (e.g., labelberry.yourdomain.com): " DOMAIN </dev/tty
+    NEXTAUTH_URL="https://$DOMAIN"
+else
+    NEXTAUTH_URL="http://$SERVER_IP:3000"
+fi
+
 cat > $INSTALL_DIR/server/.env <<EOF
 # ==========================================
 # LabelBerry Server Configuration
@@ -266,8 +278,7 @@ LABELBERRY_LOCAL_MODE=false
 # Using relative paths for production (works with reverse proxy)
 NEXT_PUBLIC_API_URL=/api
 NEXT_PUBLIC_WS_URL=/api
-# Update NEXTAUTH_URL to your actual domain after installation
-NEXTAUTH_URL=https://yourdomain.com
+NEXTAUTH_URL=$NEXTAUTH_URL
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
 NODE_ENV=production
 EOF
