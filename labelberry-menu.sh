@@ -149,8 +149,8 @@ labelberry() {
         echo -e "${CYAN}7)${NC} Uninstall Admin Server"
         echo ""
         echo -e "${YELLOW}Configuration:${NC}"
-        echo -e "${CYAN}8)${NC} Edit Backend .env file"
-        echo -e "${CYAN}9)${NC} Edit Frontend .env file"
+        echo -e "${CYAN}8)${NC} Edit .env file (unified configuration)"
+        echo -e "${CYAN}9)${NC} View current configuration"
         
     else
         echo -e "${YELLOW}● No LabelBerry installation detected${NC}"
@@ -317,8 +317,8 @@ labelberry() {
                     ;;
                 8)
                     clear
-                    echo -e "${YELLOW}Opening Backend .env configuration...${NC}"
-                    cd /opt/labelberry/admin_server
+                    echo -e "${YELLOW}Opening unified .env configuration...${NC}"
+                    cd /opt/labelberry/server
                     
                     if [ ! -f .env ]; then
                         echo -e "${YELLOW}.env file not found. Creating from example...${NC}"
@@ -328,18 +328,41 @@ labelberry() {
                         else
                             echo -e "${CYAN}Creating new .env file...${NC}"
                             cat > .env << 'EOF'
+# ==========================================
+# LabelBerry Unified Server Configuration
+# ==========================================
+
 # Database Configuration
 DATABASE_URL=postgresql://user:password@host/database
 
-# MQTT Configuration
+# API Server Configuration
+API_HOST=0.0.0.0
+API_PORT=8080
+DEBUG=false
+ENABLE_DOCS=false
+STATIC_VERSION=1.0
+
+# MQTT Configuration (for config.py)
+LABELBERRY_MQTT_BROKER=localhost
+LABELBERRY_MQTT_PORT=1883
+LABELBERRY_MQTT_USERNAME=admin
+LABELBERRY_MQTT_PASSWORD=admin_password
+
+# MQTT Configuration (alternative names)
 MQTT_HOST=localhost
 MQTT_PORT=1883
 MQTT_USERNAME=admin
 MQTT_PASSWORD=admin_password
 
-# Server Configuration
-DEBUG=false
-STATIC_VERSION=1.0
+# Local mode (disables MQTT for development)
+LABELBERRY_LOCAL_MODE=false
+
+# Next.js Frontend Configuration
+NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_WS_URL=ws://localhost:8080
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here
+NODE_ENV=production
 EOF
                             echo -e "${GREEN}Created new .env file with default template${NC}"
                         fi
@@ -354,37 +377,25 @@ EOF
                     ;;
                 9)
                     clear
-                    echo -e "${YELLOW}Opening Frontend .env configuration...${NC}"
-                    cd /opt/labelberry/nextjs
-                    
-                    if [ ! -f .env ]; then
-                        echo -e "${YELLOW}.env file not found. Creating from example...${NC}"
-                        if [ -f .env.example ]; then
-                            cp .env.example .env
-                            echo -e "${GREEN}Created .env from .env.example${NC}"
-                        else
-                            echo -e "${CYAN}Creating new .env file...${NC}"
-                            cat > .env << 'EOF'
-# API Configuration
-NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_WS_URL=ws://localhost:8080
-
-# Authentication
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here
-
-# Environment
-NODE_ENV=production
-EOF
-                            echo -e "${GREEN}Created new .env file with default template${NC}"
-                        fi
+                    echo -e "${YELLOW}Current Configuration:${NC}"
+                    echo ""
+                    if [ -f /opt/labelberry/server/.env ]; then
+                        echo -e "${CYAN}Reading from /opt/labelberry/server/.env:${NC}"
+                        echo ""
+                        # Show only non-sensitive values
+                        grep -E "^(DATABASE_URL|API_|NEXT_PUBLIC_|NODE_ENV|DEBUG|STATIC_VERSION|LABELBERRY_MQTT_BROKER|LABELBERRY_MQTT_PORT)" /opt/labelberry/server/.env | while IFS= read -r line; do
+                            if [[ $line == *"DATABASE_URL"* ]] || [[ $line == *"SECRET"* ]] || [[ $line == *"PASSWORD"* ]]; then
+                                key="${line%%=*}"
+                                echo -e "${WHITE}$key${NC}=${GRAY}[hidden]${NC}"
+                            else
+                                echo -e "${WHITE}$line${NC}"
+                            fi
+                        done
+                    else
+                        echo -e "${RED}.env file not found at /opt/labelberry/server/.env${NC}"
                     fi
-                    
-                    echo -e "${CYAN}Opening .env file in editor...${NC}"
-                    echo -e "${WHITE}Current directory: $(pwd)${NC}"
-                    ${EDITOR:-nano} .env
-                    echo -e "${GREEN}Frontend .env file saved${NC}"
-                    echo -e "${YELLOW}You may need to rebuild and restart the frontend for changes to take effect${NC}"
+                    echo ""
+                    echo -e "${YELLOW}To edit configuration, use option 8${NC}"
                     prompt_next_action
                     ;;
                 0)

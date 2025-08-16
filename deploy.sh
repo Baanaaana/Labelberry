@@ -2,7 +2,7 @@
 
 # ============================================
 # LABELBERRY UPDATE & DEPLOYMENT SCRIPT
-# Version: 2.0.0
+# Version: 3.0.0
 # Updated: 2025-08-16
 # ============================================
 # Purpose: Update existing LabelBerry installations
@@ -29,8 +29,7 @@ NC='\033[0m' # No Color
 # Project configuration
 PROJECT_NAME="LabelBerry"
 PROJECT_DIR="/opt/labelberry"
-NEXTJS_DIR="$PROJECT_DIR/nextjs"
-ADMIN_DIR="$PROJECT_DIR/admin_server"
+SERVER_DIR="$PROJECT_DIR/server"
 PM2_APP_NAME="labelberry-nextjs"
 NODE_VERSION="lts/*"  # Use latest LTS version
 
@@ -462,16 +461,16 @@ EOF
 }
 
 # Main execution
-# Check if we're in the project root or nextjs directory
-if [ -f "nextjs/package.json" ]; then
+# Check if we're in the project root or server directory
+if [ -f "server/package.json" ]; then
     # We're in the project root, that's good
     echo -e "${GREEN}Running from project root${NC}"
 elif [ -f "package.json" ] && [ -f "../deploy.sh" ]; then
-    # We're in the nextjs directory, go up one level
+    # We're in the server directory, go up one level
     cd ..
     echo -e "${YELLOW}Switching to project root${NC}"
-elif [ ! -f "$NEXTJS_DIR/package.json" ]; then
-    echo -e "${RED}Error: Cannot find Next.js project at $NEXTJS_DIR${NC}"
+elif [ ! -f "$SERVER_DIR/package.json" ]; then
+    echo -e "${RED}Error: Cannot find server project at $SERVER_DIR${NC}"
     echo "Current directory: $(pwd)"
     echo "Please run this script from the project root or ensure the project is at $PROJECT_DIR"
     exit 1

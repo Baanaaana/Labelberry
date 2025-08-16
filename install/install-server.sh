@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# LabelBerry Complete Server Installation Script
-# Version: 2.0.0
+# LabelBerry Unified Server Installation Script
+# Version: 3.0.0
 # Last Updated: 2025-08-16
-# Installs both backend (FastAPI) and frontend (Next.js)
+# Installs unified server with backend (FastAPI) and frontend (Next.js)
 
 set -e
 
-SCRIPT_VERSION="2.2.0"
+SCRIPT_VERSION="3.0.0"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -131,33 +131,49 @@ if [ "$SKIP_CLONE" != "true" ]; then
     echo -e "${YELLOW}Cloning repository...${NC}"
     git clone --sparse https://github.com/Baanaaana/labelberry.git .
     git sparse-checkout init --cone
-    git sparse-checkout set admin_server shared install nextjs
+    git sparse-checkout set server shared install
     echo -e "${GREEN}Repository cloned${NC}"
 else
     echo -e "${GREEN}Using existing repository${NC}"
     # Ensure we have all required directories
-    if [ ! -d "admin_server" ] || [ ! -d "nextjs" ]; then
+    if [ ! -d "server" ]; then
         echo -e "${YELLOW}Some directories missing, updating sparse-checkout...${NC}"
-        git sparse-checkout set admin_server shared install nextjs
+        git sparse-checkout set server shared install
         git read-tree -m -u HEAD
         echo -e "${GREEN}Directories updated${NC}"
     fi
 fi
 
 echo -e "${YELLOW}[6/15] Creating virtual environment...${NC}"
-cd admin_server
+cd server
 python3 -m venv venv
 source venv/bin/activate
 
 echo -e "${YELLOW}[7/15] Installing Python packages...${NC}"
 pip install --upgrade pip
-pip install -r requirements_postgres.txt
+
+# Install packages - ensure uvicorn is installed even if requirements file is missing
+if [ -f requirements.txt ]; then
+    pip install -r requirements.txt
+else
+    echo -e "${YELLOW}requirements.txt not found, installing essential packages...${NC}"
+    pip install uvicorn fastapi psycopg2-binary python-dotenv pydantic asyncpg aiofiles python-multipart paho-mqtt requests pyyaml itsdangerous httpx jinja2 sse-starlette
+fi
+
+# Verify uvicorn is installed
+if ! pip show uvicorn > /dev/null 2>&1; then
+    echo -e "${YELLOW}Installing uvicorn explicitly...${NC}"
+    pip install uvicorn
+fi
 
 # Create __init__.py files for proper Python package structure
 touch __init__.py
-touch app/__init__.py
+touch api/__init__.py
 cd ..
 touch shared/__init__.py
+
+# Ensure we deactivate the venv properly
+deactivate
 
 echo -e "${YELLOW}[8/15] Creating directories...${NC}"
 mkdir -p /etc/labelberry
@@ -277,6 +293,51 @@ EOF
 
 echo -e "${GREEN}Configuration created/updated with MQTT settings${NC}"
 
+echo -e "${YELLOW}[10/15] Creating .env files...${NC}"
+
+# Create unified .env file
+SERVER_IP=$(hostname -I | awk '{print $1}')
+cat > $INSTALL_DIR/server/.env <<EOF
+# ==========================================
+# LabelBerry Server Configuration
+# Single .env file for both API and Web
+# ==========================================
+
+# Database Configuration
+DATABASE_URL=postgresql://your_user:your_password@your_host/your_database
+
+# API Server Configuration
+API_HOST=0.0.0.0
+API_PORT=$PORT
+DEBUG=false
+ENABLE_DOCS=false
+STATIC_VERSION=1.0
+
+# MQTT Configuration (for config.py)
+LABELBERRY_MQTT_BROKER=$MQTT_HOST
+LABELBERRY_MQTT_PORT=$MQTT_PORT
+LABELBERRY_MQTT_USERNAME=$MQTT_USER
+LABELBERRY_MQTT_PASSWORD=$MQTT_PASS
+
+# MQTT Configuration (alternative names)
+MQTT_HOST=$MQTT_HOST
+MQTT_PORT=$MQTT_PORT
+MQTT_USERNAME=$MQTT_USER
+MQTT_PASSWORD=$MQTT_PASS
+
+# Local mode (disables MQTT for development)
+LABELBERRY_LOCAL_MODE=false
+
+# Next.js Frontend Configuration
+NEXT_PUBLIC_API_URL=http://${SERVER_IP}:${PORT}
+NEXT_PUBLIC_WS_URL=ws://${SERVER_IP}:${PORT}
+NEXTAUTH_URL=http://${SERVER_IP}:3000
+NEXTAUTH_SECRET=$(openssl rand -base64 32)
+NODE_ENV=production
+EOF
+
+echo -e "${GREEN}Created unified .env file${NC}"
+
 echo -e "${YELLOW}[11/15] Setting up Node.js environment...${NC}"
 
 # Install NVM (Node Version Manager) for better Node.js management
@@ -317,12 +378,12 @@ else
 fi
 
 echo -e "${YELLOW}[12/15] Building Next.js frontend...${NC}"
-cd "$INSTALL_DIR/nextjs"
+cd "$INSTALL_DIR/server"
 
 # Check if lib/utils.ts exists, create if missing
-if [ ! -f "src/lib/utils.ts" ]; then
-    mkdir -p src/lib
-    cat > src/lib/utils.ts << 'EOF'
+if [ ! -f "lib/utils.ts" ]; then
+    mkdir -p lib
+    cat > lib/utils.ts << 'EOF'
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -364,7 +425,7 @@ module.exports = {
     name: 'labelberry-nextjs',
     script: 'npm',
     args: 'start',
-    cwd: '/opt/labelberry/nextjs',
+    cwd: '/opt/labelberry/server',
     env: {
       NODE_ENV: 'production',
       PORT: 3000
@@ -396,11 +457,11 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=$INSTALL_DIR/admin_server
-Environment="PATH=$INSTALL_DIR/admin_server/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-Environment="PYTHONPATH=$INSTALL_DIR/admin_server"
+WorkingDirectory=$INSTALL_DIR/server
+Environment="PATH=$INSTALL_DIR/server/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONPATH=$INSTALL_DIR/server"
 Environment="ENABLE_DOCS=false"
-ExecStart=$INSTALL_DIR/admin_server/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+ExecStart=$INSTALL_DIR/server/venv/bin/python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT
 Restart=always
 RestartSec=10
 

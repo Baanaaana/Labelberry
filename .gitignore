@@ -10,10 +10,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-# Python libraries (but not Next.js lib folder)
+# Python libraries (but not server lib folder)
 /lib/
 /lib64/
-!/nextjs/src/lib/
+!/server/lib/
 parts/
 sdist/
 var/
@@ -80,3 +80,25 @@ config.yml
 *.bak
 .temp/
 tmp/
+# Next.js (in server directory)
+server/.next/
+server/out/
+server/node_modules/
+server/*.log
+server/npm-debug.log*
+server/yarn-debug.log*
+server/yarn-error.log*
+
+# Python virtual environment (in server directory)
+server/venv/
+server/__pycache__/
+server/api/__pycache__/
+server/*.pyc
+
+# Build artifacts
+server/build/
+server/dist/
+
+# Old structure (to be removed)
+admin_server/
+nextjs/

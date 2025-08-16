@@ -12,7 +12,8 @@
       "Bash(npm run build:*)",
       "Bash(pip install:*)",
       "Bash(python3:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }
