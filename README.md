@@ -75,14 +75,16 @@ A modern, enterprise-grade label printing system for Zebra printers with central
 ### One-Command Installation
 
 ```bash
-# Run this single command to install LabelBerry (server or Pi client):
+# Run this single command to install LabelBerry:
 curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install.sh | sudo bash
 ```
 
 The installer will:
-1. Detect your system type (Server or Raspberry Pi)
-2. Ask whether you want to install the **Server** or **Pi Client**
-3. Automatically run the appropriate installation
+1. Download the installation menu to a temporary directory
+2. Display an interactive menu to choose between **Server** or **Pi Client**
+3. Detect your system type and provide appropriate warnings
+4. Run the selected installation automatically
+5. Clean up temporary files after completion
 
 ### Server Installation
 
