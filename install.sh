@@ -119,7 +119,7 @@ echo ""
 
 # Get user choice
 while true; do
-    read -p "$(echo -e ${WHITE}Enter your choice [1-3]: ${NC})" choice
+    read -p "$(echo -e ${WHITE}Enter your choice [1-3]: ${NC})" choice < /dev/tty
     case $choice in
         1)
             echo ""
@@ -130,7 +130,7 @@ while true; do
             if [ "$IS_PI" = true ]; then
                 echo -e "${YELLOW}Warning: You're installing the server on a Raspberry Pi${NC}"
                 echo -e "${YELLOW}The server is designed for more powerful systems${NC}"
-                read -p "Do you want to continue? (y/N): " -n 1 -r
+                read -p "Do you want to continue? (y/N): " -n 1 -r < /dev/tty
                 echo
                 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                     echo -e "${RED}Installation cancelled${NC}"
@@ -170,7 +170,7 @@ while true; do
             if [ "$IS_PI" = false ]; then
                 echo -e "${YELLOW}Warning: This doesn't appear to be a Raspberry Pi${NC}"
                 echo -e "${YELLOW}The Pi client is designed for Raspberry Pi devices${NC}"
-                read -p "Do you want to continue anyway? (y/N): " -n 1 -r
+                read -p "Do you want to continue anyway? (y/N): " -n 1 -r < /dev/tty
                 echo
                 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                     echo -e "${RED}Installation cancelled${NC}"
