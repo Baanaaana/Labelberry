@@ -18,8 +18,11 @@ export const authOptions: NextAuthOptions = {
           // For server-side auth, we need to call the FastAPI backend directly
           // Using localhost since both services run on the same server
           const apiUrl = 'http://localhost:8080'
+          const loginUrl = `${apiUrl}/auth/login`
           
-          const response = await fetch(`${apiUrl}/auth/login`, {
+          console.log('[Auth] Attempting login to:', loginUrl)
+          
+          const response = await fetch(loginUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -30,12 +33,16 @@ export const authOptions: NextAuthOptions = {
             }),
           })
 
+          console.log('[Auth] Response status:', response.status)
+
           if (!response.ok) {
-            console.error('Auth failed:', response.status, response.statusText)
+            const errorText = await response.text()
+            console.error('[Auth] Failed:', response.status, response.statusText, errorText)
             return null
           }
 
           const data = await response.json()
+          console.log('[Auth] Response data:', data)
           
           if (data.success && data.data?.user) {
             return {
@@ -47,7 +54,11 @@ export const authOptions: NextAuthOptions = {
 
           return null
         } catch (error) {
-          console.error('Auth error:', error)
+          console.error('[Auth] Exception:', error)
+          console.error('[Auth] Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          })
           return null
         }
       }
