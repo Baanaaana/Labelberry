@@ -317,26 +317,74 @@ labelberry() {
                     ;;
                 8)
                     clear
-                    echo -e "${YELLOW}Editing Backend .env file...${NC}"
-                    if [ -f /opt/labelberry/admin_server/.env ]; then
-                        ${EDITOR:-nano} /opt/labelberry/admin_server/.env
-                        echo -e "${GREEN}Backend .env file updated${NC}"
-                        echo -e "${YELLOW}Restart the backend service for changes to take effect${NC}"
-                    else
-                        echo -e "${RED}Backend .env file not found at /opt/labelberry/admin_server/.env${NC}"
+                    echo -e "${YELLOW}Opening Backend .env configuration...${NC}"
+                    cd /opt/labelberry/admin_server
+                    
+                    if [ ! -f .env ]; then
+                        echo -e "${YELLOW}.env file not found. Creating from example...${NC}"
+                        if [ -f .env.example ]; then
+                            cp .env.example .env
+                            echo -e "${GREEN}Created .env from .env.example${NC}"
+                        else
+                            echo -e "${CYAN}Creating new .env file...${NC}"
+                            cat > .env << 'EOF'
+# Database Configuration
+DATABASE_URL=postgresql://user:password@host/database
+
+# MQTT Configuration
+MQTT_HOST=localhost
+MQTT_PORT=1883
+MQTT_USERNAME=admin
+MQTT_PASSWORD=admin_password
+
+# Server Configuration
+DEBUG=false
+STATIC_VERSION=1.0
+EOF
+                            echo -e "${GREEN}Created new .env file with default template${NC}"
+                        fi
                     fi
+                    
+                    echo -e "${CYAN}Opening .env file in editor...${NC}"
+                    echo -e "${WHITE}Current directory: $(pwd)${NC}"
+                    ${EDITOR:-nano} .env
+                    echo -e "${GREEN}Backend .env file saved${NC}"
+                    echo -e "${YELLOW}Restart the backend service for changes to take effect${NC}"
                     prompt_next_action
                     ;;
                 9)
                     clear
-                    echo -e "${YELLOW}Editing Frontend .env file...${NC}"
-                    if [ -f /opt/labelberry/nextjs/.env ]; then
-                        ${EDITOR:-nano} /opt/labelberry/nextjs/.env
-                        echo -e "${GREEN}Frontend .env file updated${NC}"
-                        echo -e "${YELLOW}You may need to rebuild and restart the frontend for changes to take effect${NC}"
-                    else
-                        echo -e "${RED}Frontend .env file not found at /opt/labelberry/nextjs/.env${NC}"
+                    echo -e "${YELLOW}Opening Frontend .env configuration...${NC}"
+                    cd /opt/labelberry/nextjs
+                    
+                    if [ ! -f .env ]; then
+                        echo -e "${YELLOW}.env file not found. Creating from example...${NC}"
+                        if [ -f .env.example ]; then
+                            cp .env.example .env
+                            echo -e "${GREEN}Created .env from .env.example${NC}"
+                        else
+                            echo -e "${CYAN}Creating new .env file...${NC}"
+                            cat > .env << 'EOF'
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_WS_URL=ws://localhost:8080
+
+# Authentication
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here
+
+# Environment
+NODE_ENV=production
+EOF
+                            echo -e "${GREEN}Created new .env file with default template${NC}"
+                        fi
                     fi
+                    
+                    echo -e "${CYAN}Opening .env file in editor...${NC}"
+                    echo -e "${WHITE}Current directory: $(pwd)${NC}"
+                    ${EDITOR:-nano} .env
+                    echo -e "${GREEN}Frontend .env file saved${NC}"
+                    echo -e "${YELLOW}You may need to rebuild and restart the frontend for changes to take effect${NC}"
                     prompt_next_action
                     ;;
                 0)

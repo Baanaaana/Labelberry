@@ -217,6 +217,21 @@ echo -e "${GREEN}═════════════════════
 echo -e "${GREEN}Installation process completed!${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
 echo ""
+
+# Check if server was installed (labelberry-menu.sh would exist)
+if [ -f "/opt/labelberry/labelberry-menu.sh" ]; then
+    echo -e "${YELLOW}The LabelBerry management menu has been installed!${NC}"
+    echo -e "${YELLOW}Run 'source ~/.bashrc' to load the menu commands in this session${NC}"
+    echo ""
+    echo -e "${CYAN}After sourcing, you can use:${NC}"
+    echo -e "  ${GREEN}labelberry${NC}     - Open the management menu"
+    echo -e "  ${GREEN}lb${NC}             - Short alias for menu"
+    echo -e "  ${GREEN}lblogs${NC}         - View live logs"
+    echo -e "  ${GREEN}lbstatus${NC}       - Check service status"
+    echo -e "  ${GREEN}lbrestart${NC}      - Restart services"
+    echo ""
+fi
+
 echo -e "${CYAN}For documentation and support:${NC}"
 echo -e "${WHITE}https://github.com/Baanaaana/LabelBerry${NC}"
 echo ""
