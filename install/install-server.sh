@@ -188,81 +188,15 @@ mkdir -p /etc/labelberry
 mkdir -p /var/lib/labelberry
 mkdir -p /var/log/labelberry
 
-echo -e "${YELLOW}[9/15] Configuring initial MQTT connection...${NC}"
-echo -e "${CYAN}Note: MQTT settings will be stored in the database and can be changed via the web interface${NC}"
+echo -e "${YELLOW}[9/15] MQTT Configuration...${NC}"
+echo -e "${CYAN}MQTT settings are managed through the web interface${NC}"
+echo -e "${CYAN}You can configure MQTT after installation via the Settings page${NC}"
 
-# Check if we have existing MQTT configuration
-EXISTING_MQTT_CONFIG=false
-if [ -f "/etc/labelberry/server.conf" ]; then
-    if grep -q "mqtt_broker:" /etc/labelberry/server.conf; then
-        EXISTING_MQTT_CONFIG=true
-        echo -e "${GREEN}Existing MQTT configuration found${NC}"
-        echo "Current MQTT settings:"
-        grep "mqtt_broker:" /etc/labelberry/server.conf | sed 's/^/  /'
-        grep "mqtt_port:" /etc/labelberry/server.conf | sed 's/^/  /'
-        grep "mqtt_username:" /etc/labelberry/server.conf | sed 's/^/  /'
-        echo ""
-        read -p "Do you want to keep the existing MQTT configuration? (Y/n): " -n 1 -r </dev/tty
-        echo
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-            # Extract existing MQTT settings
-            MQTT_HOST=$(grep "mqtt_broker:" /etc/labelberry/server.conf | cut -d' ' -f2)
-            MQTT_PORT=$(grep "mqtt_port:" /etc/labelberry/server.conf | cut -d' ' -f2)
-            MQTT_USER=$(grep "mqtt_username:" /etc/labelberry/server.conf | cut -d' ' -f2)
-            MQTT_PASS=$(grep "mqtt_password:" /etc/labelberry/server.conf | cut -d' ' -f2)
-            echo -e "${GREEN}Keeping existing MQTT configuration${NC}"
-        else
-            EXISTING_MQTT_CONFIG=false
-        fi
-    fi
-fi
-
-# Only prompt for MQTT settings if we don't have existing config or user chose to reconfigure
-if [ "$EXISTING_MQTT_CONFIG" = false ]; then
-    echo ""
-    echo -e "${BLUE}MQTT Broker Configuration${NC}"
-    echo "Choose MQTT broker option:"
-    echo "1) Use external MQTT broker (recommended if you have one)"
-    echo "2) Install local Mosquitto broker on this server"
-    read -p "Enter choice (1 or 2): " MQTT_CHOICE </dev/tty
-
-    if [ "$MQTT_CHOICE" = "2" ]; then
-        echo -e "${YELLOW}Installing Mosquitto broker...${NC}"
-        apt-get install -y mosquitto mosquitto-clients
-        
-        # Configure Mosquitto
-        cat > /etc/mosquitto/conf.d/labelberry.conf <<EOF
-listener 1883
-allow_anonymous false
-password_file /etc/mosquitto/passwd
-log_dest file /var/log/mosquitto/mosquitto.log
-log_type all
-EOF
-        
-        # Create MQTT user
-        read -p "Enter MQTT username (default: labelberry): " MQTT_USER </dev/tty
-        MQTT_USER=${MQTT_USER:-labelberry}
-        read -s -p "Enter MQTT password: " MQTT_PASS </dev/tty
-        echo
-        
-        touch /etc/mosquitto/passwd
-        mosquitto_passwd -b /etc/mosquitto/passwd $MQTT_USER "$MQTT_PASS"
-        
-        systemctl restart mosquitto
-        systemctl enable mosquitto
-        
-        MQTT_HOST="localhost"
-        MQTT_PORT="1883"
-    else
-        echo -e "${YELLOW}Configuring external MQTT broker...${NC}"
-        read -p "Enter MQTT broker host/IP: " MQTT_HOST </dev/tty
-        read -p "Enter MQTT broker port (default 1883): " MQTT_PORT </dev/tty
-        MQTT_PORT=${MQTT_PORT:-1883}
-        read -p "Enter MQTT username: " MQTT_USER </dev/tty
-        read -s -p "Enter MQTT password: " MQTT_PASS </dev/tty
-        echo
-    fi
-fi
+# Set default placeholder values for MQTT (will be configured via web interface)
+MQTT_HOST="localhost"
+MQTT_PORT="1883"
+MQTT_USER=""
+MQTT_PASS=""
 
 echo -e "${YELLOW}[10/15] Creating configuration...${NC}"
 if [ ! -f "/etc/labelberry/server.conf" ]; then
@@ -283,7 +217,7 @@ else
     cp /etc/labelberry/server.conf /etc/labelberry/server.conf.backup
 fi
 
-# Always create/update the config file with MQTT settings
+# Always create/update the config file (MQTT will be configured via web interface)
 cat > /etc/labelberry/server.conf <<EOF
 host: 0.0.0.0
 port: ${PORT:-8080}
@@ -293,15 +227,16 @@ log_file: /var/log/labelberry/server.log
 cors_origins: ["*"]
 rate_limit: 100
 session_timeout: 3600
-# MQTT Configuration
-mqtt_broker: $MQTT_HOST
-mqtt_port: $MQTT_PORT
-mqtt_username: $MQTT_USER
-mqtt_password: $MQTT_PASS
+# MQTT Configuration - Managed via web interface
+# These are placeholder values that will be configured through the web UI
+mqtt_broker: localhost
+mqtt_port: 1883
+mqtt_username: 
+mqtt_password: 
 EOF
 
-echo -e "${GREEN}Configuration created/updated with initial MQTT settings${NC}"
-echo -e "${CYAN}MQTT settings will be imported to database on first run and managed via web interface${NC}"
+echo -e "${GREEN}Configuration created/updated${NC}"
+echo -e "${CYAN}Note: MQTT settings are managed through the web interface Settings page${NC}"
 
 echo -e "${YELLOW}[10/15] Creating .env files...${NC}"
 
@@ -500,10 +435,7 @@ echo "   Web Interface: http://${SERVER_IP}:3000"
 echo "   API Server: http://${SERVER_IP}:${PORT}"
 echo ""
 echo -e "${YELLOW}MQTT Configuration:${NC}"
-echo "   Host: $MQTT_HOST"
-echo "   Port: $MQTT_PORT"
-echo "   Username: $MQTT_USER"
-echo "   Password: [configured]"
+echo "   Configure MQTT settings through the web interface Settings page"
 echo ""
 echo -e "${YELLOW}Service Status:${NC}"
 echo "   sudo systemctl status labelberry-admin"
