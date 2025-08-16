@@ -56,7 +56,7 @@ export default function ApiKeysPage() {
 
   const fetchApiKeys = async () => {
     try {
-      const response = await fetch('/api/api-keys')
+      const response = await fetch('/fastapi/api-keys')
       const result = await response.json()
       
       // Handle wrapped API response
@@ -101,7 +101,7 @@ export default function ApiKeysPage() {
     if (!keyToDelete) return
     
     try {
-      const response = await fetch(`/api/api-keys/${keyToDelete.id}`, {
+      const response = await fetch(`/fastapi/api-keys/${keyToDelete.id}`, {
         method: 'DELETE'
       })
       
@@ -126,7 +126,7 @@ export default function ApiKeysPage() {
 
   const createApiKey = async () => {
     try {
-      const response = await fetch('/api/api-keys', {
+      const response = await fetch('/fastapi/api-keys', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

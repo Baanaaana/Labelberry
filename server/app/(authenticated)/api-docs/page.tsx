@@ -61,7 +61,7 @@ export default function ApiDocsPage() {
 
   const fetchApiKeys = async () => {
     try {
-      const response = await fetch('/api/api-keys')
+      const response = await fetch('/fastapi/api-keys')
       if (response.ok) {
         const result = await response.json()
         setApiKeys(result.data?.keys || [])
@@ -73,7 +73,7 @@ export default function ApiDocsPage() {
 
   const fetchPrinters = async () => {
     try {
-      const response = await fetch('/api/pis')
+      const response = await fetch('/fastapi/pis')
       if (response.ok) {
         const result = await response.json()
         setPrinters(result.data?.pis || [])
@@ -99,16 +99,16 @@ export default function ApiDocsPage() {
       
       switch(endpoint) {
         case 'list-printers':
-          url = '/api/pis'
+          url = '/fastapi/pis'
           break
         case 'printer-details':
-          url = `/api/pis/${selectedPrinter}`
+          url = `/fastapi/pis/${selectedPrinter}`
           break
         case 'print-history':
-          url = '/api/recent-jobs?limit=10'
+          url = '/fastapi/recent-jobs?limit=10'
           break
         case 'label-sizes':
-          url = '/api/label-sizes'
+          url = '/fastapi/label-sizes'
           break
         default:
           throw new Error('Unknown endpoint')
@@ -133,7 +133,7 @@ export default function ApiDocsPage() {
     
     setLoading({ ...loading, 'test-print': true })
     try {
-      const response = await fetch(`/api/pis/${selectedPrinter}/test-print`, {
+      const response = await fetch(`/fastapi/pis/${selectedPrinter}/test-print`, {
         method: 'POST'
       })
       const result = await response.json()
@@ -315,7 +315,7 @@ export default function ApiDocsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge className="bg-green-500">GET</Badge>
-                    <code className="text-sm">/api/pis</code>
+                    <code className="text-sm">/fastapi/pis</code>
                   </div>
                   <Button 
                     size="sm" 
@@ -336,7 +336,7 @@ export default function ApiDocsPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-green-500">GET</Badge>
-                  <code className="text-sm">/api/pis/{'{pi_id}'}</code>
+                  <code className="text-sm">/fastapi/pis/{'{pi_id}'}</code>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Get detailed information about a specific printer
@@ -401,7 +401,7 @@ export default function ApiDocsPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-blue-500">POST</Badge>
-                  <code className="text-sm">/api/pis/{'{pi_id}'}/print</code>
+                  <code className="text-sm">/fastapi/pis/{'{pi_id}'}/print</code>
                   <Badge variant="outline">Requires Auth</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -427,7 +427,7 @@ export default function ApiDocsPage() {
                 <div className="rounded-lg bg-muted p-4">
                   <pre className="text-xs overflow-x-auto">
 {`# Send a print job with raw ZPL
-curl -X POST http://your-server:8080/api/pis/YOUR_PI_ID/print \\
+curl -X POST http://your-server:8080/fastapi/pis/YOUR_PI_ID/print \\
   -H "Authorization: Bearer labk_your_api_key_here" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -435,7 +435,7 @@ curl -X POST http://your-server:8080/api/pis/YOUR_PI_ID/print \\
   }'
 
 # Send a print job from URL
-curl -X POST http://your-server:8080/api/pis/YOUR_PI_ID/print \\
+curl -X POST http://your-server:8080/fastapi/pis/YOUR_PI_ID/print \\
   -H "Authorization: Bearer labk_your_api_key_here" \\
   -H "Content-Type: application/json" \\
   -d '{

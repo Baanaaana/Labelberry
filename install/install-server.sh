@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # LabelBerry Unified Server Installation Script
-# Version: 3.0.0
+# Version: 3.0.1
 # Last Updated: 2025-08-16
 # Installs unified server with backend (FastAPI) and frontend (Next.js)
 
 set -e
 
-SCRIPT_VERSION="3.0.0"
+SCRIPT_VERSION="3.0.1"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -254,6 +254,21 @@ else
     NEXTAUTH_URL="http://$SERVER_IP:3000"
 fi
 
+# Ask for database configuration
+echo -e "${YELLOW}Database Configuration:${NC}"
+echo -e "${CYAN}You can use services like Neon (neon.tech), Supabase, or your own PostgreSQL server${NC}"
+echo -e "${CYAN}Example: postgresql://user:password@host.neon.tech/dbname?sslmode=require${NC}"
+echo ""
+read -p "Enter your PostgreSQL DATABASE_URL (or press Enter to configure later): " DATABASE_URL_INPUT </dev/tty
+
+if [ -z "$DATABASE_URL_INPUT" ]; then
+    DATABASE_URL="postgresql://your_user:your_password@your_host/your_database"
+    echo -e "${YELLOW}Using placeholder database URL. Remember to update it in /opt/labelberry/server/.env${NC}"
+else
+    DATABASE_URL="$DATABASE_URL_INPUT"
+    echo -e "${GREEN}Database URL configured${NC}"
+fi
+
 cat > $INSTALL_DIR/server/.env <<EOF
 # ==========================================
 # LabelBerry Server Configuration
@@ -261,7 +276,7 @@ cat > $INSTALL_DIR/server/.env <<EOF
 # ==========================================
 
 # Database Configuration
-DATABASE_URL=postgresql://your_user:your_password@your_host/your_database
+DATABASE_URL=$DATABASE_URL
 
 # API Server Configuration
 API_HOST=0.0.0.0
@@ -276,8 +291,8 @@ LABELBERRY_LOCAL_MODE=false
 
 # Next.js Frontend Configuration
 # Using relative paths for production (works with reverse proxy)
-NEXT_PUBLIC_API_URL=/api
-NEXT_PUBLIC_WS_URL=/api
+NEXT_PUBLIC_API_URL=/fastapi
+NEXT_PUBLIC_WS_URL=/fastapi
 NEXTAUTH_URL=$NEXTAUTH_URL
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
 NODE_ENV=production

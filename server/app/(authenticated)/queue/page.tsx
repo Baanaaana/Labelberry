@@ -43,7 +43,7 @@ export default function QueuePage() {
 
   const fetchPrinters = async () => {
     try {
-      const response = await fetch('/api/pis')
+      const response = await fetch('/fastapi/pis')
       const result = await response.json()
       const data = result.data?.pis || []
       const printerList = data.map((pi: {id: string, friendly_name?: string, name?: string}) => ({
@@ -62,7 +62,7 @@ export default function QueuePage() {
       if (selectedPrinter !== "all") params.append("printerId", selectedPrinter)
       if (selectedStatus !== "all") params.append("status", selectedStatus)
       
-      const response = await fetch(`/api/queue?${params}`)
+      const response = await fetch(`/fastapi/queue?${params}`)
       const result = await response.json()
       // Handle wrapped API response or direct array
       const data = result.data?.items || result.data || result || []
@@ -101,7 +101,7 @@ export default function QueuePage() {
 
   const handleRetry = async (itemId: string) => {
     try {
-      const response = await fetch(`/api/jobs/${itemId}/retry`, {
+      const response = await fetch(`/fastapi/jobs/${itemId}/retry`, {
         method: 'POST'
       })
       
@@ -120,7 +120,7 @@ export default function QueuePage() {
 
   const handleDelete = async (itemId: string) => {
     try {
-      const response = await fetch(`/api/jobs/${itemId}/cancel`, {
+      const response = await fetch(`/fastapi/jobs/${itemId}/cancel`, {
         method: 'POST'
       })
       
@@ -149,7 +149,7 @@ export default function QueuePage() {
       
       // Delete each completed job
       const promises = completedJobs.map(job =>
-        fetch(`/api/jobs/${job.id}/cancel`, { method: 'POST' })
+        fetch(`/fastapi/jobs/${job.id}/cancel`, { method: 'POST' })
       )
       
       await Promise.all(promises)

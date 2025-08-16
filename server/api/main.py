@@ -116,6 +116,8 @@ app = FastAPI(
     title="LabelBerry API",
     version="1.0.0",
     lifespan=lifespan,
+    # Use /fastapi prefix to avoid conflicts with Next.js /api/auth routes
+    root_path="/fastapi",
     # Disable automatic docs in production for security
     # Set ENABLE_DOCS=false in production environment
     docs_url="/docs" if os.getenv("ENABLE_DOCS", "true").lower() == "true" else None,
@@ -169,7 +171,7 @@ async def login_page(request: Request):
     return JSONResponse({"message": "Please use the Next.js frontend for login"})
 
 
-@app.post("/api/auth/login", response_model=ApiResponse)
+@app.post("/auth/login", response_model=ApiResponse)
 async def api_login(request: Request):
     """API endpoint for NextAuth authentication"""
     try:
@@ -181,7 +183,7 @@ async def api_login(request: Request):
             raise HTTPException(status_code=400, detail="Username and password required")
         
         # Verify credentials
-        if await database.verify_user(username, password):
+        if await database.verify_user_async(username, password):
             # Store user in session
             request.session["user"] = username
             

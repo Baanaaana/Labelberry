@@ -6,15 +6,15 @@ export function getApiUrl(): string {
     
     // Development: localhost
     if (host === 'localhost') {
-      return 'http://localhost:8080/api'
+      return 'http://localhost:8080/fastapi'
     }
     
-    // Production: use /api path (Nginx will route this)
-    return '/api'
+    // Production: use /fastapi path (Nginx will route this)
+    return '/fastapi'
   }
   
   // Server-side fallback
-  return '/api'
+  return '/fastapi'
 }
 
 export async function apiRequest(endpoint: string, options?: RequestInit) {
