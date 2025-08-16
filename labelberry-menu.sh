@@ -148,9 +148,9 @@ labelberry() {
         echo -e "${CYAN}6)${NC} Update Admin Server (reinstall)"
         echo -e "${CYAN}7)${NC} Uninstall Admin Server"
         echo ""
-        echo -e "${YELLOW}Database:${NC}"
-        echo -e "${CYAN}8)${NC} Backup database"
-        echo -e "${CYAN}9)${NC} View database stats"
+        echo -e "${YELLOW}Configuration:${NC}"
+        echo -e "${CYAN}8)${NC} Edit Backend .env file"
+        echo -e "${CYAN}9)${NC} Edit Frontend .env file"
         
     else
         echo -e "${YELLOW}● No LabelBerry installation detected${NC}"
@@ -317,38 +317,26 @@ labelberry() {
                     ;;
                 8)
                     clear
-                    echo -e "${YELLOW}Backing up database...${NC}"
-                    timestamp=$(date +%Y%m%d_%H%M%S)
-                    sudo cp /var/lib/labelberry/db.sqlite /tmp/labelberry-backup-$timestamp.sqlite
-                    echo -e "${GREEN}Database backed up to /tmp/labelberry-backup-$timestamp.sqlite${NC}"
+                    echo -e "${YELLOW}Editing Backend .env file...${NC}"
+                    if [ -f /opt/labelberry/admin_server/.env ]; then
+                        ${EDITOR:-nano} /opt/labelberry/admin_server/.env
+                        echo -e "${GREEN}Backend .env file updated${NC}"
+                        echo -e "${YELLOW}Restart the backend service for changes to take effect${NC}"
+                    else
+                        echo -e "${RED}Backend .env file not found at /opt/labelberry/admin_server/.env${NC}"
+                    fi
                     prompt_next_action
                     ;;
                 9)
                     clear
-                    echo -e "${YELLOW}Database Statistics:${NC}"
-                    echo ""
-                    sudo sqlite3 /var/lib/labelberry/db.sqlite <<EOF
-.mode column
-.headers on
-SELECT 'Printers' as Type, COUNT(*) as Count FROM pis
-UNION ALL
-SELECT 'Print Jobs', COUNT(*) FROM print_jobs
-UNION ALL
-SELECT 'Error Logs', COUNT(*) FROM error_logs
-UNION ALL
-SELECT 'Metrics', COUNT(*) FROM metrics;
-EOF
-                    echo ""
-                    echo -e "${YELLOW}Recent Activity:${NC}"
-                    sudo sqlite3 /var/lib/labelberry/db.sqlite <<EOF
-.mode column
-.headers on
-SELECT datetime(timestamp) as Time, error_type as Type, message 
-FROM error_logs 
-WHERE pi_id = '__server__' 
-ORDER BY timestamp DESC 
-LIMIT 5;
-EOF
+                    echo -e "${YELLOW}Editing Frontend .env file...${NC}"
+                    if [ -f /opt/labelberry/nextjs/.env ]; then
+                        ${EDITOR:-nano} /opt/labelberry/nextjs/.env
+                        echo -e "${GREEN}Frontend .env file updated${NC}"
+                        echo -e "${YELLOW}You may need to rebuild and restart the frontend for changes to take effect${NC}"
+                    else
+                        echo -e "${RED}Frontend .env file not found at /opt/labelberry/nextjs/.env${NC}"
+                    fi
                     prompt_next_action
                     ;;
                 0)
