@@ -71,26 +71,31 @@ async def lifespan(app: FastAPI):
         try:
             # Load MQTT settings from database
             settings = await database.get_system_settings()
-            if settings:
+            if settings and settings.get('mqtt_username') and settings.get('mqtt_password'):
                 # Update server config dict with MQTT settings from database
                 server_config.config['mqtt_broker'] = settings.get('mqtt_broker', 'localhost')
                 server_config.config['mqtt_port'] = int(settings.get('mqtt_port', '1883')) if settings.get('mqtt_port') else 1883
                 server_config.config['mqtt_username'] = settings.get('mqtt_username', '')
                 server_config.config['mqtt_password'] = settings.get('mqtt_password', '')
                 
-                logger.info(f"Loaded MQTT settings from database - broker: {server_config.mqtt_broker}:{server_config.mqtt_port}")
+                logger.info(f"Loaded MQTT settings from database - broker: {server_config.mqtt_broker}:{server_config.mqtt_port}, username: {server_config.mqtt_username}")
                 
                 # Recreate MQTT server with loaded settings
                 mqtt_server = MQTTServer(database, server_config)
                 queue_manager = QueueManager(database, mqtt_server)
+                
+                # Start MQTT server
+                if await mqtt_server.start():
+                    logger.info("MQTT server started successfully")
+                    # Start queue manager
+                    await queue_manager.start()
+                else:
+                    logger.warning("MQTT server failed to start - check configuration")
+            else:
+                logger.info("MQTT not configured in database - please configure via web interface Settings page")
+                logger.info("Server will continue without MQTT functionality")
         except Exception as e:
             logger.error(f"Failed to load MQTT settings from database: {e}")
-        
-        # Start MQTT server
-        await mqtt_server.start()
-        
-        # Start queue manager
-        await queue_manager.start()
     
     yield
     
@@ -126,25 +131,7 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Load MQTT settings from database on startup"""
-    try:
-        # Initialize database pool
-        await database.init_pool()
-        
-        # Load MQTT settings from database
-        settings = await database.get_system_settings()
-        if hasattr(server_config, 'config') and isinstance(server_config.config, dict):
-            server_config.config['mqtt_broker'] = settings.get('mqtt_broker', 'localhost')
-            server_config.config['mqtt_port'] = int(settings.get('mqtt_port', '1883'))
-            server_config.config['mqtt_username'] = settings.get('mqtt_username', '')
-            server_config.config['mqtt_password'] = settings.get('mqtt_password', '')
-        
-        logger.info(f"Loaded MQTT settings from database - Broker: {server_config.mqtt_broker}:{server_config.mqtt_port}")
-    except Exception as e:
-        logger.warning(f"Could not load MQTT settings from database: {e}")
-        # Continue with default settings from config file
+# MQTT settings are now loaded in the lifespan handler above
 
 # Add session middleware for authentication
 SECRET_KEY = secrets.token_urlsafe(32)  # In production, load from environment variable

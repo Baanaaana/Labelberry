@@ -48,9 +48,10 @@ class MQTTServer:
             logger.info(f"Using configured MQTT credentials - Username: {server_config.mqtt_username}")
             self.client.username_pw_set(server_config.mqtt_username, server_config.mqtt_password)
         else:
-            # Fallback to default credentials
-            logger.warning("No MQTT credentials in config, using default (admin/admin_password)")
-            self.client.username_pw_set("admin", "admin_password")
+            # No credentials configured - MQTT should be configured via web interface
+            logger.info("MQTT credentials not configured - please configure via web interface Settings page")
+            # Don't set any authentication - will fail to connect until configured
+            # This is intentional to prompt configuration via web interface
         
         self.connected = False
         self.running = False
@@ -124,13 +125,15 @@ class MQTTServer:
     
     async def start(self):
         try:
+            # Check if MQTT is configured
+            if not (self.server_config and self.server_config.mqtt_username):
+                logger.warning("MQTT not configured - skipping connection. Configure via web interface Settings page.")
+                return False
+            
             logger.info(f"Attempting to connect to MQTT broker at {self.config.broker_host}:{self.config.broker_port}")
             
             # Log authentication details (without password)
-            if self.server_config and self.server_config.mqtt_username:
-                logger.info(f"Using MQTT authentication - Username: {self.server_config.mqtt_username}")
-            else:
-                logger.info("Using default MQTT authentication")
+            logger.info(f"Using MQTT authentication - Username: {self.server_config.mqtt_username}")
             
             # Connect to MQTT broker
             result = self.client.connect(self.config.broker_host, self.config.broker_port, keepalive=self.config.keepalive)
