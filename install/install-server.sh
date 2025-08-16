@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# LabelBerry Admin Server Installation Script
-# Version: 1.0.0
-# Last Updated: 2025-08-07
+# LabelBerry Complete Server Installation Script
+# Version: 2.0.0
+# Last Updated: 2025-08-16
+# Installs both backend (FastAPI) and frontend (Next.js)
 
 set -e
 
-SCRIPT_VERSION="1.0.8"
+SCRIPT_VERSION="2.2.0"
 
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
@@ -15,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${GREEN}===============================================${NC}"
-echo -e "${GREEN}   LabelBerry Admin Server Installation Script ${NC}"
+echo -e "${GREEN}   LabelBerry Complete Server Installation     ${NC}"
 echo -e "${GREEN}   Version: $SCRIPT_VERSION                    ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
@@ -25,7 +26,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}[1/12] Checking system requirements...${NC}"
+echo -e "${YELLOW}[1/15] Checking system requirements...${NC}"
 if ! lsb_release -d | grep -q "Ubuntu"; then
     echo -e "${YELLOW}Warning: This doesn't appear to be Ubuntu${NC}"
     read -p "Do you want to continue anyway? (y/N): " -n 1 -r </dev/tty
@@ -35,7 +36,7 @@ if ! lsb_release -d | grep -q "Ubuntu"; then
     fi
 fi
 
-echo -e "${YELLOW}[2/12] Checking Python version...${NC}"
+echo -e "${YELLOW}[2/15] Checking Python version...${NC}"
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}Python 3 is not installed${NC}"
     exit 1
@@ -49,7 +50,7 @@ if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1
 fi
 echo -e "${GREEN}Python $PYTHON_VERSION found${NC}"
 
-echo -e "${YELLOW}[3/12] Installing system dependencies...${NC}"
+echo -e "${YELLOW}[3/15] Installing system dependencies...${NC}"
 apt-get update
 apt-get install -y \
     python3-pip \
@@ -62,36 +63,93 @@ apt-get install -y \
     mosquitto \
     mosquitto-clients
 
-echo -e "${YELLOW}[4/12] Creating installation directory...${NC}"
+echo -e "${YELLOW}[4/15] Setting up installation directory...${NC}"
 INSTALL_DIR="/opt/labelberry"
+
+# Check if directory exists and if it's a git repository
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}Installation directory already exists${NC}"
-    read -p "Do you want to reinstall? This will backup your database (y/N): " -n 1 -r </dev/tty
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        if [ -f "/var/lib/labelberry/db.sqlite" ]; then
-            cp /var/lib/labelberry/db.sqlite /var/lib/labelberry/db.sqlite.backup
-            echo -e "${GREEN}Database backed up to /var/lib/labelberry/db.sqlite.backup${NC}"
+    
+    # Check if it's a valid git repository
+    if [ -d "$INSTALL_DIR/.git" ]; then
+        echo -e "${GREEN}Existing git repository found at $INSTALL_DIR${NC}"
+        cd "$INSTALL_DIR"
+        
+        # Check if this is the LabelBerry repository
+        REMOTE_URL=$(git config --get remote.origin.url 2>/dev/null || echo "")
+        if [[ "$REMOTE_URL" == *"labelberry"* ]] || [[ "$REMOTE_URL" == *"LabelBerry"* ]]; then
+            echo -e "${GREEN}Valid LabelBerry repository detected${NC}"
+            echo -e "${YELLOW}Updating repository...${NC}"
+            git fetch origin
+            git reset --hard origin/main
+            git clean -fd
+            echo -e "${GREEN}Repository updated${NC}"
+            SKIP_CLONE=true
+        else
+            echo -e "${RED}Directory contains a different git repository${NC}"
+            echo -e "${YELLOW}Remote: $REMOTE_URL${NC}"
+            read -p "Do you want to remove it and install fresh? (y/N): " -n 1 -r </dev/tty
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                rm -rf "$INSTALL_DIR"
+                mkdir -p "$INSTALL_DIR"
+                SKIP_CLONE=false
+            else
+                echo -e "${RED}Installation cancelled${NC}"
+                exit 1
+            fi
         fi
-        rm -rf "$INSTALL_DIR"
     else
-        exit 1
+        # Directory exists but is not a git repo
+        echo -e "${YELLOW}Directory exists but is not a git repository${NC}"
+        read -p "Do you want to reinstall? This will backup any existing data (y/N): " -n 1 -r </dev/tty
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            # Backup database if it exists
+            if [ -f "/var/lib/labelberry/db.sqlite" ]; then
+                cp /var/lib/labelberry/db.sqlite /var/lib/labelberry/db.sqlite.backup
+                echo -e "${GREEN}Database backed up to /var/lib/labelberry/db.sqlite.backup${NC}"
+            fi
+            rm -rf "$INSTALL_DIR"
+            mkdir -p "$INSTALL_DIR"
+            SKIP_CLONE=false
+        else
+            echo -e "${RED}Installation cancelled${NC}"
+            exit 1
+        fi
+    fi
+else
+    # Directory doesn't exist, create it
+    mkdir -p "$INSTALL_DIR"
+    SKIP_CLONE=false
+fi
+
+echo -e "${YELLOW}[5/15] Setting up repository...${NC}"
+cd "$INSTALL_DIR"
+
+if [ "$SKIP_CLONE" != "true" ]; then
+    echo -e "${YELLOW}Cloning repository...${NC}"
+    git clone --sparse https://github.com/Baanaaana/labelberry.git .
+    git sparse-checkout init --cone
+    git sparse-checkout set admin_server shared install nextjs
+    echo -e "${GREEN}Repository cloned${NC}"
+else
+    echo -e "${GREEN}Using existing repository${NC}"
+    # Ensure we have all required directories
+    if [ ! -d "admin_server" ] || [ ! -d "nextjs" ]; then
+        echo -e "${YELLOW}Some directories missing, updating sparse-checkout...${NC}"
+        git sparse-checkout set admin_server shared install nextjs
+        git read-tree -m -u HEAD
+        echo -e "${GREEN}Directories updated${NC}"
     fi
 fi
-mkdir -p "$INSTALL_DIR"
 
-echo -e "${YELLOW}[5/12] Cloning repository...${NC}"
-cd "$INSTALL_DIR"
-git clone --sparse https://github.com/Baanaaana/labelberry.git .
-git sparse-checkout init --cone
-git sparse-checkout set admin_server shared install
-
-echo -e "${YELLOW}[6/12] Creating virtual environment...${NC}"
+echo -e "${YELLOW}[6/15] Creating virtual environment...${NC}"
 cd admin_server
 python3 -m venv venv
 source venv/bin/activate
 
-echo -e "${YELLOW}[7/12] Installing Python packages...${NC}"
+echo -e "${YELLOW}[7/15] Installing Python packages...${NC}"
 pip install --upgrade pip
 pip install -r requirements_postgres.txt
 
@@ -101,12 +159,12 @@ touch app/__init__.py
 cd ..
 touch shared/__init__.py
 
-echo -e "${YELLOW}[8/12] Creating directories...${NC}"
+echo -e "${YELLOW}[8/15] Creating directories...${NC}"
 mkdir -p /etc/labelberry
 mkdir -p /var/lib/labelberry
 mkdir -p /var/log/labelberry
 
-echo -e "${YELLOW}[9/12] Configuring MQTT connection...${NC}"
+echo -e "${YELLOW}[9/15] Configuring MQTT connection...${NC}"
 
 # Check if we have existing MQTT configuration
 EXISTING_MQTT_CONFIG=false
@@ -181,7 +239,7 @@ EOF
     fi
 fi
 
-echo -e "${YELLOW}[10/12] Creating configuration...${NC}"
+echo -e "${YELLOW}[10/15] Creating configuration...${NC}"
 if [ ! -f "/etc/labelberry/server.conf" ]; then
     read -p "Enter the port for the admin server (default 8080): " PORT </dev/tty
     PORT=${PORT:-8080}
@@ -219,7 +277,117 @@ EOF
 
 echo -e "${GREEN}Configuration created/updated with MQTT settings${NC}"
 
-echo -e "${YELLOW}[11/12] Creating systemd service...${NC}"
+echo -e "${YELLOW}[11/15] Setting up Node.js environment...${NC}"
+
+# Install NVM (Node Version Manager) for better Node.js management
+export NVM_DIR="/opt/nvm"
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    echo "Installing NVM (Node Version Manager)..."
+    mkdir -p $NVM_DIR
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | NVM_DIR=$NVM_DIR bash
+    echo -e "${GREEN}NVM installed${NC}"
+fi
+
+# Load NVM
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# Install latest Node.js LTS using NVM
+NODE_VERSION="lts/*"
+echo "Installing Node.js $NODE_VERSION..."
+nvm install $NODE_VERSION
+nvm alias default $NODE_VERSION
+nvm use $NODE_VERSION
+echo -e "${GREEN}Node.js $(node --version) installed via NVM${NC}"
+
+# Update npm to latest version
+echo "Updating npm to latest version..."
+npm install -g npm@latest
+echo -e "${GREEN}npm updated to $(npm --version)${NC}"
+
+# Install PM2 globally
+if ! command -v pm2 &> /dev/null; then
+    echo "Installing PM2 process manager..."
+    npm install -g pm2
+    echo -e "${GREEN}PM2 installed${NC}"
+else
+    echo "Updating PM2..."
+    npm update -g pm2
+    echo -e "${GREEN}PM2 updated${NC}"
+fi
+
+echo -e "${YELLOW}[12/15] Building Next.js frontend...${NC}"
+cd "$INSTALL_DIR/nextjs"
+
+# Check if lib/utils.ts exists, create if missing
+if [ ! -f "src/lib/utils.ts" ]; then
+    mkdir -p src/lib
+    cat > src/lib/utils.ts << 'EOF'
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+EOF
+    echo -e "${GREEN}Created missing lib/utils.ts${NC}"
+fi
+
+# Install dependencies
+echo "Installing frontend dependencies..."
+npm install
+
+# Build the Next.js application
+echo "Building Next.js application..."
+export NODE_OPTIONS="--max_old_space_size=2048"
+export NEXT_TELEMETRY_DISABLED=1
+npm run build
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}Next.js build successful${NC}"
+else
+    echo -e "${RED}Next.js build failed${NC}"
+    echo "Trying to fix common issues..."
+    npm install clsx tailwind-merge
+    npm run build || {
+        echo -e "${RED}Build still failing. Please check the error messages above${NC}"
+        exit 1
+    }
+fi
+
+echo -e "${YELLOW}[13/15] Configuring PM2 for Next.js...${NC}"
+
+# Create ecosystem config for PM2
+cat > ecosystem.config.js << 'EOF'
+module.exports = {
+  apps: [{
+    name: 'labelberry-nextjs',
+    script: 'npm',
+    args: 'start',
+    cwd: '/opt/labelberry/nextjs',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    max_memory_restart: '500M',
+    error_file: '/var/log/labelberry/nextjs-error.log',
+    out_file: '/var/log/labelberry/nextjs-out.log',
+    merge_logs: true,
+    time: true
+  }]
+}
+EOF
+
+# Start Next.js with PM2
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup systemd -u root --hp /root | grep "sudo" | bash
+
+echo -e "${GREEN}Next.js frontend configured with PM2${NC}"
+
+cd "$INSTALL_DIR"
+
+echo -e "${YELLOW}[14/15] Creating backend systemd service...${NC}"
 cat > /etc/systemd/system/labelberry-admin.service <<EOF
 [Unit]
 Description=LabelBerry Admin Server
@@ -243,7 +411,7 @@ EOF
 systemctl daemon-reload
 systemctl enable labelberry-admin.service
 
-echo -e "${YELLOW}[12/12] Checking service status...${NC}"
+echo -e "${YELLOW}[15/15] Checking services status...${NC}"
 
 # Check if service is already running
 if systemctl is-active --quiet labelberry-admin.service; then
@@ -262,11 +430,12 @@ PORT=${PORT:-8080}
 
 echo ""
 echo -e "${GREEN}===============================================${NC}"
-echo -e "${GREEN}    Backend Installation Complete!             ${NC}"
+echo -e "${GREEN}    Server Installation Complete!               ${NC}"
 echo -e "${GREEN}===============================================${NC}"
 echo ""
-echo -e "${YELLOW}API Server running at:${NC}"
-echo "   http://${SERVER_IP}:${PORT}"
+echo -e "${YELLOW}Access Points:${NC}"
+echo "   Web Interface: http://${SERVER_IP}:3000"
+echo "   API Server: http://${SERVER_IP}:${PORT}"
 echo ""
 echo -e "${YELLOW}MQTT Configuration:${NC}"
 echo "   Host: $MQTT_HOST"
@@ -280,10 +449,16 @@ echo ""
 echo -e "${YELLOW}View Logs:${NC}"
 echo "   sudo journalctl -u labelberry-admin -f"
 echo ""
-echo -e "${YELLOW}Note:${NC}"
-echo "   This installs the backend API server only."
-echo "   To deploy the web interface, run ./deploy.sh next."
-echo "   For domain/SSL setup, use Nginx Proxy Manager or similar."
+echo -e "${YELLOW}Next Steps:${NC}"
+echo "   1. Access the web interface at http://${SERVER_IP}:3000"
+echo "   2. Configure your Raspberry Pi clients to connect to this server"
+echo "   3. For domain/SSL setup, use Nginx Proxy Manager"
+echo ""
+echo -e "${YELLOW}Useful Commands:${NC}"
+echo "   Backend logs: sudo journalctl -u labelberry-admin -f"
+echo "   Frontend logs: pm2 logs labelberry-nextjs"
+echo "   Frontend status: pm2 status"
+echo "   Update system: cd /opt/labelberry && ./deploy.sh"
 echo ""
 
 if [ "$SERVICE_ACTION" = "restart" ]; then
@@ -294,8 +469,18 @@ fi
 echo
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     systemctl $SERVICE_ACTION labelberry-admin
-    echo -e "${GREEN}Backend service ${SERVICE_ACTION}ed!${NC}"
+    echo -e "${GREEN}Services ${SERVICE_ACTION}ed!${NC}"
+    
+    # Also restart PM2 apps
+    pm2 restart labelberry-nextjs 2>/dev/null || pm2 start ecosystem.config.js
+    
     SERVER_IP=$(hostname -I | awk '{print $1}')
-    echo -e "${YELLOW}API server running at: http://${SERVER_IP}:${PORT}${NC}"
-    echo -e "${YELLOW}Run ./deploy.sh to install the web interface${NC}"
+    echo ""
+    echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}LabelBerry server is now running!${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${CYAN}Access the web interface at:${NC}"
+    echo -e "${WHITE}http://${SERVER_IP}:3000${NC}"
+    echo ""
 fi

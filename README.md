@@ -72,118 +72,86 @@ A modern, enterprise-grade label printing system for Zebra printers with central
 
 ## 🚀 Quick Installation
 
-### Admin Server Installation (Main Server)
-
-The admin server hosts both the FastAPI backend (port 8080) and Next.js frontend (port 3000). Follow these steps for initial setup:
-
-#### Step 1: Initial Server Setup (First-time only)
+### One-Command Installation
 
 ```bash
-# Download and run the installer on your Ubuntu server
-curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install/install-server.sh | bash
-
-# The installer will:
-# 1. Install system dependencies (PostgreSQL, Mosquitto, Node.js, Python)
-# 2. Create and configure the PostgreSQL database
-# 3. Set up MQTT broker with authentication
-# 4. Install and configure the FastAPI backend service
-# 5. Build and deploy the Next.js frontend
-# 6. Create systemd services for auto-start
-# 7. Configure nginx reverse proxy (optional)
-# 8. Set up directory structure at /opt/labelberry
+# Run this single command to install LabelBerry (server or Pi client):
+curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install.sh | sudo bash
 ```
 
-#### Step 2: Install Management Tools (Recommended)
+The installer will:
+1. Detect your system type (Server or Raspberry Pi)
+2. Ask whether you want to install the **Server** or **Pi Client**
+3. Automatically run the appropriate installation
 
-```bash
-# After installation completes, install the management menu
-cd /opt/labelberry
-./install-menu.sh
+### Server Installation
 
-# Reload your shell or open a new terminal, then type:
-menu  # Opens the interactive management interface
-```
+Choose option **1** when prompted by the installer. The complete server installation includes:
 
-#### Step 3: Verify Installation
+- **Backend**: FastAPI with PostgreSQL database connection
+- **Frontend**: Next.js web interface  
+- **Services**: MQTT broker, systemd services, PM2 process manager
+- **Dependencies**: Python, Node.js, npm, and all required packages
 
-After installation, verify all services are running:
-```bash
-# Check service status
-systemctl status labelberry-admin    # FastAPI backend
-pm2 status                          # Next.js frontend
-systemctl status mosquitto          # MQTT broker
-systemctl status postgresql         # Database
-
-# Test endpoints
-curl http://localhost:8080/health   # Backend health check
-curl http://localhost:3000          # Frontend check
-```
-
-#### Access Points After Installation:
-
-**Without Nginx (Direct Access):**
+After installation:
 - **Web Interface**: `http://your-server-ip:3000`
 - **API Endpoint**: `http://your-server-ip:8080`
 - **MQTT Broker**: `your-server-ip:1883`
 
-**With Nginx Proxy Manager (Recommended):**
-- **Web Interface**: `https://labelberry.yourdomain.com`
-- **API Endpoint**: `https://labelberry.yourdomain.com/api`
-- **MQTT Broker**: `your-server-ip:1883` (direct connection)
+### Pi Client Installation
 
-See the [Nginx Proxy Manager Setup](#nginx-proxy-manager-setup-recommended) section for configuration details.
+Choose option **2** when prompted by the installer. You'll be asked for:
 
-#### Step 4: Future Updates and Deployments
+1. Admin server URL (e.g., `http://192.168.1.100:8080`)
+2. MQTT broker details
+3. Printer configuration
 
-After initial setup, use the deployment script for all updates:
+The installer will automatically detect connected Zebra printers and register them with the server.
+
+### Post-Installation
+
+#### Access the Management Menu
+
+After server installation, the management menu is available:
 
 ```bash
 cd /opt/labelberry
-git pull                    # Get latest code
-./deploy.sh                 # Run automated deployment
-
-# Or use the menu:
-menu                        # Select option 1 for full deployment
+./menu.sh  # Opens the management interface
 ```
 
-The deploy script will:
-- Pull latest code from git
-- Update Python and Node.js dependencies
-- Rebuild the Next.js frontend
-- Restart all services with zero downtime
-- Run health checks
+The menu provides easy access to:
+- Service management (start/stop/restart)
+- Log viewing and monitoring
+- System updates and deployments
+- Database operations
+- Configuration editing
 
-> **Important**: Always run `install-server.sh` first for initial setup, then use `deploy.sh` for updates. The deploy script assumes the system infrastructure is already in place.
+#### Updating Your Installation
 
-### Raspberry Pi Client Installation
+For updates to existing installations:
 
 ```bash
-# On each Raspberry Pi:
-curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install/install-pi.sh | bash
-
-# The installer will prompt for:
-# 1. Admin server URL (e.g., http://192.168.1.100:8080)
-# 2. Friendly name for this printer (e.g., "Warehouse Printer 1")
-# 3. Printer device path (usually /dev/usb/lp0)
-
-# Note your Device ID and API Key after installation!
+cd /opt/labelberry
+./deploy.sh  # Updates and redeploys the system
 ```
+
+This will:
+- Pull latest changes from GitHub
+- Rebuild backend and frontend
+- Restart services with zero downtime
+- Verify system health
+
+> **Note**: The deploy script is only for updates. For new installations, always use the installer.
 
 ## 🛠️ Management Tools
 
 ### Interactive Management Menu
 
-After installation, you can install the management menu for easier server administration:
+The management menu is available after server installation:
 
 ```bash
-# Install the menu system
-./install-menu.sh
-
-# After installation, use these commands:
-menu        # Open the management menu
-m           # Quick shortcut
-lb          # Alternative shortcut
-deploy      # Run deployment directly
+cd /opt/labelberry
+./menu.sh  # Open the management menu
 ```
 
 The menu provides:
@@ -193,21 +161,21 @@ The menu provides:
 - **Database Access**: PostgreSQL console, configuration editing
 - **Utilities**: System info, disk usage, quick navigation
 
-### Deployment Script
+### Updating Your System
 
-For automated deployments and updates:
+For updates to existing installations:
 
 ```bash
-# Run the deployment script
-./deploy.sh
-
-# This will:
-# - Pull latest code from git
-# - Install/update dependencies
-# - Build Next.js application
-# - Restart services with zero downtime
-# - Run health checks
+cd /opt/labelberry
+./deploy.sh  # Automated update and deployment
 ```
+
+This will:
+- Pull latest code from git
+- Install/update dependencies
+- Build Next.js application
+- Restart services with zero downtime
+- Run health checks
 
 ### Uninstallation
 
@@ -215,10 +183,10 @@ To completely remove LabelBerry:
 
 ```bash
 # Uninstall server
-./install/uninstall-server.sh
+curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install/uninstall-server.sh | sudo bash
 
 # Uninstall Pi client
-./install/uninstall-pi.sh
+curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install/uninstall-pi.sh | sudo bash
 ```
 
 ## 🔧 Configuration

@@ -1,17 +1,18 @@
 #!/bin/bash
 
 # ============================================
-# LABELBERRY DEPLOYMENT SCRIPT
-# Version: 1.0.0
-# Updated: 2025-08-15
+# LABELBERRY UPDATE & DEPLOYMENT SCRIPT
+# Version: 2.0.0
+# Updated: 2025-08-16
+# ============================================
+# Purpose: Update existing LabelBerry installations
+# For new installations, use ./install.sh instead
 # ============================================
 # Features:
-# - Auto-installs NVM if not present
-# - Auto-installs Node.js LTS
-# - Updates npm to latest version
-# - PM2 auto-installation
-# - PostgreSQL database operations
-# - MQTT service management
+# - Git pull latest changes
+# - Rebuild backend and frontend
+# - Restart all services
+# - Zero-downtime deployment
 # ============================================
 
 # Color definitions for consistent styling
@@ -33,10 +34,39 @@ ADMIN_DIR="$PROJECT_DIR/admin_server"
 PM2_APP_NAME="labelberry-nextjs"
 NODE_VERSION="lts/*"  # Use latest LTS version
 
+# Check if this is an existing installation
+check_installation() {
+    if [ ! -d "$PROJECT_DIR" ]; then
+        echo -e "${RED}═══════════════════════════════════════════════════════${NC}"
+        echo -e "${RED}ERROR: LabelBerry is not installed${NC}"
+        echo -e "${RED}═══════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "${YELLOW}This script is for updating existing installations only.${NC}"
+        echo -e "${YELLOW}To install LabelBerry for the first time, run:${NC}"
+        echo ""
+        echo -e "${WHITE}curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install.sh | sudo bash${NC}"
+        echo ""
+        exit 1
+    fi
+    
+    # Check if essential components exist
+    if [ ! -d "$ADMIN_DIR" ] || [ ! -d "$NEXTJS_DIR" ]; then
+        echo -e "${RED}ERROR: Installation appears to be incomplete${NC}"
+        echo -e "${YELLOW}Missing essential directories. Please run the installer:${NC}"
+        echo ""
+        echo -e "${WHITE}curl -sSL https://raw.githubusercontent.com/Baanaaana/LabelBerry/main/install.sh | sudo bash${NC}"
+        echo ""
+        exit 1
+    fi
+}
+
 # Function to run the full deployment
 run_full_deploy() {
-    echo -e "${CYAN}Starting LabelBerry deployment...${NC}"
+    echo -e "${CYAN}Starting LabelBerry update...${NC}"
     echo ""
+    
+    # Check installation first
+    check_installation
     
     # Navigate to project directory
     cd $PROJECT_DIR || exit 1
@@ -108,19 +138,22 @@ run_full_deploy() {
     echo -e "${YELLOW}2. Setting up Node.js environment...${NC}"
     
     # Check if NVM is installed, if not install it
-    export NVM_DIR="$HOME/.nvm"
+    # Use system-wide NVM installation for consistency with installer
+    export NVM_DIR="/opt/nvm"
     
     if [ ! -s "$NVM_DIR/nvm.sh" ] && [ ! -s "/usr/local/opt/nvm/nvm.sh" ]; then
         echo -e "${YELLOW}NVM not found. Installing NVM...${NC}"
         
-        # Download and install NVM (latest version)
-        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+        # Create NVM directory
+        mkdir -p $NVM_DIR
+        
+        # Download and install NVM (latest version) to /opt/nvm
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | NVM_DIR=$NVM_DIR bash
         
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}✓ NVM installed successfully${NC}"
             
             # Load NVM for current session
-            export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
         else
@@ -407,7 +440,7 @@ EOF
     
     echo ""
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}✅ DEPLOYMENT SUCCESSFUL!${NC}"
+    echo -e "${GREEN}✅ UPDATE SUCCESSFUL!${NC}"
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     echo -e "${CYAN}System Status:${NC}"
@@ -424,7 +457,7 @@ EOF
     echo "  pm2 restart $PM2_APP_NAME    # Restart Next.js"
     echo "  sudo journalctl -u labelberry-admin -f  # View backend logs"
     echo ""
-    echo -e "${GREEN}🎉 LabelBerry deployment completed successfully!${NC}"
+    echo -e "${GREEN}🎉 LabelBerry update completed successfully!${NC}"
     echo ""
 }
 

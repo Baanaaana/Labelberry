@@ -7,20 +7,16 @@
 # persistent menu access and useful aliases
 
 # Load NVM first so it's available in the menu function
-# Handle both root and regular user NVM installations
-if [ "$EUID" -eq 0 ]; then
-    # Running as root - check common NVM locations
-    if [ -s "/root/.nvm/nvm.sh" ]; then
-        export NVM_DIR="/root/.nvm"
-    elif [ -s "/home/$SUDO_USER/.nvm/nvm.sh" ] && [ ! -z "$SUDO_USER" ]; then
-        export NVM_DIR="/home/$SUDO_USER/.nvm"
-    elif [ -s "/opt/nvm/nvm.sh" ]; then
-        export NVM_DIR="/opt/nvm"
-    else
+# Use system-wide NVM installation for LabelBerry
+export NVM_DIR="/opt/nvm"
+
+# Fallback to user installation if system-wide not found
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    if [ -s "$HOME/.nvm/nvm.sh" ]; then
         export NVM_DIR="$HOME/.nvm"
+    elif [ -s "/root/.nvm/nvm.sh" ] && [ "$EUID" -eq 0 ]; then
+        export NVM_DIR="/root/.nvm"
     fi
-else
-    export NVM_DIR="$HOME/.nvm"
 fi
 
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
