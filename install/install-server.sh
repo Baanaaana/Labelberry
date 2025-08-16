@@ -320,9 +320,11 @@ STATIC_VERSION=1.0
 LABELBERRY_LOCAL_MODE=false
 
 # Next.js Frontend Configuration
-NEXT_PUBLIC_API_URL=http://${SERVER_IP}:${PORT}
-NEXT_PUBLIC_WS_URL=ws://${SERVER_IP}:${PORT}
-NEXTAUTH_URL=http://${SERVER_IP}:3000
+# Using relative paths for production (works with reverse proxy)
+NEXT_PUBLIC_API_URL=/api
+NEXT_PUBLIC_WS_URL=/api
+# Update NEXTAUTH_URL to your actual domain after installation
+NEXTAUTH_URL=https://yourdomain.com
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
 NODE_ENV=production
 EOF
